@@ -1,6 +1,6 @@
 <div class="drawer">
-  <input id="my-drawer" type="checkbox" class="drawer-toggle" />
-  <div class="drawer-content">
+  	<input id="my-drawer" type="checkbox" class="drawer-toggle" />
+  	<div class="drawer-content">
 		<div class="navbar bg-base-300">
 			<div class="flex-none">
 				<label for="my-drawer" class="btn btn-square btn-ghost drawer-button">
@@ -16,15 +16,17 @@
 				</button>
 			</div>
 		</div>
-		<router-outlet></router-outlet>
+		<div class="container mx-auto">
+			<router-outlet></router-outlet>
+		</div>
 	</div> 
   <div class="drawer-side">
     <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-    <ul class="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
-      <!-- Sidebar content here -->
-      <li><a>Sidebar Item 1</a></li>
-      <li><a>Sidebar Item 2</a></li>
-      
-    </ul>
+	<ng-container *ngrxLet="menuItems$ as menuItems">
+		<ul *ngIf="menuItems" class="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
+			<!-- Sidebar content here -->
+			<li *ngFor="let key of getMenuKeys(menuItems)" (click)="navigate(key)"><a>{{ key }}</a></li>
+		</ul>
+	</ng-container>
   </div>
 </div>

@@ -1,0 +1,26 @@
+<div class="prose">
+    <ng-container *ngrxLet="entity$ as entity">
+        <ng-container *ngIf="entity">
+            <h1>{{ entityKey }}</h1>
+            <div class="overflow-x-auto">
+                <table class="table">
+                  <!-- head -->
+                    <thead>
+                        <tr>
+                            <th *ngFor="let prop of headers(entity)">{{ printableHeader(prop) | titlecase }}</th>
+                        </tr>
+                    </thead>
+                  <tbody>
+                    <ng-container *ngrxLet="data$ as data">
+                      <ng-container *ngIf="data?.length">
+                        <tr *ngFor="let row of data">
+                          <td *ngFor="let prop of headers(entity)">{{ row[prop] }}</td>
+                        </tr>
+                      </ng-container>
+                    </ng-container>
+                  </tbody>
+                </table>
+              </div>
+        </ng-container>
+    </ng-container>
+</div>
