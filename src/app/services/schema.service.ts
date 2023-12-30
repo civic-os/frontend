@@ -47,11 +47,21 @@ export class SchemaService {
       let props = entity.properties;
       return Object.keys(props).map(name => {
         let val = props[name];
-        let foreign = (val.type == 'integer' && val['description']?.includes('<fk')) ? this.parseFk(val.description) : null
-        let type = (val.type == 'string' && val['format'] == 'timestamp with time zone') ? EntityPropertyType.DateTime :
-          (val.type == 'string' && val['format'] == 'timestamp') ? EntityPropertyType.DateTime :
-          (val.type == 'string' && val['format'] == 'date') ? EntityPropertyType.Date :
-          (val.type == 'string' && val['format'] == 'money') ? EntityPropertyType.Money : null;
+        if(val.type == 'integer' && val['description']?.includes('<fk')) {
+          return {
+            name: name,
+            foreign: this.parseFk(val.description),
+            type: EntityPropertyType.ForeignKeyName,
+          }
+        } else {
+          return {
+            name: name,
+            type: (val.type == 'string' && val['format'] == 'timestamp with time zone') ? EntityPropertyType.DateTime :
+              (val.type == 'string' && val['format'] == 'timestamp') ? EntityPropertyType.DateTime :
+              (val.type == 'string' && val['format'] == 'date') ? EntityPropertyType.Date :
+              (val.type == 'string' && val['format'] == 'money') ? EntityPropertyType.Money : EntityPropertyType.Unknown,
+          }
+        }
       })
     } else {
       return [];
@@ -60,11 +70,19 @@ export class SchemaService {
   private parseFk(fkDesc: string) : EntityForeignRelationship {
     let meta = fkDesc.split('<fk')[1].split('/>')[0].trim();
     let parts = meta.split(' ');
-    let table = parts.find();
-    let id = parts.find();
+    let table = parts.find(p => p.includes('table'))?.split('=')[1].replace("'", '').replace("'", '');
+    let id = parts.find(p => p.includes('id'))?.split('=')[1].replace("'", '').replace("'", '');
     return {
-      table: table,
-      column: id,
+      table: table ?? '',
+      column: id ?? '',
     };
+  }
+  public static propertyToSelectString(prop: EntityProperty): string {
+    console.log(prop.foreign)
+    return prop.foreign ? prop.name + ':' + prop.foreign.table + '(display_name)' :
+      prop.name;
+  }
+  public static filterPropsForDisplay(props: EntityProperty[]): EntityProperty[] {
+    return props.filter(x => !SchemaService.hideFields.includes(x.name));
   }
 }

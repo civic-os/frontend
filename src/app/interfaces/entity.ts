@@ -10,10 +10,17 @@ export interface EntityForeignRelationship {
 }
 
 export enum EntityPropertyType {
+    Unknown,
     TextShort,
     TextLong,
     Date,
     DateTime,
     Money,
     Number,
+    ForeignKeyName,
+}
+
+export interface EntityData {
+    id: number,
+    display_name: string,
 }

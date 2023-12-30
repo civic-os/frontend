@@ -1,24 +1,28 @@
 <div class="prose">
     <ng-container *ngrxLet="entity$ as entity">
         <ng-container *ngIf="entity">
-            <h1>{{ entityKey }}</h1>
+            <h1>{{ entityKey }} List</h1>
             <div class="overflow-x-auto">
                 <table class="table">
-                  <!-- head -->
+					<!-- head -->
                     <thead>
                         <tr>
                             <th *ngFor="let prop of headers(entity)">{{ printableHeader(prop) | titlecase }}</th>
                         </tr>
                     </thead>
-                  <tbody>
-                    <ng-container *ngrxLet="data$ as data">
-                      <ng-container *ngIf="data?.length">
-                        <tr *ngFor="let row of data">
-                          <td *ngFor="let prop of headers(entity)">{{ row[prop] }}</td>
-                        </tr>
-                      </ng-container>
-                    </ng-container>
-                  </tbody>
+					<tbody>
+						<ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data?.length">
+							<ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
+								<tr *ngFor="let row of data" [routerLink]="'/view/'+entityKey+'/'+row.id">
+									<td *ngFor="let prop of headers(entity)">
+										<ng-container *ngIf="row[prop]">
+											<app-display-property [datum]="row[prop]" [properties]="props" [propertyName]="prop"></app-display-property>
+										</ng-container>
+									</td>
+								</tr>
+							</ng-container></ng-container>
+						</ng-container></ng-container>
+					</tbody>
                 </table>
               </div>
         </ng-container>

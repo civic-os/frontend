@@ -1,33 +1,34 @@
 import { Component } from '@angular/core';
-import { ActivatedRoute, Route, RouterModule } from '@angular/router';
-import { Observable, map, mergeMap, of } from 'rxjs';
-import { SchemaService } from '../../services/schema.service';
 import { OpenAPIV2 } from 'openapi-types';
-import { LetDirective } from '@ngrx/component';
-import { CommonModule } from '@angular/common';
+import { Observable, map, mergeMap, of } from 'rxjs';
+import { EntityProperty, EntityPropertyType } from '../../interfaces/entity';
+import { ActivatedRoute } from '@angular/router';
+import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
-import { EntityProperty } from '../../interfaces/entity';
-import { EntityPropertyType } from '../../interfaces/entity';
+import { CommonModule } from '@angular/common';
+import { LetDirective } from '@ngrx/component';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 
 @Component({
-  selector: 'app-view',
+  selector: 'app-detail',
   standalone: true,
   imports: [
     CommonModule, 
-    LetDirective, 
-    RouterModule, 
-    DisplayPropertyComponent,],
-  templateUrl: './view.page.html',
-  styleUrl: './view.page.css'
+    LetDirective,
+    DisplayPropertyComponent,
+  ],
+  templateUrl: './detail.page.html',
+  styleUrl: './detail.page.css'
 })
-export class ViewPage {
+export class DetailPage {
   public entityKey?: string;
+  public entityId?: string;
   public entity$: Observable<OpenAPIV2.SchemaObject | null>;
   public properties$: Observable<EntityProperty[] | null>;
   public data$: Observable<any>;
 
   public EntityPropertyType = EntityPropertyType;
+  public SchemaService = SchemaService;
 
   constructor(
     private route: ActivatedRoute,
@@ -36,6 +37,8 @@ export class ViewPage {
   ) {
     this.entity$ = this.route.params.pipe(mergeMap(p => {
       this.entityKey = p['entityKey'];
+      this.entityId = p['entityId'];
+      console.log(p)
       if(p['entityKey']) {
         return this.schema.getEntity(p['entityKey']);
       } else {
@@ -45,7 +48,6 @@ export class ViewPage {
     this.properties$ = this.entity$.pipe(map(e => {
       if(e) {
         let props = this.schema.getPropertiesAndForeignRelationships(e);
-        console.log(props)
         return props;
       } else {
         return null;
@@ -55,24 +57,17 @@ export class ViewPage {
       if(props && this.entityKey) {
         console.log(props)
         let columns = props
-          //.filter(x => !SchemaService.hideFields.includes(x.name))
           .map(x => SchemaService.propertyToSelectString(x));
-        return this.data.getData(this.entityKey, columns);
+        return this.data.getData(this.entityKey, columns, this.entityId)
+          .pipe(map(x => x[0]));
       } else {
         return of();
       }
     }));
   }
 
-  public headers(entity: OpenAPIV2.SchemaObject) : string[] {
-    // console.log(entity)
-    return entity.properties ? 
-      Object.keys(entity.properties)
-        .filter(x => !SchemaService.hideFields.includes(x)) : 
-      [];
-  }
-
   public printableHeader(property: string) {
     return property.split('_').join(' ');
   }
+
 }
