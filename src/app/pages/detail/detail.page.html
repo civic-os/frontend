@@ -7,7 +7,7 @@
                         <ng-container *ngIf="data">
                             <h1>{{ entityKey }}: {{ data.display_name }} <sub>(Id: {{data.id}})</sub></h1>
                             <div *ngFor="let prop of SchemaService.filterPropsForDisplay(props)">
-                                <h3>{{prop.name}}</h3>
+                                <h3>{{prop.name | propSplit | titlecase }}</h3>
                                 <app-display-property [datum]="data[prop.name]" [properties]="props" [property]="prop"></app-display-property>
                             </div>
                         </ng-container>

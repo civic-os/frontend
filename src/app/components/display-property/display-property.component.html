@@ -5,7 +5,7 @@
     <ng-container *ngIf="propType == EntityPropertyType.TextLong">{{ datum }}</ng-container> <!-- Add Synopsis/ellipsis-->
     <ng-container *ngIf="propType == EntityPropertyType.Money">{{ datum | currency }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.Number">{{ datum | number }}</ng-container>
-    <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">{{ datum.display_name }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName"><a [routerLink]="['/view', prop.foreign?.table, datum.id]">{{ datum.display_name }}</a></ng-container>
     
     <ng-container *ngIf="propType == EntityPropertyType.Unknown">{{ datum }}</ng-container>
 </ng-container>

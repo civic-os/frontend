@@ -9,17 +9,20 @@ import { DataService } from '../../services/data.service';
 import { EntityProperty } from '../../interfaces/entity';
 import { EntityPropertyType } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
+import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 
 @Component({
-  selector: 'app-view',
-  standalone: true,
-  imports: [
-    CommonModule, 
-    LetDirective, 
-    RouterModule, 
-    DisplayPropertyComponent,],
-  templateUrl: './view.page.html',
-  styleUrl: './view.page.css'
+    selector: 'app-view',
+    standalone: true,
+    templateUrl: './view.page.html',
+    styleUrl: './view.page.css',
+    imports: [
+        CommonModule,
+        LetDirective,
+        RouterModule,
+        DisplayPropertyComponent,
+        PropToTitlePipe
+    ]
 })
 export class ViewPage {
   public entityKey?: string;
@@ -45,7 +48,6 @@ export class ViewPage {
     this.properties$ = this.entity$.pipe(map(e => {
       if(e) {
         let props = this.schema.getPropertiesAndForeignRelationships(e);
-        console.log(props)
         return props;
       } else {
         return null;
@@ -53,7 +55,6 @@ export class ViewPage {
     }));
     this.data$ = this.properties$.pipe(mergeMap(props => {
       if(props && this.entityKey) {
-        console.log(props)
         let columns = props
           //.filter(x => !SchemaService.hideFields.includes(x.name))
           .map(x => SchemaService.propertyToSelectString(x));
@@ -64,15 +65,7 @@ export class ViewPage {
     }));
   }
 
-  public headers(entity: OpenAPIV2.SchemaObject) : string[] {
-    // console.log(entity)
-    return entity.properties ? 
-      Object.keys(entity.properties)
-        .filter(x => !SchemaService.hideFields.includes(x)) : 
-      [];
-  }
-
-  public printableHeader(property: string) {
-    return property.split('_').join(' ');
+  public filterProps(props: EntityProperty[]): EntityProperty[] {
+    return props.filter(x => !SchemaService.hideFields.includes(x.name));
   }
 }

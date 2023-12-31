@@ -78,8 +78,7 @@ export class SchemaService {
     };
   }
   public static propertyToSelectString(prop: EntityProperty): string {
-    console.log(prop.foreign)
-    return prop.foreign ? prop.name + ':' + prop.foreign.table + '(display_name)' :
+    return prop.foreign ? prop.name + ':' + prop.foreign.table + '(id,display_name)' :
       prop.name;
   }
   public static filterPropsForDisplay(props: EntityProperty[]): EntityProperty[] {

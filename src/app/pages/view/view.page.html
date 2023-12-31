@@ -4,25 +4,23 @@
             <h1>{{ entityKey }} List</h1>
             <div class="overflow-x-auto">
                 <table class="table">
-					<!-- head -->
-                    <thead>
-                        <tr>
-                            <th *ngFor="let prop of headers(entity)">{{ printableHeader(prop) | titlecase }}</th>
-                        </tr>
-                    </thead>
-					<tbody>
-						<ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data?.length">
-							<ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
+					<ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data?.length">
+						<ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
+							<!-- head -->
+							<thead>
+								<tr>
+									<th *ngFor="let prop of filterProps(props)">{{ prop.name | propSplit | titlecase }}</th>
+								</tr>
+							</thead>
+							<tbody>
 								<tr *ngFor="let row of data" [routerLink]="'/view/'+entityKey+'/'+row.id">
-									<td *ngFor="let prop of headers(entity)">
-										<ng-container *ngIf="row[prop]">
-											<app-display-property [datum]="row[prop]" [properties]="props" [propertyName]="prop"></app-display-property>
-										</ng-container>
+									<td *ngFor="let prop of filterProps(props)">
+										<app-display-property [datum]="row[prop.name]" [properties]="props" [property]="prop"></app-display-property>
 									</td>
 								</tr>
-							</ng-container></ng-container>
+							</tbody>
 						</ng-container></ng-container>
-					</tbody>
+					</ng-container></ng-container>
                 </table>
               </div>
         </ng-container>

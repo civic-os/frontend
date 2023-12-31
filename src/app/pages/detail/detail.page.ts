@@ -8,17 +8,19 @@ import { DataService } from '../../services/data.service';
 import { CommonModule } from '@angular/common';
 import { LetDirective } from '@ngrx/component';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
+import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 
 @Component({
-  selector: 'app-detail',
-  standalone: true,
-  imports: [
-    CommonModule, 
-    LetDirective,
-    DisplayPropertyComponent,
-  ],
-  templateUrl: './detail.page.html',
-  styleUrl: './detail.page.css'
+    selector: 'app-detail',
+    standalone: true,
+    templateUrl: './detail.page.html',
+    styleUrl: './detail.page.css',
+    imports: [
+        CommonModule,
+        LetDirective,
+        DisplayPropertyComponent,
+        PropToTitlePipe,
+    ]
 })
 export class DetailPage {
   public entityKey?: string;
