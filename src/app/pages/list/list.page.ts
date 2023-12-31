@@ -14,8 +14,8 @@ import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 @Component({
     selector: 'app-view',
     standalone: true,
-    templateUrl: './view.page.html',
-    styleUrl: './view.page.css',
+    templateUrl: './list.page.html',
+    styleUrl: './list.page.css',
     imports: [
         CommonModule,
         LetDirective,
@@ -24,7 +24,7 @@ import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
         PropToTitlePipe
     ]
 })
-export class ViewPage {
+export class ListPage {
   public entityKey?: string;
   public entity$: Observable<OpenAPIV2.SchemaObject | null>;
   public properties$: Observable<EntityProperty[] | null>;
