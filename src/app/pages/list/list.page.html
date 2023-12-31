@@ -15,7 +15,7 @@
 							<tbody>
 								<tr *ngFor="let row of data" [routerLink]="'/view/'+entityKey+'/'+row.id">
 									<td *ngFor="let prop of SchemaService.filterPropsForDisplay(props)">
-										<app-display-property [datum]="row[prop.name]" [properties]="props" [property]="prop"></app-display-property>
+										<app-display-property [datum]="row[prop.name]" [properties]="props" [property]="prop" [linkRelated]="false"></app-display-property>
 									</td>
 								</tr>
 							</tbody>
