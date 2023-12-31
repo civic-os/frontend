@@ -31,6 +31,7 @@ export class ViewPage {
   public data$: Observable<any>;
 
   public EntityPropertyType = EntityPropertyType;
+  public SchemaService = SchemaService;
 
   constructor(
     private route: ActivatedRoute,
@@ -63,9 +64,5 @@ export class ViewPage {
         return of();
       }
     }));
-  }
-
-  public filterProps(props: EntityProperty[]): EntityProperty[] {
-    return props.filter(x => !SchemaService.hideFields.includes(x.name));
   }
 }

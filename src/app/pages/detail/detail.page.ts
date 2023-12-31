@@ -68,8 +68,4 @@ export class DetailPage {
     }));
   }
 
-  public printableHeader(property: string) {
-    return property.split('_').join(' ');
-  }
-
 }
