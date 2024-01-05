@@ -14,7 +14,6 @@ import { RouterModule } from '@angular/router';
   styleUrl: './display-property.component.css'
 })
 export class DisplayPropertyComponent {
-  @Input('properties') props!: EntityProperty[];
   @Input('property') prop!: EntityProperty;
   @Input('datum') datum: any;
   @Input('linkRelated') linkRelated: boolean = true;

@@ -1,10 +1,14 @@
-<ng-container *ngIf="datum">
+<ng-container *ngIf="datum != null">
     <ng-container *ngIf="propType == EntityPropertyType.Date">{{ datum | date }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.DateTime">{{ datum | date: 'medium' }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.TextShort">{{ datum }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.TextLong">{{ datum }}</ng-container> <!-- Add Synopsis/ellipsis-->
     <ng-container *ngIf="propType == EntityPropertyType.Money">{{ datum | currency }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.Number">{{ datum | number }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.Boolean">
+        <span *ngIf="datum == true" class="material-symbols-outlined text-primary bg-base-100">check_box</span>
+        <span *ngIf="datum == false" class="material-symbols-outlined text-error bg-base-100">disabled_by_default</span>
+    </ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">
         <a *ngIf="linkRelated" [routerLink]="['/view', prop.foreign?.table, datum.id]">{{ datum.display_name }}</a>
         <ng-container *ngIf="!linkRelated">{{ datum.display_name }}</ng-container>
@@ -12,6 +16,6 @@
     
     <ng-container *ngIf="propType == EntityPropertyType.Unknown">{{ datum }}</ng-container>
 </ng-container>
-<ng-container *ngIf="!datum">
+<ng-container *ngIf="datum == null">
     <em>Not Set</em>
 </ng-container>

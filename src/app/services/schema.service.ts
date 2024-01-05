@@ -45,6 +45,7 @@ export class SchemaService {
   public getPropertiesAndForeignRelationships(entity: OpenAPIV2.SchemaObject): EntityProperty[] {
     if(entity.properties) {
       let props = entity.properties;
+      console.log(props)
       return Object.keys(props).map(name => {
         let val = props[name];
         if(val.type == 'integer' && val['description']?.includes('<fk')) {
@@ -59,6 +60,7 @@ export class SchemaService {
             type: (val.type == 'string' && val['format'] == 'timestamp with time zone') ? EntityPropertyType.DateTime :
               (val.type == 'string' && val['format'] == 'timestamp') ? EntityPropertyType.DateTime :
               (val.type == 'string' && val['format'] == 'date') ? EntityPropertyType.Date :
+              (val.type == 'boolean' && val['format'] == 'boolean') ? EntityPropertyType.Boolean :
               (val.type == 'string' && val['format'] == 'money') ? EntityPropertyType.Money : EntityPropertyType.Unknown,
           }
         }

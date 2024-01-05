@@ -13,6 +13,7 @@ export enum EntityPropertyType {
     Unknown,
     TextShort,
     TextLong,
+    Boolean,
     Date,
     DateTime,
     Money,
