@@ -50,13 +50,13 @@ export class SchemaService {
         let val = props[name];
         if(val.type == 'integer' && val['description']?.includes('<fk')) {
           return {
-            name: name,
+            key: name,
             foreign: this.parseFk(val.description),
             type: EntityPropertyType.ForeignKeyName,
           }
         } else {
           return {
-            name: name,
+            key: name,
             type: (val.type == 'string' && val['format'] == 'timestamp with time zone') ? EntityPropertyType.DateTime :
               (val.type == 'string' && val['format'] == 'timestamp') ? EntityPropertyType.DateTime :
               (val.type == 'string' && val['format'] == 'date') ? EntityPropertyType.Date :
@@ -80,10 +80,10 @@ export class SchemaService {
     };
   }
   public static propertyToSelectString(prop: EntityProperty): string {
-    return prop.foreign ? prop.name + ':' + prop.foreign.table + '(id,display_name)' :
-      prop.name;
+    return prop.foreign ? prop.key + ':' + prop.foreign.table + '(id,display_name)' :
+      prop.key;
   }
   public static filterPropsForDisplay(props: EntityProperty[]): EntityProperty[] {
-    return props.filter(x => !SchemaService.hideFields.includes(x.name));
+    return props.filter(x => !SchemaService.hideFields.includes(x.key));
   }
 }

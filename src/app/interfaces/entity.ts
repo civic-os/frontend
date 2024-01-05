@@ -1,5 +1,7 @@
 export interface EntityProperty {
-    name: string,
+    key: string,
+    name?: string,
+    description?: string,
     type: EntityPropertyType,
     foreign?: EntityForeignRelationship,
 }

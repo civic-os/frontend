@@ -8,13 +8,13 @@
 						<!-- head -->
 						<thead>
 							<tr>
-								<th *ngFor="let prop of SchemaService.filterPropsForDisplay(props)">{{ prop.name | propSplit | titlecase }}</th>
+								<th *ngFor="let prop of SchemaService.filterPropsForDisplay(props)">{{ prop.key | propSplit | titlecase }}</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr *ngFor="let row of data" [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
 								<td *ngFor="let prop of SchemaService.filterPropsForDisplay(props)">
-									<app-display-property [datum]="row[prop.name]" [properties]="props" [property]="prop" [linkRelated]="false"></app-display-property>
+									<app-display-property [datum]="row[prop.key]" [property]="prop" [linkRelated]="false"></app-display-property>
 								</td>
 							</tr>
 						</tbody>
