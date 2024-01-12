@@ -2,6 +2,10 @@
     <ng-container *ngrxLet="entity$ as entity"><ng-container *ngIf="entity">
 		<h1>{{ entityKey }} List</h1>
 		<div class="overflow-x-auto">
+			<button class="btn btn-primary" [routerLink]="'/create/' + entityKey"><span class="material-symbols-outlined">
+				add_circle
+				</span> Add {{ entityKey }}
+			</button>
 			<table class="table">
 				<ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data?.length">
 					<ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">

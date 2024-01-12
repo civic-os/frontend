@@ -2,15 +2,17 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { OpenAPIV2 } from 'openapi-types';
-import { Observable, map, of } from 'rxjs';
-import { EntityForeignRelationship, EntityProperty, EntityPropertyType } from '../interfaces/entity';
+import { Observable, map, of, tap } from 'rxjs';
+import { EntityForeignRelationship, EntityProperty, EntityPropertyType, SchemaEntityProperty } from '../interfaces/entity';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SchemaService {
   public schema?: OpenAPIV2.Document;
+  public properties?: SchemaEntityProperty;
   public static hideFields: string[] = ['id', 'created_at'];
+  public static hideTablePrefixes: string[] = ['schema_', 'meta_'];
 
   constructor(
     private http: HttpClient,
@@ -20,9 +22,8 @@ export class SchemaService {
 
   private getSchema() {
     return this.http.get<OpenAPIV2.Document>(environment.postgrestUrl)
-    .pipe(map(spec => {
+    .pipe(tap(spec => {
       this.schema = spec;
-      return spec;
     }));
   }
 
@@ -31,11 +32,23 @@ export class SchemaService {
   }
 
   public getEntities(): Observable<OpenAPIV2.DefinitionsObject | undefined> {
-    if (this.schema) {
-      return of(this.schema.definitions);
-    } else {
-      return this.getSchema().pipe(map(x => x.definitions));
-    }
+    let obs = this.schema ? of(this.schema.definitions) : this.getSchema().pipe(map(x => x.definitions));
+    return obs.pipe(map(definitions => {
+      if(definitions == undefined) {
+        return undefined;
+      } else {
+        let keys = Object.keys(definitions)
+          .filter(key => !SchemaService.hideTablePrefixes.some(prefix => key.startsWith(prefix)));
+        return Object.entries(definitions)
+          .filter(d => keys.includes(d[0]))
+          .reduce((ac,a) => ({...ac,[a[0]]:a[1]}),{});
+      }
+    }));
+    // if (this.schema) {
+    //   return of(this.schema.definitions);
+    // } else {
+    //   return this.getSchema().pipe(map(x => x.definitions));
+    // }
   }
   public getEntity(key: string) {
     return this.getEntities().pipe(map(e => {
@@ -45,7 +58,7 @@ export class SchemaService {
   public getPropertiesAndForeignRelationships(entity: OpenAPIV2.SchemaObject): EntityProperty[] {
     if(entity.properties) {
       let props = entity.properties;
-      console.log(props)
+      console.log(entity)
       return Object.keys(props).map(name => {
         let val = props[name];
         if(val.type == 'integer' && val['description']?.includes('<fk')) {
@@ -61,7 +74,9 @@ export class SchemaService {
               (val.type == 'string' && val['format'] == 'timestamp') ? EntityPropertyType.DateTime :
               (val.type == 'string' && val['format'] == 'date') ? EntityPropertyType.Date :
               (val.type == 'boolean' && val['format'] == 'boolean') ? EntityPropertyType.Boolean :
-              (val.type == 'string' && val['format'] == 'money') ? EntityPropertyType.Money : EntityPropertyType.Unknown,
+              (val.type == 'string' && val['format'] == 'money') ? EntityPropertyType.Money :
+              (val.type == 'string' && val['format'] == 'character varying') ? EntityPropertyType.TextShort :
+              (val.type == 'string' && val['format'] == 'text') ? EntityPropertyType.TextLong : EntityPropertyType.Unknown,
           }
         }
       })
