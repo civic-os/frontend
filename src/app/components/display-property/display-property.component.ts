@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
-import { EntityProperty, EntityPropertyType } from '../../interfaces/entity';
+import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { RouterModule } from '@angular/router';
 
 @Component({
@@ -14,7 +14,7 @@ import { RouterModule } from '@angular/router';
   styleUrl: './display-property.component.css'
 })
 export class DisplayPropertyComponent {
-  @Input('property') prop!: EntityProperty;
+  @Input('property') prop!: SchemaEntityProperty;
   @Input('datum') datum: any;
   @Input('linkRelated') linkRelated: boolean = true;
 

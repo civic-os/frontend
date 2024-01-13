@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
-import { OpenAPIV2 } from 'openapi-types';
 import { Observable, map, mergeMap, of } from 'rxjs';
-import { EntityProperty, EntityPropertyType } from '../../interfaces/entity';
+import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { ActivatedRoute } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
@@ -25,8 +24,8 @@ import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 export class DetailPage {
   public entityKey?: string;
   public entityId?: string;
-  public entity$: Observable<OpenAPIV2.SchemaObject | null>;
-  public properties$: Observable<EntityProperty[] | null>;
+  public entity$: Observable<SchemaEntityTable | undefined>;
+  public properties$: Observable<SchemaEntityProperty[]>;
   public data$: Observable<any>;
 
   public EntityPropertyType = EntityPropertyType;
@@ -39,20 +38,18 @@ export class DetailPage {
   ) {
     this.entity$ = this.route.params.pipe(mergeMap(p => {
       this.entityKey = p['entityKey'];
-      this.entityId = p['entityId'];
-      console.log(p)
       if(p['entityKey']) {
         return this.schema.getEntity(p['entityKey']);
       } else {
         return of();
       }
     }));
-    this.properties$ = this.entity$.pipe(map(e => {
+    this.properties$ = this.entity$.pipe(mergeMap(e => {
       if(e) {
-        let props = this.schema.getPropertiesAndForeignRelationships(e);
+        let props = this.schema.getPropsForDetail(e);
         return props;
       } else {
-        return null;
+        return of([]);
       }
     }));
     this.data$ = this.properties$.pipe(mergeMap(props => {

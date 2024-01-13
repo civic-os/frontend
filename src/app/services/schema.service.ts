@@ -1,18 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { OpenAPIV2 } from 'openapi-types';
 import { Observable, map, of, tap } from 'rxjs';
-import { EntityForeignRelationship, EntityProperty, EntityPropertyType, SchemaEntityProperty } from '../interfaces/entity';
+import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../interfaces/entity';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SchemaService {
-  public schema?: OpenAPIV2.Document;
-  public properties?: SchemaEntityProperty;
-  public static hideFields: string[] = ['id', 'created_at'];
-  public static hideTablePrefixes: string[] = ['schema_', 'meta_'];
+  public properties?: SchemaEntityProperty[];
+  public tables?: SchemaEntityTable[];
+  public static hideFields: string[] = ['id', 'created_at', 'updated_at'];
 
   constructor(
     private http: HttpClient,
@@ -21,9 +19,9 @@ export class SchemaService {
   }
 
   private getSchema() {
-    return this.http.get<OpenAPIV2.Document>(environment.postgrestUrl)
-    .pipe(tap(spec => {
-      this.schema = spec;
+    return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_tables')
+    .pipe(tap(tables => {
+      this.tables = tables;
     }));
   }
 
@@ -31,74 +29,69 @@ export class SchemaService {
     // this.getSchema().subscribe();
   }
 
-  public getEntities(): Observable<OpenAPIV2.DefinitionsObject | undefined> {
-    let obs = this.schema ? of(this.schema.definitions) : this.getSchema().pipe(map(x => x.definitions));
-    return obs.pipe(map(definitions => {
-      if(definitions == undefined) {
-        return undefined;
-      } else {
-        let keys = Object.keys(definitions)
-          .filter(key => !SchemaService.hideTablePrefixes.some(prefix => key.startsWith(prefix)));
-        return Object.entries(definitions)
-          .filter(d => keys.includes(d[0]))
-          .reduce((ac,a) => ({...ac,[a[0]]:a[1]}),{});
-      }
-    }));
-    // if (this.schema) {
-    //   return of(this.schema.definitions);
-    // } else {
-    //   return this.getSchema().pipe(map(x => x.definitions));
-    // }
+  public getEntities(): Observable<SchemaEntityTable[]> {
+    return this.tables ? of(this.tables) : this.getSchema();
   }
-  public getEntity(key: string) {
+  public getEntity(key: string): Observable<SchemaEntityTable | undefined> {
     return this.getEntities().pipe(map(e => {
-      return e ? e[key] : null;
-    }))
+      return e.find(x => x.table_name == key);
+    }));
   }
-  public getPropertiesAndForeignRelationships(entity: OpenAPIV2.SchemaObject): EntityProperty[] {
-    if(entity.properties) {
-      let props = entity.properties;
-      console.log(entity)
-      return Object.keys(props).map(name => {
-        let val = props[name];
-        if(val.type == 'integer' && val['description']?.includes('<fk')) {
-          return {
-            key: name,
-            foreign: this.parseFk(val.description),
-            type: EntityPropertyType.ForeignKeyName,
-          }
-        } else {
-          return {
-            key: name,
-            type: (val.type == 'string' && val['format'] == 'timestamp with time zone') ? EntityPropertyType.DateTime :
-              (val.type == 'string' && val['format'] == 'timestamp') ? EntityPropertyType.DateTime :
-              (val.type == 'string' && val['format'] == 'date') ? EntityPropertyType.Date :
-              (val.type == 'boolean' && val['format'] == 'boolean') ? EntityPropertyType.Boolean :
-              (val.type == 'string' && val['format'] == 'money') ? EntityPropertyType.Money :
-              (val.type == 'string' && val['format'] == 'character varying') ? EntityPropertyType.TextShort :
-              (val.type == 'string' && val['format'] == 'text') ? EntityPropertyType.TextLong : EntityPropertyType.Unknown,
-          }
-        }
+  public getProperties(): Observable<SchemaEntityProperty[]> {
+    return this.properties ? of(this.properties) : this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_columns')
+    .pipe(
+      map(props => {
+        return props.map(p => {
+          p.type = this.getPropertyType(p);
+          return p;
+        })
+      }),
+      tap(props => {
+        this.properties = props;
       })
-    } else {
-      return [];
-    }
+    );
   }
-  private parseFk(fkDesc: string) : EntityForeignRelationship {
-    let meta = fkDesc.split('<fk')[1].split('/>')[0].trim();
-    let parts = meta.split(' ');
-    let table = parts.find(p => p.includes('table'))?.split('=')[1].replace("'", '').replace("'", '');
-    let id = parts.find(p => p.includes('id'))?.split('=')[1].replace("'", '').replace("'", '');
-    return {
-      table: table ?? '',
-      column: id ?? '',
-    };
+  public getPropertiesForEntity(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
+    return this.getProperties().pipe(map(props => {
+      return props.filter(p => p.table_name == table.table_name);
+    }));
   }
-  public static propertyToSelectString(prop: EntityProperty): string {
-    return prop.foreign ? prop.key + ':' + prop.foreign.table + '(id,display_name)' :
-      prop.key;
+  private getPropertyType(val: SchemaEntityProperty): EntityPropertyType {
+    return (['int4', 'int8'].includes(val.udt_name) && val.join_column != null) ? EntityPropertyType.ForeignKeyName :
+      ['timestamp', 'timestamptz'].includes(val.udt_name) ? EntityPropertyType.DateTime :
+      ['date'].includes(val.udt_name) ? EntityPropertyType.Date :
+      ['bool'].includes(val.udt_name) ? EntityPropertyType.Boolean :
+      ['money'].includes(val.udt_name) ? EntityPropertyType.Money :
+      ['varchar'].includes(val.udt_name) ? EntityPropertyType.TextShort :
+      ['text'].includes(val.udt_name) ? EntityPropertyType.TextLong : 
+      EntityPropertyType.Unknown;
   }
-  public static filterPropsForDisplay(props: EntityProperty[]): EntityProperty[] {
-    return props.filter(x => !SchemaService.hideFields.includes(x.key));
+  public static propertyToSelectString(prop: SchemaEntityProperty): string {
+    return prop.join_column ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
+      prop.column_name;
+  }
+  public getPropsForList(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
+    return this.getPropertiesForEntity(table)
+      .pipe(map(props => {
+        return props.filter(p =>{
+          return !SchemaService.hideFields.includes(p.column_name);
+        });
+      }));
+  }
+  public getPropsForDetail(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
+    return this.getPropertiesForEntity(table);
+  }
+  public getPropsForCreate(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
+    return this.getPropertiesForEntity(table)
+      .pipe(map(props => {
+        return props.filter(p =>{
+          return !(p.is_generated || p.is_identity) && 
+            p.is_updatable &&
+            !SchemaService.hideFields.includes(p.column_name);
+        });
+      }));    
+  }
+  public getPropsForEdit(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
+    return this.getPropsForCreate(table);
   }
 }

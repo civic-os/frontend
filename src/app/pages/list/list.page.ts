@@ -2,11 +2,10 @@ import { Component } from '@angular/core';
 import { ActivatedRoute, Route, RouterModule } from '@angular/router';
 import { Observable, map, mergeMap, of } from 'rxjs';
 import { SchemaService } from '../../services/schema.service';
-import { OpenAPIV2 } from 'openapi-types';
 import { LetDirective } from '@ngrx/component';
 import { CommonModule } from '@angular/common';
 import { DataService } from '../../services/data.service';
-import { EntityProperty } from '../../interfaces/entity';
+import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { EntityPropertyType } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
@@ -26,8 +25,8 @@ import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 })
 export class ListPage {
   public entityKey?: string;
-  public entity$: Observable<OpenAPIV2.SchemaObject | null>;
-  public properties$: Observable<EntityProperty[] | null>;
+  public entity$: Observable<SchemaEntityTable | undefined>;
+  public properties$: Observable<SchemaEntityProperty[]>;
   public data$: Observable<any>;
 
   public EntityPropertyType = EntityPropertyType;
@@ -46,12 +45,12 @@ export class ListPage {
         return of();
       }
     }));
-    this.properties$ = this.entity$.pipe(map(e => {
+    this.properties$ = this.entity$.pipe(mergeMap(e => {
       if(e) {
-        let props = this.schema.getPropertiesAndForeignRelationships(e);
+        let props = this.schema.getPropsForList(e);
         return props;
       } else {
-        return null;
+        return of([]);
       }
     }));
     this.data$ = this.properties$.pipe(mergeMap(props => {

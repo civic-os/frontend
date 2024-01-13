@@ -10,7 +10,7 @@
         <span *ngIf="datum == false" class="material-symbols-outlined text-error bg-base-100">disabled_by_default</span>
     </ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">
-        <a *ngIf="linkRelated" [routerLink]="['/view', prop.foreign?.table, datum.id]">{{ datum.display_name }}</a>
+        <a *ngIf="linkRelated" [routerLink]="['/view', prop.join_table, datum.id]">{{ datum.display_name }}</a>
         <ng-container *ngIf="!linkRelated">{{ datum.display_name }}</ng-container>
     </ng-container>
     

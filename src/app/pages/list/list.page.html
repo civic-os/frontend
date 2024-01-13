@@ -2,9 +2,8 @@
     <ng-container *ngrxLet="entity$ as entity"><ng-container *ngIf="entity">
 		<h1>{{ entityKey }} List</h1>
 		<div class="overflow-x-auto">
-			<button class="btn btn-primary" [routerLink]="'/create/' + entityKey"><span class="material-symbols-outlined">
-				add_circle
-				</span> Add {{ entityKey }}
+			<button *ngIf="entity.insert" class="btn btn-primary" [routerLink]="'/create/' + entityKey">
+				<span class="material-symbols-outlined">add_circle</span> Add {{ entityKey }}
 			</button>
 			<table class="table">
 				<ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data?.length">
@@ -12,13 +11,13 @@
 						<!-- head -->
 						<thead>
 							<tr>
-								<th *ngFor="let prop of SchemaService.filterPropsForDisplay(props)">{{ prop.key | propSplit | titlecase }}</th>
+								<th *ngFor="let prop of props">{{ prop.display_name }}</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr *ngFor="let row of data" [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
-								<td *ngFor="let prop of SchemaService.filterPropsForDisplay(props)">
-									<app-display-property [datum]="row[prop.key]" [property]="prop" [linkRelated]="false"></app-display-property>
+								<td *ngFor="let prop of props">
+									<app-display-property [datum]="row[prop.column_name]" [property]="prop" [linkRelated]="false"></app-display-property>
 								</td>
 							</tr>
 						</tbody>

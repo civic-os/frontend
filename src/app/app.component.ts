@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { OpenAPIV2 } from 'openapi-types';
 import { LetDirective } from '@ngrx/component';
 import { FormsModule } from '@angular/forms';
+import { SchemaEntityTable } from './interfaces/entity';
 
 @Component({
   selector: 'app-root',
@@ -22,7 +23,7 @@ import { FormsModule } from '@angular/forms';
 export class AppComponent {
   public drawerOpen: boolean = false;
   title = 'frontend';
-  public menuItems$: Observable<OpenAPIV2.DefinitionsObject | undefined>;
+  public menuItems$: Observable<SchemaEntityTable[] | undefined>;
   constructor(
     private schema: SchemaService,
     private router: Router
