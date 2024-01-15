@@ -6,7 +6,6 @@ import { LetDirective } from '@ngrx/component';
 import { CommonModule } from '@angular/common';
 import { DataService } from '../../services/data.service';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
-import { EntityPropertyType } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 
@@ -28,9 +27,6 @@ export class ListPage {
   public entity$: Observable<SchemaEntityTable | undefined>;
   public properties$: Observable<SchemaEntityProperty[]>;
   public data$: Observable<any>;
-
-  public EntityPropertyType = EntityPropertyType;
-  public SchemaService = SchemaService;
 
   constructor(
     private route: ActivatedRoute,
@@ -56,9 +52,8 @@ export class ListPage {
     this.data$ = this.properties$.pipe(mergeMap(props => {
       if(props && this.entityKey) {
         let columns = props
-          //.filter(x => !SchemaService.hideFields.includes(x.name))
           .map(x => SchemaService.propertyToSelectString(x));
-        return this.data.getData(this.entityKey, columns);
+        return this.data.getData({key: this.entityKey, fields: columns});
       } else {
         return of();
       }

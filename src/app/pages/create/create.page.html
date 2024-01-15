@@ -1,0 +1,17 @@
+<div class="prose">
+    <ng-container *ngrxLet="entity$ as entity"><ng-container *ngIf="entity">
+        <ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
+            <h1>New {{ entityKey }}</h1>
+            <form *ngIf="createForm" [formGroup]="createForm" (ngSubmit)="submitForm($event)">
+                <div *ngFor="let prop of props">
+                    <h3>{{ prop.display_name }} {{ prop.type }}</h3>
+                    <app-edit-property [property]="prop" [formGroup]="createForm"></app-edit-property>
+                </div>
+                <div class="divider"></div>
+                <button class="btn btn-accent" [disabled]="createForm.invalid">
+                    <span class="material-symbols-outlined">save</span> Save
+                </button>
+            </form>
+        </ng-container></ng-container>
+    </ng-container></ng-container>
+</div>

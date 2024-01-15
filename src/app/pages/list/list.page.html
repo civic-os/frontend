@@ -6,22 +6,29 @@
 				<span class="material-symbols-outlined">add_circle</span> Add {{ entityKey }}
 			</button>
 			<table class="table">
-				<ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data?.length">
-					<ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
-						<!-- head -->
-						<thead>
-							<tr>
-								<th *ngFor="let prop of props">{{ prop.display_name }}</th>
-							</tr>
-						</thead>
+				<ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
+					<!-- head -->
+					<thead>
+						<tr>
+							<th *ngFor="let prop of props">{{ prop.display_name }}</th>
+						</tr>
+					</thead>
+					<ng-container *ngrxLet="data$ as data">
 						<tbody>
-							<tr *ngFor="let row of data" [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
-								<td *ngFor="let prop of props">
-									<app-display-property [datum]="row[prop.column_name]" [property]="prop" [linkRelated]="false"></app-display-property>
-								</td>
-							</tr>
+							<ng-container *ngIf="data?.length; else emptyTable;">
+									<tr *ngFor="let row of data" [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
+										<td *ngFor="let prop of props">
+											<app-display-property [datum]="row[prop.column_name]" [property]="prop" [linkRelated]="false"></app-display-property>
+										</td>
+									</tr>
+							</ng-container>
+							<ng-template #emptyTable>
+								<tr>
+									<td colspan="100%" class="text-center border-spacing-4">No Entries</td>
+								</tr>
+							</ng-template>
 						</tbody>
-					</ng-container></ng-container>
+					</ng-container>
 				</ng-container></ng-container>
 			</table>
 		</div>

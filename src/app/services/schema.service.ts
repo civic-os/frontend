@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { Observable, map, of, tap } from 'rxjs';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../interfaces/entity';
+import { ValidatorFn, Validators } from '@angular/forms';
 
 @Injectable({
   providedIn: 'root'
@@ -58,16 +59,18 @@ export class SchemaService {
   }
   private getPropertyType(val: SchemaEntityProperty): EntityPropertyType {
     return (['int4', 'int8'].includes(val.udt_name) && val.join_column != null) ? EntityPropertyType.ForeignKeyName :
-      ['timestamp', 'timestamptz'].includes(val.udt_name) ? EntityPropertyType.DateTime :
+      ['timestamp'].includes(val.udt_name) ? EntityPropertyType.DateTime :
+      ['timestamptz'].includes(val.udt_name) ? EntityPropertyType.DateTimeLocal :
       ['date'].includes(val.udt_name) ? EntityPropertyType.Date :
       ['bool'].includes(val.udt_name) ? EntityPropertyType.Boolean :
+      ['int4', 'int8'].includes(val.udt_name) ? EntityPropertyType.IntegerNumber :
       ['money'].includes(val.udt_name) ? EntityPropertyType.Money :
       ['varchar'].includes(val.udt_name) ? EntityPropertyType.TextShort :
       ['text'].includes(val.udt_name) ? EntityPropertyType.TextLong : 
       EntityPropertyType.Unknown;
   }
   public static propertyToSelectString(prop: SchemaEntityProperty): string {
-    return prop.join_column ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
+    return (prop.join_schema == 'public' && prop.join_column) ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
       prop.column_name;
   }
   public getPropsForList(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
@@ -93,5 +96,13 @@ export class SchemaService {
   }
   public getPropsForEdit(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropsForCreate(table);
+  }
+  public static getFormValidatorsForProperty(prop: SchemaEntityProperty): ValidatorFn[] {
+    let validators:ValidatorFn[] = [];
+
+    if(!prop.is_nullable) {
+      validators.push(Validators.required);
+    }
+    return validators;
   }
 }

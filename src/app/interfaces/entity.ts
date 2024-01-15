@@ -39,8 +39,10 @@ export enum EntityPropertyType {
     Boolean,
     Date,
     DateTime,
+    DateTimeLocal,
     Money,
-    Number,
+    IntegerNumber,
+    DecimalNumber,
     ForeignKeyName,
 }
 

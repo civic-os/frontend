@@ -1,10 +1,12 @@
 <ng-container *ngIf="datum != null">
     <ng-container *ngIf="propType == EntityPropertyType.Date">{{ datum | date }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.DateTime">{{ datum | date: 'medium' }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.DateTimeLocal">{{ datum | date: 'full' }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.TextShort">{{ datum }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.TextLong">{{ datum }}</ng-container> <!-- Add Synopsis/ellipsis-->
     <ng-container *ngIf="propType == EntityPropertyType.Money">{{ datum | currency }}</ng-container>
-    <ng-container *ngIf="propType == EntityPropertyType.Number">{{ datum | number }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.IntegerNumber">{{ datum | number }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.DecimalNumber">{{ datum | number }}</ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.Boolean">
         <span *ngIf="datum == true" class="material-symbols-outlined text-primary bg-base-100">check_box</span>
         <span *ngIf="datum == false" class="material-symbols-outlined text-error bg-base-100">disabled_by_default</span>

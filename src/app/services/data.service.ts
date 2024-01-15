@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { EntityData } from '../interfaces/entity';
+import { DataQuery } from '../interfaces/query';
 
 @Injectable({
   providedIn: 'root'
@@ -19,15 +20,21 @@ export class DataService {
     return this.http.get(environment.postgrestUrl + url);
   }
 
-  public getData(key: string, fields: string[], entityId?: string): Observable<EntityData[]> {
+  public getData(query: DataQuery): Observable<EntityData[]> {
     let args: string[] = [];
-    if(fields) {
-      args.push('select=' + fields.join(','));
+    if(query.fields) {
+      if(!query.fields.includes('id')) {
+        query.fields.push('id');
+      }
+      args.push('select=' + query.fields.join(','));
     }
-    if(entityId) {
-      args.push('id=eq.' + entityId);
+    if(query.orderField) {
+      args.push('order='+query.orderField+'.'+(query.orderDirection ?? 'asc'))
     }
-    let url = key + '?' + args.join('&');
+    if(query.entityId) {
+      args.push('id=eq.' + query.entityId);
+    }
+    let url = query.key + '?' + args.join('&');
     return this.get(url);
   }
 }
