@@ -1,7 +1,21 @@
-# Frontend
-
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.0.7.
-
+# Civic OS App
+## Vision
+For more background information on Civic OS, read [Civic OS Vision](https://github.com/civic-os/vision)
+## Brief Technical Description
+This application automatically generates views for listing, detailing, creating, and editing data stored in the `public` schema of an attached PostgreSQL database. It relies on a PostgREST server attached to said database and expects the scripts located in the `postgres` folder to be executed on that database as well.
+## To Do
+### Schema
+- [ ] Build out User table with public and private fields
+- [ ] Add User Profile and management
+- [ ] Add Login/Logout views
+- [ ] Build Roles/Permissions schema
+- [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
+- [ ] Expand Form Validation by use of `CHECK` statements
+### Workflow
+- [ ] Build Workflow
+### Logic
+- [ ] Build Workflow
+# Angular Development
 ## Development server
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
@@ -21,7 +35,3 @@ Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.
 ## Running end-to-end tests
 
 Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
