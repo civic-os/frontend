@@ -14,7 +14,7 @@ This application automatically generates views for listing, detailing, creating,
 ### Workflow
 - [ ] Build Workflow
 ### Logic
-- [ ] Build Workflow
+- [ ] Build Logic
 # Angular Development
 ## Development server
 
