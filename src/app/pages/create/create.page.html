@@ -13,5 +13,13 @@
                 </button>
             </form>
         </ng-container></ng-container>
+        <app-dialog #successDialog>
+            <button class="btn mx-2" (click)="navToCreate(entity.table_name)">Create another {{entity.display_name}}</button>
+            <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
+        </app-dialog>
+        <app-dialog #errorDialog>
+            <button class="btn mx-2">Try again</button>
+            <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
+        </app-dialog>
     </ng-container></ng-container>
 </div>

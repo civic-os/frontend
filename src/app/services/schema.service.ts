@@ -105,4 +105,10 @@ export class SchemaService {
     }
     return validators;
   }
+  public static getDefaultValueForProperty(prop: SchemaEntityProperty): any {
+    if(prop.type == EntityPropertyType.Boolean) {
+      return false;
+    }
+    return null;
+  }
 }

@@ -26,13 +26,13 @@
             <input type="number" placeholder="Type here" step=1 mask="0*" [allowNegativeNumbers]="true" class="input input-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
         </ng-container>
         <ng-container *ngIf="propType == EntityPropertyType.Boolean">
-            <input type="checkbox" class="toggle" [checked]="initialValue" [id]="prop.column_name" [formControlName]="prop.column_name" />
+            <input type="checkbox" class="toggle" [id]="prop.column_name" [formControlName]="prop.column_name" />
         </ng-container>
         <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">
             <ng-container *ngrxLet="selectOptions$ as selectOptions">
                 <select class="select select-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name">
                     <option [id]="null" *ngIf="prop.is_nullable">Select an Option</option>
-                    <option *ngFor="let option of selectOptions" [id]="option.id">{{option.text}}</option>
+                    <option *ngFor="let option of selectOptions" [value]="option.id">{{option.text}}</option>
                 </select>
             </ng-container>
         </ng-container>

@@ -12,8 +12,8 @@ import { SchemaEntityTable } from './interfaces/entity';
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, 
-    RouterOutlet, 
+    CommonModule,
+    RouterOutlet,
     LetDirective,
     FormsModule,
   ],

@@ -26,7 +26,6 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 })
 export class EditPropertyComponent {
   @Input('property') prop!: SchemaEntityProperty;
-  @Input('initialValue') initialValue: any;
   @Input('formGroup') form!: FormGroup;
   public selectOptions$?: Observable<{id: number, text: string}[]>;
 

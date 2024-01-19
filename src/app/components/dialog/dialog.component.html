@@ -1,0 +1,27 @@
+<dialog #dialog id="dialog" type="modal" class="modal">
+    <div class="modal-box">
+        <ng-container *ngIf="this.error; else success">
+            <h3 class="font-bold text-lg"><span class="material-symbols-outlined text-error">error</span> Error</h3>
+            <div class="collapse collapse-plus bg-base-200">
+                <input type="checkbox" /> 
+                <div class="collapse-title text-xl font-medium">
+                    {{ this.error.humanMessage }}
+                </div>
+                <div class="collapse-content"> 
+                    <p>{{this.error.code ?? this.error.httpCode}}: {{this.error.message}}</p>
+                    <p *ngIf="this.error.hint">{{this.error.hint}}</p>
+                </div>
+            </div>
+        </ng-container>
+        <ng-template #success>
+            <h3 class="font-bold text-lg"><span class="material-symbols-outlined text-success">done</span> Success</h3>
+            <p class="py-4">Press ESC key or click a button below to close</p>
+        </ng-template>
+        <div class="modal-action">
+            <form method="dialog">
+                <!-- if there is a button in form, it will close the modal -->
+                <ng-content></ng-content>
+            </form>
+        </div>
+    </div>
+</dialog>

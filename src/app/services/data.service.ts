@@ -1,9 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, catchError, filter, map, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { EntityData } from '../interfaces/entity';
 import { DataQuery } from '../interfaces/query';
+import { ApiError, ApiResponse } from '../interfaces/api';
+import { ErrorService } from './error.service';
 
 @Injectable({
   providedIn: 'root'
@@ -36,5 +38,24 @@ export class DataService {
     }
     let url = query.key + '?' + args.join('&');
     return this.get(url);
+  }
+
+  public createData(entity: string, data: any): Observable<ApiResponse> {
+    return this.http.post(environment.postgrestUrl + entity, data)
+      .pipe(
+        map(this.parseApiResponse),
+        catchError(this.parseApiError)
+      );
+  }
+
+  private parseApiResponse(body: any) {
+    return <ApiResponse>{success: true, body: body};
+  }
+  private parseApiError(evt: HttpErrorResponse): Observable<ApiResponse> {
+    let error = <ApiError>evt.error;
+    error.httpCode = evt.status;
+    error.humanMessage = ErrorService.parseToHuman(error);
+    let resp: ApiResponse = {success: false, error: error};
+    return of(resp);
   }
 }
