@@ -7,7 +7,6 @@ import { DataService } from '../../services/data.service';
 import { CommonModule } from '@angular/common';
 import { LetDirective } from '@ngrx/component';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
-import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 
 @Component({
     selector: 'app-detail',
@@ -19,7 +18,6 @@ import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
         LetDirective,
         RouterModule,
         DisplayPropertyComponent,
-        PropToTitlePipe,
     ]
 })
 export class DetailPage {

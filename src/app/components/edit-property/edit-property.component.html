@@ -31,7 +31,7 @@
         <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">
             <ng-container *ngrxLet="selectOptions$ as selectOptions">
                 <select class="select select-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name">
-                    <option [id]="null" *ngIf="prop.is_nullable">Select an Option</option>
+                    <option [value]="null" *ngIf="prop.is_nullable">Select an Option</option>
                     <option *ngFor="let option of selectOptions" [value]="option.id">{{option.text}}</option>
                 </select>
             </ng-container>

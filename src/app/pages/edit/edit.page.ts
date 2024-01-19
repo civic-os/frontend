@@ -1,37 +1,39 @@
 import { Component, ViewChild } from '@angular/core';
-import { Observable, mergeMap, of, tap } from 'rxjs';
-import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
-import { ActivatedRoute, Router } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
-import { CommonModule } from '@angular/common';
-import { EditPropertyComponent } from "../../components/edit-property/edit-property.component";
-import { LetDirective } from '@ngrx/component';
+import { Observable, map, mergeMap, of, tap } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DataService } from '../../services/data.service';
-import { DialogComponent } from "../../components/dialog/dialog.component";
+import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
+import { DialogComponent } from '../../components/dialog/dialog.component';
+import { CommonModule } from '@angular/common';
+import { EditPropertyComponent } from '../../components/edit-property/edit-property.component';
+import { LetDirective } from '@ngrx/component';
 
 @Component({
-    selector: 'app-create',
-    standalone: true,
-    templateUrl: './create.page.html',
-    styleUrl: './create.page.css',
-    imports: [
-        CommonModule,
-        EditPropertyComponent,
-        LetDirective,
-        ReactiveFormsModule,
-        DialogComponent
-    ]
+  selector: 'app-edit',
+  standalone: true,
+  imports: [
+    CommonModule,
+    EditPropertyComponent,
+    LetDirective,
+    ReactiveFormsModule,
+    DialogComponent
+  ],
+  templateUrl: './edit.page.html',
+  styleUrl: './edit.page.css'
 })
-export class CreatePage {
+export class EditPage {
   public entityKey?: string;
+  public entityId?: string;
   public entity$: Observable<SchemaEntityTable | undefined>;
   public properties$: Observable<SchemaEntityProperty[]>;
+  public data$: Observable<any>;
 
-  public createForm?: FormGroup;
+  public editForm?: FormGroup;
   @ViewChild('successDialog') successDialog!: DialogComponent;
   @ViewChild('errorDialog') errorDialog!: DialogComponent;
-  
+
   constructor(
     private route: ActivatedRoute,
     private schema: SchemaService,
@@ -40,7 +42,8 @@ export class CreatePage {
   ) {
     this.entity$ = this.route.params.pipe(mergeMap(p => {
       this.entityKey = p['entityKey'];
-      if(p['entityKey']) {
+      this.entityId = p['entityId'];
+      if(p['entityKey'] && p['entityId']) {
         return this.schema.getEntity(p['entityKey']);
       } else {
         return of();
@@ -48,9 +51,9 @@ export class CreatePage {
     }));
     this.properties$ = this.entity$.pipe(mergeMap(e => {
       if(e) {
-        let props = this.schema.getPropsForCreate(e)
+        let props = this.schema.getPropsForEdit(e)
           .pipe(tap(props => {
-            this.createForm = new FormGroup(
+            this.editForm = new FormGroup(
               Object.fromEntries(
                 props.map(p => [p.column_name, new FormControl(
                   SchemaService.getDefaultValueForProperty(p), 
@@ -63,13 +66,26 @@ export class CreatePage {
         return of([]);
       }
     }));
+    this.data$ = this.properties$.pipe(mergeMap(props => {
+      if(props && this.entityKey) {
+        let columns = props
+          // .map(x => SchemaService.propertyToSelectString(x));
+          .map(x => x.column_name);
+        return this.data.getData({key: this.entityKey, entityId: this.entityId, fields: columns})
+          .pipe(map(x => x[0]));
+      } else {
+        return of();
+      }
+    }),
+    tap(data => this.editForm?.setValue(data))
+    );
   }
 
   submitForm(contents: any) {
-    console.log(contents)
-    console.log(this.createForm?.value);
-    if(this.entityKey && this.createForm) {
-      this.data.createData(this.entityKey, this.createForm.value)
+    console.log(this.entityKey, this.entityId, this.editForm)
+    console.log(this.editForm?.value);
+    if(this.entityKey && this.entityId && this.editForm) {
+      this.data.editData(this.entityKey, this.entityId, this.editForm.value)
         .subscribe(result => {
           console.log(result);
           if(result.success) {
@@ -88,11 +104,7 @@ export class CreatePage {
       this.router.navigate(['view', this.entityKey]);
     }
   }
-  navToCreate(key?: string) {
-    if(key) {
-      this.router.navigate(['create', key]);
-    } else {
-      this.router.navigate(['create', this.entityKey]);
-    }
+  navToRecord(key: string, id?: string) {
+    this.router.navigate(['view', key, id]);
   }
 }

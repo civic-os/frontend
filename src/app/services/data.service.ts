@@ -25,9 +25,9 @@ export class DataService {
   public getData(query: DataQuery): Observable<EntityData[]> {
     let args: string[] = [];
     if(query.fields) {
-      if(!query.fields.includes('id')) {
-        query.fields.push('id');
-      }
+      // if(!query.fields.includes('id')) {
+      //   query.fields.push('id');
+      // }
       args.push('select=' + query.fields.join(','));
     }
     if(query.orderField) {
@@ -43,13 +43,37 @@ export class DataService {
   public createData(entity: string, data: any): Observable<ApiResponse> {
     return this.http.post(environment.postgrestUrl + entity, data)
       .pipe(
+        catchError(this.parseApiError),
         map(this.parseApiResponse),
-        catchError(this.parseApiError)
+      );
+  }
+  public editData(entity: string, id: string | number, data: any): Observable<ApiResponse> {
+    return this.http.patch(environment.postgrestUrl + entity + '?id=eq.' + id, data, {
+      headers: {
+        Prefer: 'return=representation'
+      }
+    })
+      .pipe(
+        catchError(this.parseApiError),
+        map(this.parseApiResponse),
+        map(x => this.checkEditResult(data, x)),
       );
   }
 
   private parseApiResponse(body: any) {
     return <ApiResponse>{success: true, body: body};
+  }
+  private checkEditResult(input: any, representation: any) {
+    console.log(input, representation.body[0]);
+    let identical: boolean;
+    if(representation?.body[0] == undefined) {
+      identical = false;
+    } else {
+      identical = (representation != undefined) && Object.keys(input).every(key => {
+        return input[key] == representation.body[0][key];
+      });
+    }
+    return <ApiResponse>{success: identical, error: identical ? null : {humanMessage: "Could not update", message: "Please contact support"}};
   }
   private parseApiError(evt: HttpErrorResponse): Observable<ApiResponse> {
     let error = <ApiError>evt.error;

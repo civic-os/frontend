@@ -7,7 +7,6 @@ import { CommonModule } from '@angular/common';
 import { DataService } from '../../services/data.service';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
-import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
 
 @Component({
     selector: 'app-view',
@@ -19,7 +18,6 @@ import { PropToTitlePipe } from "../../pipes/prop-to-title.pipe";
         LetDirective,
         RouterModule,
         DisplayPropertyComponent,
-        PropToTitlePipe
     ]
 })
 export class ListPage {

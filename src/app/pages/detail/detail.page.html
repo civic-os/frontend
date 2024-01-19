@@ -3,6 +3,9 @@
         <ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
             <ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data">
                 <h1>{{ entityKey }}: {{ data.display_name }} <sub>(Id: {{data.id}})</sub></h1>
+                <button *ngIf="entity.update" class="btn btn-accent" [routerLink]="'/edit/' + entityKey + '/' + data.id">
+                    <span class="material-symbols-outlined">edit</span> Edit {{data.display_name}}
+                </button>
                 <div *ngFor="let prop of props">
                     <h3>{{prop.display_name}}</h3>
                     <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>

@@ -1,0 +1,27 @@
+<div class="prose">
+    <ng-container *ngrxLet="entity$ as entity"><ng-container *ngIf="entity">
+        <ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
+            <ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data">
+                <h1>{{ entityKey }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub></h1>
+                <form *ngIf="editForm" [formGroup]="editForm" (ngSubmit)="submitForm($event)">
+                    <div *ngFor="let prop of props">
+                        <h3>{{ prop.display_name }} {{ prop.type }}</h3>
+                        <app-edit-property [property]="prop" [formGroup]="editForm"></app-edit-property>
+                    </div>
+                    <div class="divider"></div>
+                    <button class="btn btn-accent" [disabled]="editForm.invalid">
+                        <span class="material-symbols-outlined">save</span> Save
+                    </button>
+                </form>
+            </ng-container></ng-container>
+        </ng-container></ng-container>
+        <app-dialog #successDialog>
+            <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
+            <button class="btn mx-2" (click)="navToRecord(entity.table_name, entityId)">Back to record</button>
+        </app-dialog>
+        <app-dialog #errorDialog>
+            <button class="btn mx-2">Try again</button>
+            <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
+        </app-dialog>
+    </ng-container></ng-container>
+</div>
