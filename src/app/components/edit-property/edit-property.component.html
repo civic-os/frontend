@@ -38,5 +38,14 @@
         </ng-container>
 
         <ng-container *ngIf="propType == EntityPropertyType.Unknown"></ng-container>
+
+        <ng-container *ngIf="form.controls[prop.column_name] as ctl">
+            <div *ngIf="ctl.invalid && (ctl.dirty || ctl.touched)"
+                class="text-error">
+                <div *ngIf="ctl.errors?.['required']">
+                    {{ prop.display_name }} is required.
+                </div>
+            </div>
+        </ng-container>
     </label>
 </div>

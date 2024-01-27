@@ -77,7 +77,11 @@ export class EditPage {
         return of();
       }
     }),
-    tap(data => this.editForm?.setValue(data))
+    tap(data => {
+      Object.keys(data)
+        .filter(key => !['id'].includes(key))
+        .forEach(key => this.editForm?.controls[key].setValue((<any>data)[key]));
+    })
     );
   }
 
