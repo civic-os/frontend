@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW public.schema_columns
+CREATE OR REPLACE VIEW public.schema_properties
 WITH (
   security_invoker=true
 ) AS
@@ -26,10 +26,10 @@ WITH (
   WHERE columns.table_schema::name = 'public'::name AND (columns.table_name::name IN ( SELECT schema_tables.table_name
            FROM schema_tables));
 
-ALTER TABLE public.schema_columns
+ALTER TABLE public.schema_properties
     OWNER TO postgres;
 
-GRANT SELECT ON TABLE public.schema_columns TO anon;
-GRANT SELECT ON TABLE public.schema_columns TO authenticated;
-GRANT SELECT ON TABLE public.schema_columns TO postgres;
-GRANT SELECT ON TABLE public.schema_columns TO service_role;
+GRANT SELECT ON TABLE public.schema_properties TO anon;
+GRANT SELECT ON TABLE public.schema_properties TO authenticated;
+GRANT SELECT ON TABLE public.schema_properties TO postgres;
+GRANT SELECT ON TABLE public.schema_properties TO service_role;

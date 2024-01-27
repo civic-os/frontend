@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW public.schema_tables
+CREATE OR REPLACE VIEW public.schema_entities
 WITH (
   security_invoker=true
 ) AS
@@ -15,10 +15,10 @@ WITH (
   WHERE role_table_grants.table_schema::name = 'public'::name AND role_table_grants.grantee::name = CURRENT_ROLE AND tables.table_type::text = 'BASE TABLE'::text
   GROUP BY role_table_grants.grantee, role_table_grants.table_name;
 
-ALTER TABLE public.schema_tables
+ALTER TABLE public.schema_entities
     OWNER TO postgres;
 
-GRANT SELECT ON TABLE public.schema_tables TO anon;
-GRANT SELECT ON TABLE public.schema_tables TO authenticated;
-GRANT SELECT ON TABLE public.schema_tables TO postgres;
-GRANT SELECT ON TABLE public.schema_tables TO service_role;
+GRANT SELECT ON TABLE public.schema_entities TO anon;
+GRANT SELECT ON TABLE public.schema_entities TO authenticated;
+GRANT SELECT ON TABLE public.schema_entities TO postgres;
+GRANT SELECT ON TABLE public.schema_entities TO service_role;

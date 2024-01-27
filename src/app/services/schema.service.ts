@@ -20,7 +20,7 @@ export class SchemaService {
   }
 
   private getSchema() {
-    return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_tables')
+    return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_entities')
     .pipe(tap(tables => {
       this.tables = tables;
     }));
@@ -39,7 +39,7 @@ export class SchemaService {
     }));
   }
   public getProperties(): Observable<SchemaEntityProperty[]> {
-    return this.properties ? of(this.properties) : this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_columns')
+    return this.properties ? of(this.properties) : this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_properties')
     .pipe(
       map(props => {
         return props.map(p => {
