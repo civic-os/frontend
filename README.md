@@ -5,9 +5,10 @@ For more background information on Civic OS, read [Civic OS Vision](https://gith
 This application automatically generates views for listing, detailing, creating, and editing data stored in the `public` schema of an attached PostgreSQL database. It relies on a PostgREST server attached to said database and expects the scripts located in the `postgres` folder to be executed on that database as well.
 ## To Do [(Phase 1)](https://github.com/civic-os/vision#phase-1-development-tools)
 ### Schema
-- [ ] Build Entity metadata table
-- [ ] Build Property metadata table
+- [x] Build Entity metadata table
+- [x] Build Property metadata table
 - [ ] Build scheme for editable Properties, default values, etc.
+- [ ] Add Form Validation Messages
 - [ ] Allow sorting/layout of Property Views/Lists
 - [ ] Build out User table with public and private fields
 - [ ] Add User Profile and management
