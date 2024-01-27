@@ -25,9 +25,9 @@ export class DataService {
   public getData(query: DataQuery): Observable<EntityData[]> {
     let args: string[] = [];
     if(query.fields) {
-      // if(!query.fields.includes('id')) {
-      //   query.fields.push('id');
-      // }
+      if(!query.fields.includes('id')) {
+        query.fields.push('id');
+      }
       args.push('select=' + query.fields.join(','));
     }
     if(query.orderField) {
@@ -61,7 +61,11 @@ export class DataService {
   }
 
   private parseApiResponse(body: any) {
-    return <ApiResponse>{success: true, body: body};
+    if(body.success == false) {
+      return body;
+    } else {
+      return <ApiResponse>{success: true, body: body};
+    }
   }
   private checkEditResult(input: any, representation: any) {
     console.log(input, representation.body[0]);

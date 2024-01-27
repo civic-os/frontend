@@ -2,7 +2,7 @@
     <ng-container *ngrxLet="entity$ as entity"><ng-container *ngIf="entity">
         <ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
             <ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data">
-                <h1>{{ entityKey }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub></h1>
+                <h1>{{ entity.display_name }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub></h1>
                 <form *ngIf="editForm" [formGroup]="editForm" (ngSubmit)="submitForm($event)">
                     <div *ngFor="let prop of props">
                         <h3>{{ prop.display_name }} {{ prop.type }}</h3>

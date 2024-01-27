@@ -1,9 +1,9 @@
 <div class="prose max-w-none">
     <ng-container *ngrxLet="entity$ as entity"><ng-container *ngIf="entity">
-		<h1>{{ entityKey }} List</h1>
+		<h1>{{ entity.display_name }} List</h1>
 		<div class="overflow-x-auto">
 			<button *ngIf="entity.insert" class="btn btn-primary" [routerLink]="'/create/' + entityKey">
-				<span class="material-symbols-outlined">add_circle</span> Add {{ entityKey }}
+				<span class="material-symbols-outlined">add_circle</span> Add {{ entity.display_name }}
 			</button>
 			<table class="table">
 				<ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">

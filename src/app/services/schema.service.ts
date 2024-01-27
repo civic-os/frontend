@@ -82,7 +82,12 @@ export class SchemaService {
       }));
   }
   public getPropsForDetail(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
-    return this.getPropertiesForEntity(table);
+    return this.getPropertiesForEntity(table)
+      .pipe(map(props => {
+        return props.filter(p =>{
+          return !SchemaService.hideFields.includes(p.column_name);
+        });
+      }));
   }
   public getPropsForCreate(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropertiesForEntity(table)
