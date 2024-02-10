@@ -44,3 +44,5 @@ GRANT SELECT ON TABLE public.schema_properties TO anon;
 GRANT SELECT ON TABLE public.schema_properties TO authenticated;
 GRANT SELECT ON TABLE public.schema_properties TO postgres;
 GRANT SELECT ON TABLE public.schema_properties TO service_role;
+
+NOTIFY pgrst, 'reload schema';

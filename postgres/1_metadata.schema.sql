@@ -15,3 +15,5 @@ CREATE TABLE metadata.properties (
 );
 REVOKE ALL ON TABLE metadata.properties FROM PUBLIC;
 GRANT SELECT ON TABLE metadata.properties TO PUBLIC;
+
+NOTIFY pgrst, 'reload schema';

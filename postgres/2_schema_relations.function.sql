@@ -22,3 +22,5 @@ $BODY$;
 
 ALTER FUNCTION public.schema_relations_func()
     OWNER TO postgres;
+
+NOTIFY pgrst, 'reload schema';

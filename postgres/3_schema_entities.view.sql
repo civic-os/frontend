@@ -27,3 +27,5 @@ GRANT SELECT ON TABLE public.schema_entities TO anon;
 GRANT SELECT ON TABLE public.schema_entities TO authenticated;
 GRANT SELECT ON TABLE public.schema_entities TO postgres;
 GRANT SELECT ON TABLE public.schema_entities TO service_role;
+
+NOTIFY pgrst, 'reload schema';
