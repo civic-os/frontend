@@ -44,6 +44,7 @@ export enum EntityPropertyType {
     IntegerNumber,
     DecimalNumber,
     ForeignKeyName,
+    User,
 }
 
 export interface EntityData {

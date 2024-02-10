@@ -59,6 +59,7 @@ export class SchemaService {
   }
   private getPropertyType(val: SchemaEntityProperty): EntityPropertyType {
     return (['int4', 'int8'].includes(val.udt_name) && val.join_column != null) ? EntityPropertyType.ForeignKeyName :
+      (['uuid'].includes(val.udt_name) && val.join_table == 'civic_os_users') ? EntityPropertyType.User :
       ['timestamp'].includes(val.udt_name) ? EntityPropertyType.DateTime :
       ['timestamptz'].includes(val.udt_name) ? EntityPropertyType.DateTimeLocal :
       ['date'].includes(val.udt_name) ? EntityPropertyType.Date :
@@ -70,7 +71,8 @@ export class SchemaService {
       EntityPropertyType.Unknown;
   }
   public static propertyToSelectString(prop: SchemaEntityProperty): string {
-    return (prop.join_schema == 'public' && prop.join_column) ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
+    return (prop.type == EntityPropertyType.User) ? prop.column_name + ':civic_os_users!' + prop.column_name + '(public:civic_os_users_public(display_name),private:civic_os_users_private(display_name,phone,email))' :
+      (prop.join_schema == 'public' && prop.join_column) ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
       prop.column_name;
   }
   public getPropsForList(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {

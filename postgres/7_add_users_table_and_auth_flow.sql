@@ -72,9 +72,8 @@ CREATE OR REPLACE FUNCTION public.create_or_update_contact_from_user()
     VOLATILE NOT LEAKPROOF SECURITY DEFINER
 AS $BODY$
 BEGIN
-    IF 
-        (NEW.confirmed_at IS DISTINCT FROM OLD.confirmed_at) OR
-        (NEW.updated_at IS DISTINCT FROM OLD.updated_at)
+     IF 
+        (NEW.confirmed_at IS DISTINCT FROM OLD.confirmed_at)
     THEN
         INSERT INTO public.civic_os_users (id) 
         VALUES (
@@ -92,14 +91,18 @@ BEGIN
             NEW.email,
             (NEW.raw_user_meta_data->>'phone')
         );
-    ELSE
+    END IF;
+	
+	IF
+		(NEW.updated_at IS DISTINCT FROM OLD.updated_at)
+	THEN
         UPDATE public.civic_os_users_private
         SET
             display_name = (NEW.raw_user_meta_data->>'full_name'),
             email = NEW.email,
             phone = (NEW.raw_user_meta_data->>'phone')
         WHERE id = NEW.id;
-    END IF;
+	END IF;
 
 	RETURN NEW;
 END;
