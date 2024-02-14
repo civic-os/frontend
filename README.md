@@ -7,13 +7,14 @@ This application automatically generates views for listing, detailing, creating,
 ### Schema
 - [x] Build Entity metadata table
 - [x] Build Property metadata table
+- [x] Build out User table with public and private fields
+- [ ] Build Roles/Permissions schema
+- [ ] Allow one-to-many and many-to-many Properties
 - [ ] Build scheme for editable Properties, default values, etc.
 - [ ] Add Form Validation Messages
 - [ ] Allow sorting/layout of Property Views/Lists
-- [ ] Build out User table with public and private fields
 - [ ] Add User Profile and management
 - [ ] Add Login/Logout Screens
-- [ ] Build Roles/Permissions schema
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
 - [ ] Expand Form Validation by use of `CHECK` statements
 ### Workflow
