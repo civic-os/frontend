@@ -16,8 +16,8 @@
         <ng-container *ngIf="!linkRelated">{{ datum.display_name }}</ng-container>
     </ng-container>
     <ng-container *ngIf="propType == EntityPropertyType.User">
-        <ng-container *ngIf="datum.private">{{ datum.private.display_name }} ({{ datum.private.email }})</ng-container>
-        <ng-container *ngIf="!datum.private && datum.public">{{ datum.public.display_name }}</ng-container>
+        <ng-container *ngIf="datum?.private">{{ datum.private.display_name }} ({{ datum.private.email }})</ng-container>
+        <ng-container *ngIf="datum && !datum.private">{{ datum.display_name }}</ng-container>
     </ng-container>
     
     <ng-container *ngIf="propType == EntityPropertyType.Unknown">{{ datum }}</ng-container>

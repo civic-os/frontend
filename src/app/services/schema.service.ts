@@ -71,7 +71,7 @@ export class SchemaService {
       EntityPropertyType.Unknown;
   }
   public static propertyToSelectString(prop: SchemaEntityProperty): string {
-    return (prop.type == EntityPropertyType.User) ? prop.column_name + ':civic_os_users!' + prop.column_name + '(public:civic_os_users_public(display_name),private:civic_os_users_private(display_name,phone,email))' :
+    return (prop.type == EntityPropertyType.User) ? prop.column_name + ':civic_os_users!' + prop.column_name + '(display_name,private:civic_os_users_private(display_name,phone,email))' :
       (prop.join_schema == 'public' && prop.join_column) ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
       prop.column_name;
   }
