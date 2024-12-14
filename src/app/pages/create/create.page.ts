@@ -89,6 +89,7 @@ export class CreatePage {
     }
   }
   navToCreate(key?: string) {
+    this.createForm?.reset();
     if(key) {
       this.router.navigate(['create', key]);
     } else {

@@ -61,7 +61,7 @@ export class DataService {
   }
 
   private parseApiResponse(body: any) {
-    if(body.success == false) {
+    if(body?.success == false) {
       return body;
     } else {
       return <ApiResponse>{success: true, body: body};

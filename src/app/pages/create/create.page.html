@@ -4,7 +4,7 @@
             <h1>New {{ entity.display_name }}</h1>
             <form *ngIf="createForm" [formGroup]="createForm" (ngSubmit)="submitForm($event)">
                 <div *ngFor="let prop of props">
-                    <h3>{{ prop.display_name }} {{ prop.type }}</h3>
+                    <h3>{{ prop.display_name }}</h3>
                     <app-edit-property [property]="prop" [formGroup]="createForm"></app-edit-property>
                 </div>
                 <div class="divider"></div>
