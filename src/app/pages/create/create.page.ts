@@ -3,7 +3,7 @@ import { Observable, mergeMap, of, tap } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
-import { CommonModule } from '@angular/common';
+
 import { EditPropertyComponent } from "../../components/edit-property/edit-property.component";
 import { LetDirective } from '@ngrx/component';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -15,12 +15,11 @@ import { DialogComponent } from "../../components/dialog/dialog.component";
     templateUrl: './create.page.html',
     styleUrl: './create.page.css',
     imports: [
-        CommonModule,
-        EditPropertyComponent,
-        LetDirective,
-        ReactiveFormsModule,
-        DialogComponent
-    ]
+    EditPropertyComponent,
+    LetDirective,
+    ReactiveFormsModule,
+    DialogComponent
+]
 })
 export class CreatePage {
   public entityKey?: string;

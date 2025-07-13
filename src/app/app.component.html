@@ -1,45 +1,49 @@
 <div class="drawer">
-  	<input id="main-drawer" [(ngModel)]="drawerOpen" type="checkbox" class="drawer-toggle" />
-  	<div class="drawer-content">
-		<div class="navbar bg-base-300">
-			<div class="flex-none">
-				<label for="main-drawer" class="btn btn-square btn-ghost drawer-button">
-					<span class="material-symbols-outlined">menu</span>
-				</label>
-			</div>
-			<div class="flex-1">
-				<a class="btn btn-ghost text-xl">Civic OS</a>
-			</div>
-			<div class="flex-none">
-				<div class="dropdown">
-					<div tabindex="0" role="button" class="btn m-1">
-					  Theme
-					  	<svg width="12px" height="12px" class="h-2 w-2 fill-current opacity-60 inline-block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048"><path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path></svg>
-					</div>
-					<ul tabindex="0" class="dropdown-content z-[1] p-2 shadow-2xl bg-base-300 rounded-box w-52">
-						<li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Corporate" value="corporate"/></li>
-						<li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Light" value="light"/></li>
-						<li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Dark" value="dark"/></li>
-						<li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Nord" value="nord"/></li>
-						<li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Emerald" value="emerald"/></li>
-					</ul>
-				</div>
-				<button class="btn btn-square btn-ghost">
-					<span class="material-symbols-outlined">more_vert</span>
-				</button>
-			</div>
-		</div>
-		<div class="container mx-auto">
-			<router-outlet></router-outlet>
-		</div>
-	</div> 
+  <input id="main-drawer" [(ngModel)]="drawerOpen" type="checkbox" class="drawer-toggle" />
+  <div class="drawer-content">
+    <div class="navbar bg-base-300">
+      <div class="flex-none">
+        <label for="main-drawer" class="btn btn-square btn-ghost drawer-button">
+          <span class="material-symbols-outlined">menu</span>
+        </label>
+      </div>
+      <div class="flex-1">
+        <a class="btn btn-ghost text-xl">Civic OS</a>
+      </div>
+      <div class="flex-none">
+        <div class="dropdown">
+          <div tabindex="0" role="button" class="btn m-1">
+            Theme
+            <svg width="12px" height="12px" class="h-2 w-2 fill-current opacity-60 inline-block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048"><path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path></svg>
+          </div>
+          <ul tabindex="0" class="dropdown-content z-[1] p-2 shadow-2xl bg-base-300 rounded-box w-52">
+            <li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Corporate" value="corporate"/></li>
+            <li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Light" value="light"/></li>
+            <li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Dark" value="dark"/></li>
+            <li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Nord" value="nord"/></li>
+            <li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Emerald" value="emerald"/></li>
+          </ul>
+        </div>
+        <button class="btn btn-square btn-ghost">
+          <span class="material-symbols-outlined">more_vert</span>
+        </button>
+      </div>
+    </div>
+    <div class="container mx-auto">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
   <div class="drawer-side">
     <label for="main-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-	<ng-container *ngrxLet="menuItems$ as menuItems">
-		<ul *ngIf="menuItems" class="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
-			<!-- Sidebar content here -->
-			<li *ngFor="let entity of menuItems" (click)="navigate(entity.table_name)"><a>{{ entity.display_name }}</a></li>
-		</ul>
-	</ng-container>
+    <ng-container *ngrxLet="menuItems$ as menuItems">
+      @if (menuItems) {
+        <ul class="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
+          <!-- Sidebar content here -->
+          @for (entity of menuItems; track entity) {
+            <li (click)="navigate(entity.table_name)"><a>{{ entity.display_name }}</a></li>
+          }
+        </ul>
+      }
+    </ng-container>
   </div>
 </div>
