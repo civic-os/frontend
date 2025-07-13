@@ -17,7 +17,7 @@ CREATE OR REPLACE VIEW public.schema_entities
              JOIN information_schema.tables ON role_table_grants.table_schema::name = tables.table_schema::name AND role_table_grants.table_name::name = tables.table_name::name
           WHERE role_table_grants.table_schema::name = 'public'::name AND role_table_grants.grantee::name = CURRENT_ROLE AND tables.table_type::text = 'BASE TABLE'::text
           GROUP BY role_table_grants.grantee, role_table_grants.table_name) grants
-     LEFT JOIN civic_os.entities ON entities.table_name = grants.table_name::name
+     LEFT JOIN metadata.entities ON entities.table_name = grants.table_name::name
   WHERE grants.table_name::name <> ALL (ARRAY['civic_os_users'::name, 'civic_os_users_private'::name])
   ORDER BY (COALESCE(entities.sort_order, 0)), grants.table_name;
 
