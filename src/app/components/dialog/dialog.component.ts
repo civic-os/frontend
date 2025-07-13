@@ -1,10 +1,12 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { ApiError } from '../../interfaces/api';
-
+import { CommonModule } from '@angular/common';
 
 @Component({
     selector: 'app-dialog',
-    imports: [],
+    imports: [
+        CommonModule,
+    ],
     templateUrl: './dialog.component.html',
     styleUrl: './dialog.component.css'
 })

@@ -1,56 +1,27 @@
-@if (datum != null) {
-  @if (propType == EntityPropertyType.Date) {
-    {{ datum | date }}
-  }
-  @if (propType == EntityPropertyType.DateTime) {
-    {{ datum | date: 'medium' }}
-  }
-  @if (propType == EntityPropertyType.DateTimeLocal) {
-    {{ datum | date: 'full' }}
-  }
-  @if (propType == EntityPropertyType.TextShort) {
-    {{ datum }}
-  }
-  @if (propType == EntityPropertyType.TextLong) {
-    {{ datum }}
-    } <!-- Add Synopsis/ellipsis-->
-    @if (propType == EntityPropertyType.Money) {
-      {{ datum | currency }}
-    }
-    @if (propType == EntityPropertyType.IntegerNumber) {
-      {{ datum | number }}
-    }
-    @if (propType == EntityPropertyType.DecimalNumber) {
-      {{ datum | number }}
-    }
-    @if (propType == EntityPropertyType.Boolean) {
-      @if (datum == true) {
-        <span class="material-symbols-outlined text-primary bg-base-100">check_box</span>
-      }
-      @if (datum == false) {
-        <span class="material-symbols-outlined text-error bg-base-100">disabled_by_default</span>
-      }
-    }
-    @if (propType == EntityPropertyType.ForeignKeyName) {
-      @if (linkRelated) {
-        <a [routerLink]="['/view', prop.join_table, datum.id]">{{ datum.display_name }}</a>
-      }
-      @if (!linkRelated) {
-        {{ datum.display_name }}
-      }
-    }
-    @if (propType == EntityPropertyType.User) {
-      @if (datum?.private) {
-        {{ datum.private.display_name }} ({{ datum.private.email }})
-      }
-      @if (datum && !datum.private) {
-        {{ datum.display_name }}
-      }
-    }
-    @if (propType == EntityPropertyType.Unknown) {
-      {{ datum }}
-    }
-  }
-  @if (datum == null) {
+<ng-container *ngIf="datum != null">
+    <ng-container *ngIf="propType == EntityPropertyType.Date">{{ datum | date }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.DateTime">{{ datum | date: 'medium' }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.DateTimeLocal">{{ datum | date: 'full' }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.TextShort">{{ datum }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.TextLong">{{ datum }}</ng-container> <!-- Add Synopsis/ellipsis-->
+    <ng-container *ngIf="propType == EntityPropertyType.Money">{{ datum | currency }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.IntegerNumber">{{ datum | number }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.DecimalNumber">{{ datum | number }}</ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.Boolean">
+        <span *ngIf="datum == true" class="material-symbols-outlined text-primary bg-base-100">check_box</span>
+        <span *ngIf="datum == false" class="material-symbols-outlined text-error bg-base-100">disabled_by_default</span>
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">
+        <a *ngIf="linkRelated" [routerLink]="['/view', prop.join_table, datum.id]">{{ datum.display_name }}</a>
+        <ng-container *ngIf="!linkRelated">{{ datum.display_name }}</ng-container>
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.User">
+        <ng-container *ngIf="datum?.private">{{ datum.private.display_name }} ({{ datum.private.email }})</ng-container>
+        <ng-container *ngIf="datum && !datum.private">{{ datum.display_name }}</ng-container>
+    </ng-container>
+    
+    <ng-container *ngIf="propType == EntityPropertyType.Unknown">{{ datum }}</ng-container>
+</ng-container>
+<ng-container *ngIf="datum == null">
     <em>Not Set</em>
-  }
+</ng-container>

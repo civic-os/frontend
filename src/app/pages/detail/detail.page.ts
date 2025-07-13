@@ -4,7 +4,7 @@ import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
-
+import { CommonModule } from '@angular/common';
 import { LetDirective } from '@ngrx/component';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 
@@ -13,10 +13,11 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
     templateUrl: './detail.page.html',
     styleUrl: './detail.page.css',
     imports: [
-    LetDirective,
-    RouterModule,
-    DisplayPropertyComponent
-]
+        CommonModule,
+        LetDirective,
+        RouterModule,
+        DisplayPropertyComponent,
+    ]
 })
 export class DetailPage {
   public entityKey?: string;

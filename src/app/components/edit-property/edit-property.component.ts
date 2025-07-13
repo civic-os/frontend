@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
-
+import { CommonModule } from '@angular/common';
 import { Observable, map } from 'rxjs';
 import { DataService } from '../../services/data.service';
 import { LetDirective } from '@ngrx/component';
@@ -13,11 +13,12 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
     templateUrl: './edit-property.component.html',
     styleUrl: './edit-property.component.css',
     imports: [
-    LetDirective,
-    NgxMaskDirective,
-    NgxCurrencyDirective,
-    ReactiveFormsModule
-],
+        CommonModule,
+        LetDirective,
+        NgxMaskDirective,
+        NgxCurrencyDirective,
+        ReactiveFormsModule,
+    ],
     providers: [
         provideNgxMask(),
     ]

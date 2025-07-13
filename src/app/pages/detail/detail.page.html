@@ -1,22 +1,18 @@
 <div class="prose">
-  <ng-container *ngrxLet="entity$ as entity">@if (entity) {
-    <ng-container *ngrxLet="properties$ as props">@if (props) {
-      <ng-container *ngrxLet="data$ as data">@if (data) {
-        <h1 class="mt-4">{{ entity.display_name }}: {{ data.display_name }}
-          @if (entity.update) {
-            <button class="btn btn-accent ml-8" [routerLink]="'/edit/' + entityKey + '/' + data.id">
-              <span class="material-symbols-outlined">edit</span> Edit {{data.display_name}}
-            </button>
-          }
-        </h1>
-        <h2>Id: {{data.id}}</h2>
-        @for (prop of props; track prop) {
-          <div>
-            <h3>{{prop.display_name}}</h3>
-            <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>
-          </div>
-        }
-      }</ng-container>
-    }</ng-container>
-  }</ng-container>
+    <ng-container *ngrxLet="entity$ as entity"><ng-container *ngIf="entity">
+        <ng-container *ngrxLet="properties$ as props"><ng-container *ngIf="props">
+            <ng-container *ngrxLet="data$ as data"><ng-container *ngIf="data">
+                <h1 class="mt-4">{{ entity.display_name }}: {{ data.display_name }} 
+                    <button *ngIf="entity.update" class="btn btn-accent ml-8" [routerLink]="'/edit/' + entityKey + '/' + data.id">
+                        <span class="material-symbols-outlined">edit</span> Edit {{data.display_name}}
+                    </button>
+                </h1>
+                <h2>Id: {{data.id}}</h2>
+                <div *ngFor="let prop of props">
+                    <h3>{{prop.display_name}}</h3>
+                    <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>
+                </div>
+            </ng-container></ng-container>
+        </ng-container></ng-container>
+    </ng-container></ng-container>
 </div>
