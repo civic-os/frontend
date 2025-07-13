@@ -12,7 +12,6 @@ import { DialogComponent } from "../../components/dialog/dialog.component";
 
 @Component({
     selector: 'app-create',
-    standalone: true,
     templateUrl: './create.page.html',
     styleUrl: './create.page.css',
     imports: [

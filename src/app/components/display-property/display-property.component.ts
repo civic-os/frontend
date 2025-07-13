@@ -4,14 +4,13 @@ import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entit
 import { RouterModule } from '@angular/router';
 
 @Component({
-  selector: 'app-display-property',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-  ],
-  templateUrl: './display-property.component.html',
-  styleUrl: './display-property.component.css'
+    selector: 'app-display-property',
+    imports: [
+        CommonModule,
+        RouterModule,
+    ],
+    templateUrl: './display-property.component.html',
+    styleUrl: './display-property.component.css'
 })
 export class DisplayPropertyComponent {
   @Input('property') prop!: SchemaEntityProperty;

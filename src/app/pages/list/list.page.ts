@@ -10,7 +10,6 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
 
 @Component({
     selector: 'app-view',
-    standalone: true,
     templateUrl: './list.page.html',
     styleUrl: './list.page.css',
     imports: [

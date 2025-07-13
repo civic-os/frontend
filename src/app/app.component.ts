@@ -9,16 +9,15 @@ import { FormsModule } from '@angular/forms';
 import { SchemaEntityTable } from './interfaces/entity';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    LetDirective,
-    FormsModule,
-  ],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+    selector: 'app-root',
+    imports: [
+        CommonModule,
+        RouterOutlet,
+        LetDirective,
+        FormsModule,
+    ],
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.css'
 })
 export class AppComponent {
   public drawerOpen: boolean = false;

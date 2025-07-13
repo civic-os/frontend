@@ -10,7 +10,6 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
 
 @Component({
     selector: 'app-detail',
-    standalone: true,
     templateUrl: './detail.page.html',
     styleUrl: './detail.page.css',
     imports: [

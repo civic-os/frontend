@@ -11,17 +11,16 @@ import { EditPropertyComponent } from '../../components/edit-property/edit-prope
 import { LetDirective } from '@ngrx/component';
 
 @Component({
-  selector: 'app-edit',
-  standalone: true,
-  imports: [
-    CommonModule,
-    EditPropertyComponent,
-    LetDirective,
-    ReactiveFormsModule,
-    DialogComponent
-  ],
-  templateUrl: './edit.page.html',
-  styleUrl: './edit.page.css'
+    selector: 'app-edit',
+    imports: [
+        CommonModule,
+        EditPropertyComponent,
+        LetDirective,
+        ReactiveFormsModule,
+        DialogComponent
+    ],
+    templateUrl: './edit.page.html',
+    styleUrl: './edit.page.css'
 })
 export class EditPage {
   public entityKey?: string;

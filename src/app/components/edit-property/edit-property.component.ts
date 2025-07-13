@@ -10,7 +10,6 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-edit-property',
-    standalone: true,
     templateUrl: './edit-property.component.html',
     styleUrl: './edit-property.component.css',
     imports: [
@@ -21,7 +20,7 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
         ReactiveFormsModule,
     ],
     providers: [
-      provideNgxMask(),
+        provideNgxMask(),
     ]
 })
 export class EditPropertyComponent {
