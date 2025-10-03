@@ -1,0 +1,69 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: mydb
+      POSTGRES_USER: authenticator
+      POSTGRES_PASSWORD: securepassword
+      POSTGRES_MULTIPLE_DATABASES: mydb,auditdb
+      POSTGRES_INITDB_SCRIPTS: /docker-entrypoint-initdb.d/init.sql
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - postgrest-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authenticator -d mydb"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: postgrest_api
+    ports:
+      - "3000:3000"
+    environment:
+      PGRST_DB_URI: postgres://authenticator:securepassword@postgres:5432/mydb
+      PGRST_DB_SCHEMA: public,api
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_DB_CONFIG: "true"
+      PGRST_JWT_SECRET: "${JWT_SECRET:-defaultFallbackSecretMinimum32CharactersLong}"
+      PGRST_JWT_AUD: "${JWT_AUDIENCE:-your-audience}"
+      PGRST_OPENAPI_SERVER_PROXY_URI: "http://localhost:3000"
+      PGRST_OPENAPI_SECURITY_DEFINITIONS: '{"bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}'
+      PGRST_OPENAPI_SECURITY_ACTIVE: "true"
+      PGRST_ROOT_SPEC: "enabled"
+      PGRST_APP_SETTINGS_OIDC_ISSUER: "${OIDC_ISSUER_URL:-https://your-oidc-provider.com}"
+      PGRST_APP_SETTINGS_OIDC_AUDIENCE: "${OIDC_AUDIENCE:-your-audience}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - postgrest-network
+    restart: unless-stopped
+
+  # Optional: Swagger UI for API documentation
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger_ui
+    ports:
+      - "8080:8080"
+    environment:
+      API_URL: "http://postgrest:3000/"
+    depends_on:
+      - postgrest
+    networks:
+      - postgrest-network
+
+volumes:
+  postgres_data:
+  init-scripts:
+
+networks:
+  postgrest-network:
+    driver: bridge

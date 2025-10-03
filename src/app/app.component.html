@@ -24,9 +24,19 @@
 						<li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Emerald" value="emerald"/></li>
 					</ul>
 				</div>
-				<button class="btn btn-square btn-ghost">
-					<span class="material-symbols-outlined">more_vert</span>
-				</button>
+				<details class="dropdown">
+					<summary class="btn m-1 btn-ghost">
+						<span class="material-symbols-outlined">more_vert</span>
+					</summary>
+					<ul class="menu dropdown-content bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
+						@if (this.auth.authenticated) {
+							<li><a>Account</a></li>
+							<li><a (click)="this.auth.logout()">Logout</a></li>
+						} @else {
+							<li><a (click)="this.auth.login()">Log In</a></li>
+						}
+					</ul>
+				</details>
 			</div>
 		</div>
 		<div class="container mx-auto">

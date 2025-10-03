@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { SchemaService } from './services/schema.service';
@@ -7,6 +7,7 @@ import { OpenAPIV2 } from 'openapi-types';
 import { LetDirective } from '@ngrx/component';
 import { FormsModule } from '@angular/forms';
 import { SchemaEntityTable } from './interfaces/entity';
+import { AuthService } from './services/auth.service';
 
 @Component({
     selector: 'app-root',
@@ -25,7 +26,8 @@ export class AppComponent {
   public menuItems$: Observable<SchemaEntityTable[] | undefined>;
   constructor(
     private schema: SchemaService,
-    private router: Router
+    private router: Router,
+    public auth: AuthService,
   ) {
     this.menuItems$ = this.schema.getEntities();
     this.schema.init();

@@ -19,6 +19,8 @@
     "@angular/platform-browser-dynamic": "^19.2.14",
     "@angular/router": "^19.2.14",
     "@ngrx/component": "^19.2.1",
+    "keycloak-angular": "^19.0.2",
+    "keycloak-js": "^26.2.0",
     "ngx-currency": "^19.0.0",
     "ngx-mask": "^19.0.7",
     "openapi-types": "^12.1.3",
