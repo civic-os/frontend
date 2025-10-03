@@ -1,1 +1,0 @@
--- Set up users and roles for PostgREST
