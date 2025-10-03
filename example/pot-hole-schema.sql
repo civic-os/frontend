@@ -110,7 +110,7 @@ add
 alter table
 	"public"."Bid"
 add
-	constraint "Bid_owner_fkey" FOREIGN KEY (owner) REFERENCES auth.users(id) not valid;
+	constraint "Bid_owner_fkey" FOREIGN KEY (owner) REFERENCES public.civic_os_users(id) not valid;
 
 alter table
 	"public"."Bid" validate constraint "Bid_owner_fkey";
@@ -126,7 +126,7 @@ alter table
 alter table
 	"public"."Issue"
 add
-	constraint "Issue_created_user_fkey" FOREIGN KEY (created_user) REFERENCES auth.users(id) not valid;
+	constraint "Issue_created_user_fkey" FOREIGN KEY (created_user) REFERENCES public.civic_os_users(id) not valid;
 
 alter table
 	"public"."Issue" validate constraint "Issue_created_user_fkey";
@@ -155,7 +155,7 @@ add
 alter table
 	"public"."WorkDetail"
 add
-	constraint "WorkDetail_added_by_fkey" FOREIGN KEY (added_by) REFERENCES auth.users(id) not valid;
+	constraint "WorkDetail_added_by_fkey" FOREIGN KEY (added_by) REFERENCES public.civic_os_users(id) not valid;
 
 alter table
 	"public"."WorkDetail" validate constraint "WorkDetail_added_by_fkey";
@@ -176,25 +176,25 @@ add
 alter table
 	"public"."WorkPackage" validate constraint "WorkPackage_status_fkey";
 
-grant delete on table "public"."Bid" to "anon";
+grant delete on table "public"."Bid" to "web_anon";
 
 grant
 insert
-	on table "public"."Bid" to "anon";
+	on table "public"."Bid" to "web_anon";
 
-grant references on table "public"."Bid" to "anon";
+grant references on table "public"."Bid" to "web_anon";
 
 grant
 select
-	on table "public"."Bid" to "anon";
+	on table "public"."Bid" to "web_anon";
 
-grant trigger on table "public"."Bid" to "anon";
+grant trigger on table "public"."Bid" to "web_anon";
 
-grant truncate on table "public"."Bid" to "anon";
+grant truncate on table "public"."Bid" to "web_anon";
 
 grant
 update
-	on table "public"."Bid" to "anon";
+	on table "public"."Bid" to "web_anon";
 
 grant delete on table "public"."Bid" to "authenticated";
 
@@ -216,45 +216,25 @@ grant
 update
 	on table "public"."Bid" to "authenticated";
 
-grant delete on table "public"."Bid" to "service_role";
+grant delete on table "public"."Issue" to "web_anon";
 
 grant
 insert
-	on table "public"."Bid" to "service_role";
+	on table "public"."Issue" to "web_anon";
 
-grant references on table "public"."Bid" to "service_role";
-
-grant
-select
-	on table "public"."Bid" to "service_role";
-
-grant trigger on table "public"."Bid" to "service_role";
-
-grant truncate on table "public"."Bid" to "service_role";
-
-grant
-update
-	on table "public"."Bid" to "service_role";
-
-grant delete on table "public"."Issue" to "anon";
-
-grant
-insert
-	on table "public"."Issue" to "anon";
-
-grant references on table "public"."Issue" to "anon";
+grant references on table "public"."Issue" to "web_anon";
 
 grant
 select
-	on table "public"."Issue" to "anon";
+	on table "public"."Issue" to "web_anon";
 
-grant trigger on table "public"."Issue" to "anon";
+grant trigger on table "public"."Issue" to "web_anon";
 
-grant truncate on table "public"."Issue" to "anon";
+grant truncate on table "public"."Issue" to "web_anon";
 
 grant
 update
-	on table "public"."Issue" to "anon";
+	on table "public"."Issue" to "web_anon";
 
 grant delete on table "public"."Issue" to "authenticated";
 
@@ -276,45 +256,25 @@ grant
 update
 	on table "public"."Issue" to "authenticated";
 
-grant delete on table "public"."Issue" to "service_role";
+grant delete on table "public"."IssueStatus" to "web_anon";
 
 grant
 insert
-	on table "public"."Issue" to "service_role";
+	on table "public"."IssueStatus" to "web_anon";
 
-grant references on table "public"."Issue" to "service_role";
-
-grant
-select
-	on table "public"."Issue" to "service_role";
-
-grant trigger on table "public"."Issue" to "service_role";
-
-grant truncate on table "public"."Issue" to "service_role";
-
-grant
-update
-	on table "public"."Issue" to "service_role";
-
-grant delete on table "public"."IssueStatus" to "anon";
-
-grant
-insert
-	on table "public"."IssueStatus" to "anon";
-
-grant references on table "public"."IssueStatus" to "anon";
+grant references on table "public"."IssueStatus" to "web_anon";
 
 grant
 select
-	on table "public"."IssueStatus" to "anon";
+	on table "public"."IssueStatus" to "web_anon";
 
-grant trigger on table "public"."IssueStatus" to "anon";
+grant trigger on table "public"."IssueStatus" to "web_anon";
 
-grant truncate on table "public"."IssueStatus" to "anon";
+grant truncate on table "public"."IssueStatus" to "web_anon";
 
 grant
 update
-	on table "public"."IssueStatus" to "anon";
+	on table "public"."IssueStatus" to "web_anon";
 
 grant delete on table "public"."IssueStatus" to "authenticated";
 
@@ -336,45 +296,45 @@ grant
 update
 	on table "public"."IssueStatus" to "authenticated";
 
-grant delete on table "public"."IssueStatus" to "service_role";
+grant delete on table "public"."IssueStatus" to "authenticated";
 
 grant
 insert
-	on table "public"."IssueStatus" to "service_role";
+	on table "public"."IssueStatus" to "authenticated";
 
-grant references on table "public"."IssueStatus" to "service_role";
+grant references on table "public"."IssueStatus" to "authenticated";
 
 grant
 select
-	on table "public"."IssueStatus" to "service_role";
+	on table "public"."IssueStatus" to "authenticated";
 
-grant trigger on table "public"."IssueStatus" to "service_role";
+grant trigger on table "public"."IssueStatus" to "authenticated";
 
-grant truncate on table "public"."IssueStatus" to "service_role";
+grant truncate on table "public"."IssueStatus" to "authenticated";
 
 grant
 update
-	on table "public"."IssueStatus" to "service_role";
+	on table "public"."IssueStatus" to "authenticated";
 
-grant delete on table "public"."WorkDetail" to "anon";
+grant delete on table "public"."WorkDetail" to "web_anon";
 
 grant
 insert
-	on table "public"."WorkDetail" to "anon";
+	on table "public"."WorkDetail" to "web_anon";
 
-grant references on table "public"."WorkDetail" to "anon";
+grant references on table "public"."WorkDetail" to "web_anon";
 
 grant
 select
-	on table "public"."WorkDetail" to "anon";
+	on table "public"."WorkDetail" to "web_anon";
 
-grant trigger on table "public"."WorkDetail" to "anon";
+grant trigger on table "public"."WorkDetail" to "web_anon";
 
-grant truncate on table "public"."WorkDetail" to "anon";
+grant truncate on table "public"."WorkDetail" to "web_anon";
 
 grant
 update
-	on table "public"."WorkDetail" to "anon";
+	on table "public"."WorkDetail" to "web_anon";
 
 grant delete on table "public"."WorkDetail" to "authenticated";
 
@@ -396,45 +356,45 @@ grant
 update
 	on table "public"."WorkDetail" to "authenticated";
 
-grant delete on table "public"."WorkDetail" to "service_role";
+grant delete on table "public"."WorkDetail" to "authenticated";
 
 grant
 insert
-	on table "public"."WorkDetail" to "service_role";
+	on table "public"."WorkDetail" to "authenticated";
 
-grant references on table "public"."WorkDetail" to "service_role";
+grant references on table "public"."WorkDetail" to "authenticated";
 
 grant
 select
-	on table "public"."WorkDetail" to "service_role";
+	on table "public"."WorkDetail" to "authenticated";
 
-grant trigger on table "public"."WorkDetail" to "service_role";
+grant trigger on table "public"."WorkDetail" to "authenticated";
 
-grant truncate on table "public"."WorkDetail" to "service_role";
+grant truncate on table "public"."WorkDetail" to "authenticated";
 
 grant
 update
-	on table "public"."WorkDetail" to "service_role";
+	on table "public"."WorkDetail" to "authenticated";
 
-grant delete on table "public"."WorkPackage" to "anon";
+grant delete on table "public"."WorkPackage" to "web_anon";
 
 grant
 insert
-	on table "public"."WorkPackage" to "anon";
+	on table "public"."WorkPackage" to "web_anon";
 
-grant references on table "public"."WorkPackage" to "anon";
+grant references on table "public"."WorkPackage" to "web_anon";
 
 grant
 select
-	on table "public"."WorkPackage" to "anon";
+	on table "public"."WorkPackage" to "web_anon";
 
-grant trigger on table "public"."WorkPackage" to "anon";
+grant trigger on table "public"."WorkPackage" to "web_anon";
 
-grant truncate on table "public"."WorkPackage" to "anon";
+grant truncate on table "public"."WorkPackage" to "web_anon";
 
 grant
 update
-	on table "public"."WorkPackage" to "anon";
+	on table "public"."WorkPackage" to "web_anon";
 
 grant delete on table "public"."WorkPackage" to "authenticated";
 
@@ -456,45 +416,45 @@ grant
 update
 	on table "public"."WorkPackage" to "authenticated";
 
-grant delete on table "public"."WorkPackage" to "service_role";
+grant delete on table "public"."WorkPackage" to "authenticated";
 
 grant
 insert
-	on table "public"."WorkPackage" to "service_role";
+	on table "public"."WorkPackage" to "authenticated";
 
-grant references on table "public"."WorkPackage" to "service_role";
+grant references on table "public"."WorkPackage" to "authenticated";
 
 grant
 select
-	on table "public"."WorkPackage" to "service_role";
+	on table "public"."WorkPackage" to "authenticated";
 
-grant trigger on table "public"."WorkPackage" to "service_role";
+grant trigger on table "public"."WorkPackage" to "authenticated";
 
-grant truncate on table "public"."WorkPackage" to "service_role";
+grant truncate on table "public"."WorkPackage" to "authenticated";
 
 grant
 update
-	on table "public"."WorkPackage" to "service_role";
+	on table "public"."WorkPackage" to "authenticated";
 
-grant delete on table "public"."WorkPackageStatus" to "anon";
+grant delete on table "public"."WorkPackageStatus" to "web_anon";
 
 grant
 insert
-	on table "public"."WorkPackageStatus" to "anon";
+	on table "public"."WorkPackageStatus" to "web_anon";
 
-grant references on table "public"."WorkPackageStatus" to "anon";
+grant references on table "public"."WorkPackageStatus" to "web_anon";
 
 grant
 select
-	on table "public"."WorkPackageStatus" to "anon";
+	on table "public"."WorkPackageStatus" to "web_anon";
 
-grant trigger on table "public"."WorkPackageStatus" to "anon";
+grant trigger on table "public"."WorkPackageStatus" to "web_anon";
 
-grant truncate on table "public"."WorkPackageStatus" to "anon";
+grant truncate on table "public"."WorkPackageStatus" to "web_anon";
 
 grant
 update
-	on table "public"."WorkPackageStatus" to "anon";
+	on table "public"."WorkPackageStatus" to "web_anon";
 
 grant delete on table "public"."WorkPackageStatus" to "authenticated";
 
@@ -516,25 +476,25 @@ grant
 update
 	on table "public"."WorkPackageStatus" to "authenticated";
 
-grant delete on table "public"."WorkPackageStatus" to "service_role";
+grant delete on table "public"."WorkPackageStatus" to "authenticated";
 
 grant
 insert
-	on table "public"."WorkPackageStatus" to "service_role";
+	on table "public"."WorkPackageStatus" to "authenticated";
 
-grant references on table "public"."WorkPackageStatus" to "service_role";
+grant references on table "public"."WorkPackageStatus" to "authenticated";
 
 grant
 select
-	on table "public"."WorkPackageStatus" to "service_role";
+	on table "public"."WorkPackageStatus" to "authenticated";
 
-grant trigger on table "public"."WorkPackageStatus" to "service_role";
+grant trigger on table "public"."WorkPackageStatus" to "authenticated";
 
-grant truncate on table "public"."WorkPackageStatus" to "service_role";
+grant truncate on table "public"."WorkPackageStatus" to "authenticated";
 
 grant
 update
-	on table "public"."WorkPackageStatus" to "service_role";
+	on table "public"."WorkPackageStatus" to "authenticated";
 
 create policy "Enable read access for all users" on "public"."Bid" as permissive for
 select
@@ -559,6 +519,17 @@ select
 create policy "Enable read access for all users" on "public"."WorkPackageStatus" as permissive for
 select
 	to public using (true);
+
+-- Auto-update triggers for updated_at
+CREATE TRIGGER update_issue_updated_at
+  BEFORE UPDATE ON public."Issue"
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_work_package_updated_at
+  BEFORE UPDATE ON public."WorkPackage"
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
 
 NOTIFY pgrst,
 'reload schema';

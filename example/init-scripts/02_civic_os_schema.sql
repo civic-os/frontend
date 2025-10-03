@@ -1,55 +1,4 @@
 -- =====================================================
--- Civic OS Database Initialization
--- PostgreSQL + PostgREST + Keycloak Integration
--- =====================================================
-
--- Create PostgREST roles
-CREATE ROLE web_anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'securepassword123';
-
--- Grant role switching to authenticator
-GRANT web_anon TO authenticator;
-GRANT authenticated TO authenticator;
-
--- =====================================================
--- JWT Helper Functions (Keycloak Integration)
--- =====================================================
-
--- Get current user ID from JWT 'sub' claim
-CREATE OR REPLACE FUNCTION public.current_user_id()
-RETURNS UUID AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::UUID;
-$$ LANGUAGE SQL STABLE;
-
--- Get user email from JWT 'email' claim
-CREATE OR REPLACE FUNCTION public.current_user_email()
-RETURNS TEXT AS $$
-  SELECT current_setting('request.jwt.claim.email', true);
-$$ LANGUAGE SQL STABLE;
-
--- Get user name from JWT 'name' or 'preferred_username' claim
-CREATE OR REPLACE FUNCTION public.current_user_name()
-RETURNS TEXT AS $$
-  SELECT COALESCE(
-    current_setting('request.jwt.claim.name', true),
-    current_setting('request.jwt.claim.preferred_username', true)
-  );
-$$ LANGUAGE SQL STABLE;
-
--- Check JWT and set role
-CREATE OR REPLACE FUNCTION public.check_jwt()
-RETURNS VOID AS $$
-BEGIN
-  IF current_setting('request.jwt.claim.sub', true) IS NOT NULL THEN
-    EXECUTE 'SET LOCAL ROLE authenticated';
-  ELSE
-    EXECUTE 'SET LOCAL ROLE web_anon';
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- =====================================================
 -- Civic OS User Tables
 -- =====================================================
 
@@ -297,10 +246,20 @@ WHERE columns.table_schema::name = 'public'::name
 GRANT SELECT ON public.schema_properties TO web_anon, authenticated;
 
 -- =====================================================
--- Auto-update triggers for updated_at
+-- Reusable Timestamp Trigger Functions
 -- =====================================================
 
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+-- Automatically set created_at on INSERT
+CREATE OR REPLACE FUNCTION public.set_created_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.created_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Automatically set updated_at on INSERT or UPDATE
+CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -308,16 +267,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply to user tables
-CREATE TRIGGER update_civic_os_users_updated_at
-  BEFORE UPDATE ON public.civic_os_users
+-- Apply triggers to user tables
+CREATE TRIGGER set_created_at_trigger
+  BEFORE INSERT ON public.civic_os_users
   FOR EACH ROW
-  EXECUTE FUNCTION public.update_updated_at_column();
+  EXECUTE FUNCTION public.set_created_at();
 
-CREATE TRIGGER update_civic_os_users_private_updated_at
-  BEFORE UPDATE ON public.civic_os_users_private
+CREATE TRIGGER set_updated_at_trigger
+  BEFORE INSERT OR UPDATE ON public.civic_os_users
   FOR EACH ROW
-  EXECUTE FUNCTION public.update_updated_at_column();
+  EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER set_created_at_trigger
+  BEFORE INSERT ON public.civic_os_users_private
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_created_at();
+
+CREATE TRIGGER set_updated_at_trigger
+  BEFORE INSERT OR UPDATE ON public.civic_os_users_private
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_updated_at();
 
 -- =====================================================
 -- Grant schema permissions
@@ -326,6 +295,3 @@ CREATE TRIGGER update_civic_os_users_private_updated_at
 GRANT USAGE ON SCHEMA public TO web_anon, authenticated;
 GRANT SELECT ON public.civic_os_users TO web_anon, authenticated;
 GRANT SELECT ON public.civic_os_users_private TO authenticated;
-
--- Notify PostgREST to reload schema cache
-NOTIFY pgrst, 'reload schema';

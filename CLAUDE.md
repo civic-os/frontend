@@ -104,30 +104,41 @@ ng generate component pages/page-name --type=page
 
 ## Database Setup
 
-### Required PostgreSQL Scripts (run in order)
-1. `postgres/0_postgrest.sql` - PostgREST configuration
-2. `postgres/1_metadata.schema.sql` - Creates `metadata.entities` and `metadata.properties` tables
-3. `postgres/2_schema_relations.function.sql` - Function to detect foreign key relationships
-4. `postgres/3_schema_entities.view.sql` - View that lists entities with permissions
-5. `postgres/4_schema_properties.view.sql` - View that lists properties with metadata
-6. `postgres/5_permissions_roles.table.sql` - Roles and permissions schema
-7. `postgres/6_rename_schema.sql` - Schema migrations
-8. `postgres/7_add_users_table_and_auth_flow.sql` - User authentication tables
+### Local Development with Docker Compose
 
-### Local Development with Supabase
+The project uses Docker Compose to run PostgreSQL and PostgREST locally with Keycloak authentication.
+
 ```bash
 # Navigate to example folder
 cd example
 
-# Start Supabase local instance
-supabase start
+# Configure environment (first time only)
+cp .env.example .env
+# Edit .env and set your database password
 
-# Run SQL scripts on local database
-# (Scripts from postgres/ folder should be executed via Supabase dashboard or psql)
+# Fetch Keycloak public key (first time only)
+./fetch-keycloak-jwk.sh
+
+# Start Docker services
+docker-compose up -d
+
+# Verify services are running
+docker-compose ps
+
+# View logs if needed
+docker-compose logs -f postgres
+docker-compose logs -f postgrest
 ```
 
+The database initialization script (`example/init-scripts/init.sql`) automatically creates:
+- PostgREST roles (`web_anon`, `authenticated`)
+- Civic OS user tables (`civic_os_users`, `civic_os_users_private`)
+- Metadata schema (`metadata.entities`, `metadata.properties`, etc.)
+- Dynamic views (`schema_entities`, `schema_properties`)
+- Example application (Pot Hole Observation System)
+
 ### Environment Configuration
-- **Development**: `src/environments/environment.development.ts` - Points to `http://localhost:54321/rest/v1/` (Supabase local PostgREST)
+- **Development**: `src/environments/environment.development.ts` - Points to `http://localhost:3000/` (Docker PostgREST)
 - **Production**: `src/environments/environment.ts` - Configure before deployment
 
 ## PostgREST Integration
@@ -147,7 +158,7 @@ The `SchemaService.propertyToSelectString()` method builds PostgREST-compatible 
   - Keycloak URL: `https://auth.civic-os.org`
   - Realm: `civic-os-dev`
   - Client ID: `myclient`
-- Bearer token automatically included for requests to `localhost:54321` via `includeBearerTokenInterceptor`
+- Bearer token automatically included for requests to `localhost:3000` via `includeBearerTokenInterceptor`
 
 ## Styling
 
