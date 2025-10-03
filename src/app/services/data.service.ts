@@ -60,6 +60,14 @@ export class DataService {
       );
   }
 
+  public refreshCurrentUser(): Observable<ApiResponse> {
+    return this.http.post(environment.postgrestUrl + 'rpc/refresh_current_user', {})
+      .pipe(
+        catchError(this.parseApiError),
+        map(this.parseApiResponse),
+      );
+  }
+
   private parseApiResponse(body: any) {
     if(body?.success == false) {
       return body;

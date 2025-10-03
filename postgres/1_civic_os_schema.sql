@@ -43,6 +43,62 @@ CREATE POLICY "Users can read own private info"
   USING (id = public.current_user_id());
 
 -- =====================================================
+-- User Refresh Function
+-- =====================================================
+
+-- Function to refresh current user data from JWT claims
+-- Automatically creates/updates user records from authentication token
+-- Can be called via PostgREST: POST /rpc/refresh_current_user
+CREATE OR REPLACE FUNCTION public.refresh_current_user()
+RETURNS public.civic_os_users AS $$
+DECLARE
+  v_user_id UUID;
+  v_display_name TEXT;
+  v_email TEXT;
+  v_result public.civic_os_users;
+BEGIN
+  -- Get claims from JWT
+  v_user_id := public.current_user_id();
+  v_display_name := public.current_user_name();
+  v_email := public.current_user_email();
+
+  -- Validate we have required data
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'No authenticated user found in JWT';
+  END IF;
+
+  IF v_display_name IS NULL OR v_display_name = '' THEN
+    RAISE EXCEPTION 'No display name found in JWT (name or preferred_username claim required)';
+  END IF;
+
+  -- Upsert into civic_os_users (public profile)
+  INSERT INTO public.civic_os_users (id, display_name, created_at, updated_at)
+  VALUES (v_user_id, v_display_name, NOW(), NOW())
+  ON CONFLICT (id) DO UPDATE
+    SET display_name = EXCLUDED.display_name,
+        updated_at = NOW();
+
+  -- Upsert into civic_os_users_private (private profile)
+  INSERT INTO public.civic_os_users_private (id, display_name, email, created_at, updated_at)
+  VALUES (v_user_id, v_display_name, v_email, NOW(), NOW())
+  ON CONFLICT (id) DO UPDATE
+    SET display_name = EXCLUDED.display_name,
+        email = EXCLUDED.email,
+        updated_at = NOW();
+
+  -- Return the public user record
+  SELECT * INTO v_result
+  FROM public.civic_os_users
+  WHERE id = v_user_id;
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execution to authenticated users only
+GRANT EXECUTE ON FUNCTION public.refresh_current_user() TO authenticated;
+
+-- =====================================================
 -- Metadata Schema (Civic OS Core)
 -- =====================================================
 

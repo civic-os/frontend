@@ -18,21 +18,21 @@ GRANT authenticated TO authenticator;
 -- Get current user ID from JWT 'sub' claim
 CREATE OR REPLACE FUNCTION public.current_user_id()
 RETURNS UUID AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::UUID;
+  SELECT NULLIF(current_setting('request.jwt.claims', true)::json->>'sub', '')::UUID;
 $$ LANGUAGE SQL STABLE;
 
 -- Get user email from JWT 'email' claim
 CREATE OR REPLACE FUNCTION public.current_user_email()
 RETURNS TEXT AS $$
-  SELECT current_setting('request.jwt.claim.email', true);
+  SELECT current_setting('request.jwt.claims', true)::json->>'email';
 $$ LANGUAGE SQL STABLE;
 
 -- Get user name from JWT 'name' or 'preferred_username' claim
 CREATE OR REPLACE FUNCTION public.current_user_name()
 RETURNS TEXT AS $$
   SELECT COALESCE(
-    current_setting('request.jwt.claim.name', true),
-    current_setting('request.jwt.claim.preferred_username', true)
+    current_setting('request.jwt.claims', true)::json->>'name',
+    current_setting('request.jwt.claims', true)::json->>'preferred_username'
   );
 $$ LANGUAGE SQL STABLE;
 
@@ -40,7 +40,7 @@ $$ LANGUAGE SQL STABLE;
 CREATE OR REPLACE FUNCTION public.check_jwt()
 RETURNS VOID AS $$
 BEGIN
-  IF current_setting('request.jwt.claim.sub', true) IS NOT NULL THEN
+  IF current_setting('request.jwt.claims', true)::json->>'sub' IS NOT NULL THEN
     EXECUTE 'SET LOCAL ROLE authenticated';
   ELSE
     EXECUTE 'SET LOCAL ROLE web_anon';
