@@ -125,21 +125,145 @@ GRANT USAGE ON SEQUENCE "public"."WorkDetail_id_seq" TO web_anon, authenticated;
 GRANT USAGE ON SEQUENCE "public"."WorkPackage_id_seq" TO web_anon, authenticated;
 GRANT USAGE ON SEQUENCE "public"."WorkPackageStatus_id_seq" TO web_anon, authenticated;
 
--- Create RLS policies (disabled for now - enable as needed)
--- ALTER TABLE "public"."Bid" ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE "public"."Issue" ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE "public"."IssueStatus" ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE "public"."WorkDetail" ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE "public"."WorkPackage" ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE "public"."WorkPackageStatus" ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security
+ALTER TABLE "public"."Bid" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."Issue" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."IssueStatus" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."WorkDetail" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."WorkPackage" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."WorkPackageStatus" ENABLE ROW LEVEL SECURITY;
 
--- Create simple read policies
-CREATE POLICY "Enable read access for all users" ON "public"."Bid" AS PERMISSIVE FOR SELECT TO PUBLIC USING (true);
-CREATE POLICY "Enable read access for all users" ON "public"."Issue" AS PERMISSIVE FOR SELECT TO PUBLIC USING (true);
-CREATE POLICY "Enable read access for all users" ON "public"."IssueStatus" AS PERMISSIVE FOR SELECT TO PUBLIC USING (true);
-CREATE POLICY "Enable read access for all users" ON "public"."WorkDetail" AS PERMISSIVE FOR SELECT TO PUBLIC USING (true);
-CREATE POLICY "Enable read access for all users" ON "public"."WorkPackage" AS PERMISSIVE FOR SELECT TO PUBLIC USING (true);
-CREATE POLICY "Enable read access for all users" ON "public"."WorkPackageStatus" AS PERMISSIVE FOR SELECT TO PUBLIC USING (true);
+-- RLS Policies for Bid
+CREATE POLICY "Bid: read permission" ON "public"."Bid"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('Bid', 'read'));
+
+CREATE POLICY "Bid: create permission" ON "public"."Bid"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('Bid', 'create'));
+
+CREATE POLICY "Bid: update permission" ON "public"."Bid"
+  FOR UPDATE
+  TO PUBLIC
+  USING (public.has_permission('Bid', 'update'))
+  WITH CHECK (public.has_permission('Bid', 'update'));
+
+CREATE POLICY "Bid: delete permission" ON "public"."Bid"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('Bid', 'delete'));
+
+-- RLS Policies for Issue
+CREATE POLICY "Issue: read permission" ON "public"."Issue"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('Issue', 'read'));
+
+CREATE POLICY "Issue: create permission" ON "public"."Issue"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('Issue', 'create'));
+
+CREATE POLICY "Issue: update permission" ON "public"."Issue"
+  FOR UPDATE
+  TO PUBLIC
+  USING (public.has_permission('Issue', 'update'))
+  WITH CHECK (public.has_permission('Issue', 'update'));
+
+CREATE POLICY "Issue: delete permission" ON "public"."Issue"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('Issue', 'delete'));
+
+-- RLS Policies for IssueStatus
+CREATE POLICY "IssueStatus: read permission" ON "public"."IssueStatus"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('IssueStatus', 'read'));
+
+CREATE POLICY "IssueStatus: create permission" ON "public"."IssueStatus"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('IssueStatus', 'create'));
+
+CREATE POLICY "IssueStatus: update permission" ON "public"."IssueStatus"
+  FOR UPDATE
+  TO PUBLIC
+  USING (public.has_permission('IssueStatus', 'update'))
+  WITH CHECK (public.has_permission('IssueStatus', 'update'));
+
+CREATE POLICY "IssueStatus: delete permission" ON "public"."IssueStatus"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('IssueStatus', 'delete'));
+
+-- RLS Policies for WorkDetail
+CREATE POLICY "WorkDetail: read permission" ON "public"."WorkDetail"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('WorkDetail', 'read'));
+
+CREATE POLICY "WorkDetail: create permission" ON "public"."WorkDetail"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('WorkDetail', 'create'));
+
+CREATE POLICY "WorkDetail: update permission" ON "public"."WorkDetail"
+  FOR UPDATE
+  TO PUBLIC
+  USING (public.has_permission('WorkDetail', 'update'))
+  WITH CHECK (public.has_permission('WorkDetail', 'update'));
+
+CREATE POLICY "WorkDetail: delete permission" ON "public"."WorkDetail"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('WorkDetail', 'delete'));
+
+-- RLS Policies for WorkPackage
+CREATE POLICY "WorkPackage: read permission" ON "public"."WorkPackage"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('WorkPackage', 'read'));
+
+CREATE POLICY "WorkPackage: create permission" ON "public"."WorkPackage"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('WorkPackage', 'create'));
+
+CREATE POLICY "WorkPackage: update permission" ON "public"."WorkPackage"
+  FOR UPDATE
+  TO PUBLIC
+  USING (public.has_permission('WorkPackage', 'update'))
+  WITH CHECK (public.has_permission('WorkPackage', 'update'));
+
+CREATE POLICY "WorkPackage: delete permission" ON "public"."WorkPackage"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('WorkPackage', 'delete'));
+
+-- RLS Policies for WorkPackageStatus
+CREATE POLICY "WorkPackageStatus: read permission" ON "public"."WorkPackageStatus"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('WorkPackageStatus', 'read'));
+
+CREATE POLICY "WorkPackageStatus: create permission" ON "public"."WorkPackageStatus"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('WorkPackageStatus', 'create'));
+
+CREATE POLICY "WorkPackageStatus: update permission" ON "public"."WorkPackageStatus"
+  FOR UPDATE
+  TO PUBLIC
+  USING (public.has_permission('WorkPackageStatus', 'update'))
+  WITH CHECK (public.has_permission('WorkPackageStatus', 'update'));
+
+CREATE POLICY "WorkPackageStatus: delete permission" ON "public"."WorkPackageStatus"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('WorkPackageStatus', 'delete'));
 
 -- Apply timestamp triggers
 CREATE TRIGGER set_created_at_trigger
