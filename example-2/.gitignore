@@ -1,0 +1,11 @@
+# Sensitive files
+.env
+token.txt
+
+# Generated JWT files
+jwt-secret.pem
+jwt-secret.jwk
+jwt-secret.jwks
+
+# Docker volumes
+postgres_data/
