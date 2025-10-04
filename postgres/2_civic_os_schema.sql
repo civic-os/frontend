@@ -35,12 +35,26 @@ CREATE TABLE public.civic_os_users_private (
 
 ALTER TABLE public.civic_os_users_private ENABLE ROW LEVEL SECURITY;
 
+-- Anonymous users see no private data (prevents permission errors on LEFT JOINs)
+CREATE POLICY "Anonymous users see no private data"
+  ON public.civic_os_users_private
+  FOR SELECT
+  TO web_anon
+  USING (false);
+
 -- Users can only read their own private info
 CREATE POLICY "Users can read own private info"
   ON public.civic_os_users_private
   FOR SELECT
   TO authenticated
   USING (id = public.current_user_id());
+
+-- Permitted roles (editor, admin, etc.) can see all private data
+CREATE POLICY "Permitted roles see all private data"
+  ON public.civic_os_users_private
+  FOR SELECT
+  TO authenticated
+  USING (public.has_permission('civic_os_users_private', 'read'));
 
 -- =====================================================
 -- User Refresh Function
@@ -203,33 +217,22 @@ GRANT EXECUTE ON FUNCTION public.schema_relations_func() TO web_anon, authentica
 
 CREATE OR REPLACE VIEW public.schema_entities AS
 SELECT
-  COALESCE(entities.display_name, grants.table_name::text) AS display_name,
+  COALESCE(entities.display_name, tables.table_name::text) AS display_name,
   COALESCE(entities.sort_order, 0) AS sort_order,
   entities.description,
-  grants.table_name,
-  grants.insert,
-  grants.select,
-  grants.update,
-  grants.delete
-FROM (
-  SELECT
-    role_table_grants.table_name,
-    bool_or(role_table_grants.privilege_type::text = 'INSERT'::text) AS insert,
-    bool_or(role_table_grants.privilege_type::text = 'SELECT'::text) AS "select",
-    bool_or(role_table_grants.privilege_type::text = 'UPDATE'::text) AS update,
-    bool_or(role_table_grants.privilege_type::text = 'DELETE'::text) AS delete
-  FROM information_schema.role_table_grants
-  JOIN information_schema.tables
-    ON role_table_grants.table_schema::name = tables.table_schema::name
-    AND role_table_grants.table_name::name = tables.table_name::name
-  WHERE role_table_grants.table_schema::name = 'public'::name
-    AND role_table_grants.grantee::name = CURRENT_ROLE
-    AND tables.table_type::text = 'BASE TABLE'::text
-  GROUP BY role_table_grants.grantee, role_table_grants.table_name
-) grants
-LEFT JOIN metadata.entities ON entities.table_name = grants.table_name::name
-WHERE grants.table_name::name <> ALL (ARRAY['civic_os_users'::name, 'civic_os_users_private'::name])
-ORDER BY COALESCE(entities.sort_order, 0), grants.table_name;
+  tables.table_name,
+  public.has_permission(tables.table_name::text, 'create') AS insert,
+  public.has_permission(tables.table_name::text, 'read') AS "select",
+  public.has_permission(tables.table_name::text, 'update') AS update,
+  public.has_permission(tables.table_name::text, 'delete') AS delete
+FROM information_schema.tables
+LEFT JOIN metadata.entities ON entities.table_name = tables.table_name::name
+WHERE tables.table_schema::name = 'public'::name
+  AND tables.table_type::text = 'BASE TABLE'::text
+  AND tables.table_name::name <> ALL (ARRAY['civic_os_users'::name, 'civic_os_users_private'::name])
+ORDER BY COALESCE(entities.sort_order, 0), tables.table_name;
+
+ALTER VIEW public.schema_entities SET (security_invoker = true);
 
 GRANT SELECT ON public.schema_entities TO web_anon, authenticated;
 
@@ -237,7 +240,7 @@ GRANT SELECT ON public.schema_entities TO web_anon, authenticated;
 -- Schema Properties View
 -- =====================================================
 
-CREATE OR REPLACE VIEW public.schema_properties WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW public.schema_properties AS
 SELECT
   columns.table_catalog,
   columns.table_schema,
@@ -299,6 +302,8 @@ WHERE columns.table_schema::name = 'public'::name
     SELECT schema_entities.table_name FROM schema_entities
   );
 
+ALTER VIEW public.schema_properties SET (security_invoker = true);
+
 GRANT SELECT ON public.schema_properties TO web_anon, authenticated;
 
 -- =====================================================
@@ -350,7 +355,7 @@ CREATE TRIGGER set_updated_at_trigger
 
 GRANT USAGE ON SCHEMA public TO web_anon, authenticated;
 GRANT SELECT ON public.civic_os_users TO web_anon, authenticated;
-GRANT SELECT ON public.civic_os_users_private TO authenticated;
+GRANT SELECT ON public.civic_os_users_private TO web_anon, authenticated;
 
 -- Notify PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

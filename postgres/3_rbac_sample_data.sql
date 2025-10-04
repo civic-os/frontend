@@ -70,6 +70,22 @@ WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage
   AND r.display_name IN ('editor', 'admin')
 ON CONFLICT DO NOTHING;
 
+-- Create permissions for system tables
+-- civic_os_users_private: read permission for viewing user contact info
+INSERT INTO metadata.permissions (table_name, permission) VALUES
+  ('civic_os_users_private', 'read')
+ON CONFLICT (table_name, permission) DO NOTHING;
+
+-- Grant civic_os_users_private read to editor and admin roles
+INSERT INTO metadata.permission_roles (permission_id, role_id)
+SELECT p.id, r.id
+FROM metadata.permissions p
+CROSS JOIN metadata.roles r
+WHERE p.table_name = 'civic_os_users_private'
+  AND p.permission = 'read'
+  AND r.display_name IN ('editor', 'admin')
+ON CONFLICT DO NOTHING;
+
 -- Create permissions for metadata management tables (admin-only)
 INSERT INTO metadata.permissions (table_name, permission) VALUES
   ('roles', 'read'),

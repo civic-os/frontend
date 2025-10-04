@@ -30,6 +30,12 @@ export class SchemaService {
     // this.getSchema().subscribe();
   }
 
+  public refreshCache() {
+    // Refresh schema in background - current values remain available until new ones arrive
+    this.getSchema().subscribe();
+    this.getProperties().subscribe();
+  }
+
   public getEntities(): Observable<SchemaEntityTable[]> {
     return this.tables ? of(this.tables) : this.getSchema();
   }

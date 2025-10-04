@@ -106,7 +106,7 @@ ng generate component pages/page-name --type=page
 
 ### Local Development with Docker Compose
 
-The project uses Docker Compose to run PostgreSQL and PostgREST locally with Keycloak authentication.
+The project uses Docker Compose to run PostgreSQL 17 with PostGIS 3.5 and PostgREST locally with Keycloak authentication.
 
 ```bash
 # Navigate to example folder
@@ -132,14 +132,41 @@ docker-compose logs -f postgrest
 
 The database initialization script (`example/init-scripts/00_init.sh`) runs all SQL files from the `postgres/` directory in alphabetical order, which automatically creates:
 - PostgREST roles (`web_anon`, `authenticated`) - `postgres/0_postgrest_setup.sql`
-- Civic OS user tables (`civic_os_users`, `civic_os_users_private`) - `postgres/1_civic_os_schema.sql`
-- Metadata schema (`metadata.entities`, `metadata.properties`, `metadata.roles`, `metadata.permissions`, etc.) - `postgres/1_civic_os_schema.sql`
-- RBAC functions (`get_user_roles()`, `has_permission()`, `is_admin()`) - `postgres/2_rbac_functions.sql`
-- Dynamic views (`schema_entities`, `schema_properties`) - `postgres/1_civic_os_schema.sql`
+- RBAC functions (`get_user_roles()`, `has_permission()`, `is_admin()`) - `postgres/1_rbac_functions.sql`
+- Civic OS user tables (`civic_os_users`, `civic_os_users_private`) - `postgres/2_civic_os_schema.sql`
+- Metadata schema (`metadata.entities`, `metadata.properties`, `metadata.roles`, `metadata.permissions`, etc.) - `postgres/2_civic_os_schema.sql`
+- Dynamic views (`schema_entities`, `schema_properties`) - `postgres/2_civic_os_schema.sql`
 - Default roles and sample permissions - `postgres/3_rbac_sample_data.sql`
 - Example application (Pot Hole Observation System) - `example/init-scripts/01_pot_hole_schema.sql` and `02_pot_hole_data.sql`
 
 The Pot Hole Observation System serves as a reference implementation, demonstrating tables for issue tracking, work packages, bids, and status management.
+
+### Database Schema Updates
+
+**IMPORTANT**: Docker init scripts only run when the database is **first created**. If you modify SQL files in `postgres/` after the database has been initialized, you must either:
+
+1. **Recreate the database** (recommended for development):
+   ```bash
+   cd example
+   docker-compose down -v  # -v removes volumes
+   docker-compose up -d
+   ```
+
+2. **Apply changes manually** to running database:
+   ```bash
+   docker exec postgres_db psql -U postgres -d civic_os_db -f /civic-os-core/your-file.sql
+   docker exec postgres_db psql -U postgres -d civic_os_db -c "NOTIFY pgrst, 'reload schema';"
+   ```
+
+**PostgreSQL View Creation Syntax**: When creating views with `security_invoker` option, use separate statements:
+```sql
+-- ✅ Correct: Use ALTER VIEW after creation
+CREATE OR REPLACE VIEW public.my_view AS SELECT ...;
+ALTER VIEW public.my_view SET (security_invoker = true);
+
+-- ❌ Incorrect: WITH clause silently fails in PostgreSQL 15
+CREATE OR REPLACE VIEW public.my_view WITH (security_invoker = true) AS SELECT ...;
+```
 
 ### Environment Configuration
 - **Development**: `src/environments/environment.development.ts` - Points to `http://localhost:3000/` (Docker PostgREST)

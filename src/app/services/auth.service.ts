@@ -2,6 +2,7 @@ import { effect, inject, Injectable } from '@angular/core';
 import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType, KeycloakService, ReadyArgs, typeEventArgs } from 'keycloak-angular';
 import Keycloak from 'keycloak-js';
 import { DataService } from './data.service';
+import { SchemaService } from './schema.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +13,7 @@ export class AuthService {
 
   constructor(
     private data: DataService,
+    private schema: SchemaService,
   ) {
     const keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
 
@@ -34,11 +36,17 @@ export class AuthService {
             error: (err) => console.error('Error refreshing user data:', err)
           });
         }
+
+        // Refresh schema cache when auth state is determined
+        this.schema.refreshCache();
       }
 
       if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
         this.authenticated = false;
         this.userRoles = [];
+
+        // Refresh schema cache when user logs out
+        this.schema.refreshCache();
       }
     });
   }
