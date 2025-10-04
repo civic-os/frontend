@@ -3,7 +3,7 @@ import { ActivatedRoute, Route, RouterModule } from '@angular/router';
 import { Observable, map, mergeMap, of } from 'rxjs';
 import { SchemaService } from '../../services/schema.service';
 import { LetDirective } from '@ngrx/component';
-import { CommonModule } from '@angular/common';
+
 import { DataService } from '../../services/data.service';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
@@ -13,11 +13,10 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
     templateUrl: './list.page.html',
     styleUrl: './list.page.css',
     imports: [
-        CommonModule,
-        LetDirective,
-        RouterModule,
-        DisplayPropertyComponent,
-    ]
+    LetDirective,
+    RouterModule,
+    DisplayPropertyComponent
+]
 })
 export class ListPage {
   public entityKey?: string;

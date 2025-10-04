@@ -1,77 +1,86 @@
 <div class="container mx-auto p-6">
   <h1 class="text-3xl font-bold mb-6">Permissions Management</h1>
 
-  <div *ngIf="error" class="alert alert-error mb-4">
-    <span>{{ error }}</span>
-  </div>
-
-  <div *ngIf="loading" class="flex justify-center items-center min-h-[400px]">
-    <span class="loading loading-spinner loading-lg"></span>
-  </div>
-
-  <div *ngIf="!loading && isAdmin && !error">
-    <!-- Role Selector -->
-    <div class="w-full max-w-xs mb-6">
-      <label class="label" for="role-selector">
-        <span class="font-semibold">Select Role</span>
-      </label>
-      <select
-        id="role-selector"
-        class="select"
-        [(ngModel)]="selectedRoleId"
-        (ngModelChange)="onRoleChange()">
-        <option *ngFor="let role of roles" [value]="role.id">
-          {{ role.display_name }}
-        </option>
-      </select>
+  @if (error) {
+    <div class="alert alert-error mb-4">
+      <span>{{ error }}</span>
     </div>
+  }
 
-    <!-- Permissions Table -->
-    <div class="overflow-x-auto">
-      <table class="table table-zebra">
-        <thead>
-          <tr>
-            <th class="font-bold">Table</th>
-            <th class="text-center font-bold">Create</th>
-            <th class="text-center font-bold">Read</th>
-            <th class="text-center font-bold">Update</th>
-            <th class="text-center font-bold">Delete</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let row of permissionMatrix">
-            <td class="font-semibold">{{ row.tableName }}</td>
-            <td class="text-center">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-primary checkbox-sm"
-                [checked]="row.create"
-                (change)="togglePermission(row.tableName, 'create', row.create)" />
-            </td>
-            <td class="text-center">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-primary checkbox-sm"
-                [checked]="row.read"
-                (change)="togglePermission(row.tableName, 'read', row.read)" />
-            </td>
-            <td class="text-center">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-primary checkbox-sm"
-                [checked]="row.update"
-                (change)="togglePermission(row.tableName, 'update', row.update)" />
-            </td>
-            <td class="text-center">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-primary checkbox-sm"
-                [checked]="row.delete"
-                (change)="togglePermission(row.tableName, 'delete', row.delete)" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+  @if (loading) {
+    <div class="flex justify-center items-center min-h-[400px]">
+      <span class="loading loading-spinner loading-lg"></span>
     </div>
-  </div>
+  }
+
+  @if (!loading && isAdmin && !error) {
+    <div>
+      <!-- Role Selector -->
+      <div class="w-full max-w-xs mb-6">
+        <label class="label" for="role-selector">
+          <span class="font-semibold">Select Role</span>
+        </label>
+        <select
+          id="role-selector"
+          class="select"
+          [(ngModel)]="selectedRoleId"
+          (ngModelChange)="onRoleChange()">
+          @for (role of roles; track role) {
+            <option [value]="role.id">
+              {{ role.display_name }}
+            </option>
+          }
+        </select>
+      </div>
+      <!-- Permissions Table -->
+      <div class="overflow-x-auto">
+        <table class="table table-zebra">
+          <thead>
+            <tr>
+              <th class="font-bold">Table</th>
+              <th class="text-center font-bold">Create</th>
+              <th class="text-center font-bold">Read</th>
+              <th class="text-center font-bold">Update</th>
+              <th class="text-center font-bold">Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of permissionMatrix; track row) {
+              <tr>
+                <td class="font-semibold">{{ row.tableName }}</td>
+                <td class="text-center">
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-primary checkbox-sm"
+                    [checked]="row.create"
+                    (change)="togglePermission(row.tableName, 'create', row.create)" />
+                </td>
+                <td class="text-center">
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-primary checkbox-sm"
+                    [checked]="row.read"
+                    (change)="togglePermission(row.tableName, 'read', row.read)" />
+                </td>
+                <td class="text-center">
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-primary checkbox-sm"
+                    [checked]="row.update"
+                    (change)="togglePermission(row.tableName, 'update', row.update)" />
+                </td>
+                <td class="text-center">
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-primary checkbox-sm"
+                    [checked]="row.delete"
+                    (change)="togglePermission(row.tableName, 'delete', row.delete)" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
 </div>

@@ -1,5 +1,5 @@
 import { Component, inject, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Router, RouterOutlet } from '@angular/router';
 import { SchemaService } from './services/schema.service';
 import { Observable } from 'rxjs';
@@ -12,11 +12,10 @@ import { AuthService } from './services/auth.service';
 @Component({
     selector: 'app-root',
     imports: [
-        CommonModule,
-        RouterOutlet,
-        LetDirective,
-        FormsModule,
-    ],
+    RouterOutlet,
+    LetDirective,
+    FormsModule
+],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
 })

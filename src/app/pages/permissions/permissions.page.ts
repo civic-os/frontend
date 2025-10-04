@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { PermissionsService, Role, RolePermission } from '../../services/permissions.service';
 import { AuthService } from '../../services/auth.service';
@@ -15,7 +15,7 @@ interface PermissionMatrix {
 
 @Component({
   selector: 'app-permissions',
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './permissions.page.html',
   styleUrl: './permissions.page.css'
 })

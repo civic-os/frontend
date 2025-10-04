@@ -6,19 +6,18 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DataService } from '../../services/data.service';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { DialogComponent } from '../../components/dialog/dialog.component';
-import { CommonModule } from '@angular/common';
+
 import { EditPropertyComponent } from '../../components/edit-property/edit-property.component';
 import { LetDirective } from '@ngrx/component';
 
 @Component({
     selector: 'app-edit',
     imports: [
-        CommonModule,
-        EditPropertyComponent,
-        LetDirective,
-        ReactiveFormsModule,
-        DialogComponent
-    ],
+    EditPropertyComponent,
+    LetDirective,
+    ReactiveFormsModule,
+    DialogComponent
+],
     templateUrl: './edit.page.html',
     styleUrl: './edit.page.css'
 })
