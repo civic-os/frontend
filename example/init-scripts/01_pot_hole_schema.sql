@@ -23,7 +23,7 @@ CREATE TABLE "public"."Issue" (
 	"updated_at" TIMESTAMP WITH TIME ZONE,
 	"display_name" TEXT NOT NULL,
 	"status" BIGINT NOT NULL DEFAULT '1'::BIGINT,
-	"created_user" UUID,
+	"created_user" UUID DEFAULT public.current_user_id(),
 	"work_package" BIGINT
 );
 
