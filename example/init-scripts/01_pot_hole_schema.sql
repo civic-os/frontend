@@ -1,9 +1,8 @@
 -- =====================================================
 -- Example Application: Pot Hole Observation System
 -- =====================================================
-
--- Enable PostGIS extension (installed in public schema by default)
-CREATE EXTENSION IF NOT EXISTS postgis;
+-- PostGIS is installed in the postgis schema by core Civic OS scripts
+-- and is accessible via search_path
 
 -- Bid table
 CREATE TABLE "public"."Bid" (
@@ -25,7 +24,7 @@ CREATE TABLE "public"."Issue" (
 	"status" BIGINT NOT NULL DEFAULT '1'::BIGINT,
 	"created_user" UUID DEFAULT public.current_user_id(),
 	"work_package" BIGINT,
-	"location" geography(Point, 4326)
+	"location" postgis.geography(Point, 4326)
 );
 
 -- IssueStatus table
@@ -313,7 +312,7 @@ CREATE TRIGGER set_created_at_trigger
 -- Computed field function to expose geography as text for PostgREST
 CREATE OR REPLACE FUNCTION public.location_text("Issue")
 RETURNS text AS $$
-  SELECT ST_AsText($1.location);
+  SELECT postgis.ST_AsText($1.location);
 $$ LANGUAGE SQL STABLE;
 
 GRANT EXECUTE ON FUNCTION public.location_text("Issue") TO web_anon, authenticated;

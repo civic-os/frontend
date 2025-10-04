@@ -64,14 +64,16 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 
 ```sql
 -- Example: Issue table with location column
+-- Note: PostGIS types must be schema-qualified in init scripts
 CREATE TABLE "public"."Issue" (
-  "location" geography(Point, 4326)
+  "location" postgis.geography(Point, 4326)
 );
 
 -- Required computed field function
+-- Note: PostGIS functions must be schema-qualified in init scripts
 CREATE OR REPLACE FUNCTION public.location_text("Issue")
 RETURNS text AS $$
-  SELECT ST_AsText($1.location);
+  SELECT postgis.ST_AsText($1.location);
 $$ LANGUAGE SQL STABLE;
 
 GRANT EXECUTE ON FUNCTION public.location_text("Issue") TO web_anon, authenticated;
@@ -164,15 +166,31 @@ docker-compose logs -f postgrest
 ```
 
 The database initialization script (`example/init-scripts/00_init.sh`) runs all SQL files from the `postgres/` directory in alphabetical order, which automatically creates:
-- PostgREST roles (`web_anon`, `authenticated`) - `postgres/0_postgrest_setup.sql`
-- RBAC functions (`get_user_roles()`, `has_permission()`, `is_admin()`) - `postgres/1_rbac_functions.sql`
-- Civic OS user tables (`civic_os_users`, `civic_os_users_private`) - `postgres/2_civic_os_schema.sql`
-- Metadata schema (`metadata.entities`, `metadata.properties`, `metadata.roles`, `metadata.permissions`, etc.) - `postgres/2_civic_os_schema.sql`
-- Dynamic views (`schema_entities`, `schema_properties`) - `postgres/2_civic_os_schema.sql`
-- Default roles and sample permissions - `postgres/3_rbac_sample_data.sql`
+- PostGIS extension in dedicated schema - `postgres/0_postgis_setup.sql`
+- PostgREST roles (`web_anon`, `authenticated`) - `postgres/1_postgrest_setup.sql`
+- RBAC functions (`get_user_roles()`, `has_permission()`, `is_admin()`) - `postgres/2_rbac_functions.sql`
+- Civic OS user tables (`civic_os_users`, `civic_os_users_private`) - `postgres/3_civic_os_schema.sql`
+- Metadata schema (`metadata.entities`, `metadata.properties`, `metadata.roles`, `metadata.permissions`, etc.) - `postgres/3_civic_os_schema.sql`
+- Dynamic views (`schema_entities`, `schema_properties`) - `postgres/3_civic_os_schema.sql`
+- Default roles and sample permissions - `postgres/4_rbac_sample_data.sql`
 - Example application (Pot Hole Observation System) - `example/init-scripts/01_pot_hole_schema.sql` and `02_pot_hole_data.sql`
 
 The Pot Hole Observation System serves as a reference implementation, demonstrating tables for issue tracking, work packages, bids, and status management.
+
+#### PostGIS Schema Separation
+
+PostGIS is installed in a dedicated `postgis` schema (not `public`) to keep the public schema clean and make application functions easier to find. This separation:
+- Prevents ~1000+ PostGIS functions from cluttering `public` schema
+- Makes debugging and schema exploration easier
+- Follows PostgreSQL best practices
+
+PostGIS functions remain fully accessible via `search_path` configuration. The `web_anon` and `authenticated` roles have their search_path set to `public, postgis`, allowing unqualified PostGIS function calls.
+
+**When using PostGIS types or functions in SQL:**
+- In application code via PostgREST: Functions work without schema qualification (due to search_path)
+- In init scripts or migrations: Use schema-qualified references:
+  - Type: `postgis.geography(Point, 4326)`
+  - Function: `postgis.ST_AsText($1.location)`
 
 ### Database Schema Updates
 

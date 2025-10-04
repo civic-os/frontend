@@ -11,6 +11,11 @@ CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'securepassword123';
 GRANT web_anon TO authenticator;
 GRANT authenticated TO authenticator;
 
+-- Set search_path to include postgis schema
+-- This allows PostGIS functions to be called without schema qualification
+ALTER ROLE web_anon SET search_path TO public, postgis;
+ALTER ROLE authenticated SET search_path TO public, postgis;
+
 -- =====================================================
 -- JWT Helper Functions (Keycloak Integration)
 -- =====================================================
