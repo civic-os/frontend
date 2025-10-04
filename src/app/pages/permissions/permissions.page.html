@@ -11,12 +11,13 @@
 
   <div *ngIf="!loading && isAdmin && !error">
     <!-- Role Selector -->
-    <div class="form-control w-full max-w-xs mb-6">
-      <label class="label">
-        <span class="label-text font-semibold">Select Role</span>
+    <div class="w-full max-w-xs mb-6">
+      <label class="label" for="role-selector">
+        <span class="font-semibold">Select Role</span>
       </label>
       <select
-        class="select select-bordered"
+        id="role-selector"
+        class="select"
         [(ngModel)]="selectedRoleId"
         (ngModelChange)="onRoleChange()">
         <option *ngFor="let role of roles" [value]="role.id">

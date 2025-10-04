@@ -1,51 +1,49 @@
-<div class="form-control" [formGroup]="form">
-    <label class="form-control w-full max-w-xs">
-        <div class="label">
-            <span class="label-text">{{ prop.display_name }}{{ prop.is_nullable ? '' : '*'}}</span>
-        </div>
-
-        <ng-container *ngIf="propType == EntityPropertyType.Date">
-            <input type="date" placeholder="Type here" class="input input-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.DateTime">
-            <input type="datetime" placeholder="Type here" class="input input-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.DateTimeLocal">
-            <input type="datetime-local" placeholder="Type here" class="input input-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.TextShort">
-            <input type="text" placeholder="Type here" class="input input-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.TextLong">
-            <textarea class="textarea textarea-bordered h-24" placeholder="Type here" [id]="prop.column_name" [formControlName]="prop.column_name"></textarea>
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.Money">
-            <input type="text" currencyMask placeholder="Type here" class="input input-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.IntegerNumber">
-            <input type="number" placeholder="Type here" step=1 mask="0*" [allowNegativeNumbers]="true" class="input input-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.Boolean">
-            <input type="checkbox" class="toggle" [id]="prop.column_name" [formControlName]="prop.column_name" />
-        </ng-container>
-        <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">
-            <ng-container *ngrxLet="selectOptions$ as selectOptions">
-                <select class="select select-bordered w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name">
-                    <option [value]="null" *ngIf="prop.is_nullable">Select an Option</option>
-                    <option *ngFor="let option of selectOptions" [value]="option.id">{{option.text}}</option>
-                </select>
-            </ng-container>
-        </ng-container>
-
-        <ng-container *ngIf="propType == EntityPropertyType.Unknown"></ng-container>
-
-        <ng-container *ngIf="form.controls[prop.column_name] as ctl">
-            <div *ngIf="ctl.invalid && (ctl.dirty || ctl.touched)"
-                class="text-error">
-                <div *ngIf="ctl.errors?.['required']">
-                    {{ prop.display_name }} is required.
-                </div>
-            </div>
-        </ng-container>
+<div class="mb-4 w-full max-w-xs" [formGroup]="form">
+    <label class="label" [for]="prop.column_name">
+        <span class="font-medium">{{ prop.display_name }}{{ prop.is_nullable ? '' : '*'}}</span>
     </label>
+
+    <ng-container *ngIf="propType == EntityPropertyType.Date">
+        <input type="date" placeholder="Type here" class="input w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.DateTime">
+        <input type="datetime" placeholder="Type here" class="input w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.DateTimeLocal">
+        <input type="datetime-local" placeholder="Type here" class="input w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.TextShort">
+        <input type="text" placeholder="Type here" class="input w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.TextLong">
+        <textarea class="textarea h-24" placeholder="Type here" [id]="prop.column_name" [formControlName]="prop.column_name"></textarea>
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.Money">
+        <input type="text" currencyMask placeholder="Type here" class="input w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.IntegerNumber">
+        <input type="number" placeholder="Type here" step=1 mask="0*" [allowNegativeNumbers]="true" class="input w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name" />
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.Boolean">
+        <input type="checkbox" class="toggle" [id]="prop.column_name" [formControlName]="prop.column_name" />
+    </ng-container>
+    <ng-container *ngIf="propType == EntityPropertyType.ForeignKeyName">
+        <ng-container *ngrxLet="selectOptions$ as selectOptions">
+            <select class="select w-full max-w-xs" [id]="prop.column_name" [formControlName]="prop.column_name">
+                <option [value]="null" *ngIf="prop.is_nullable">Select an Option</option>
+                <option *ngFor="let option of selectOptions" [value]="option.id">{{option.text}}</option>
+            </select>
+        </ng-container>
+    </ng-container>
+
+    <ng-container *ngIf="propType == EntityPropertyType.Unknown"></ng-container>
+
+    <ng-container *ngIf="form.controls[prop.column_name] as ctl">
+        <div *ngIf="ctl.invalid && (ctl.dirty || ctl.touched)"
+            class="text-error mt-1">
+            <div *ngIf="ctl.errors?.['required']">
+                {{ prop.display_name }} is required.
+            </div>
+        </div>
+    </ng-container>
 </div>
