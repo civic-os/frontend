@@ -8,7 +8,7 @@ This application automatically generates views for listing, detailing, creating,
 - [x] Build Entity metadata table
 - [x] Build Property metadata table
 - [x] Build out User table with public and private fields
-- [ ] Build Roles/Permissions schema
+- [x] Build Roles/Permissions schema
 - [ ] Allow one-to-many and many-to-many Properties
 - [ ] Build scheme for editable Properties, default values, etc.
 - [ ] Add Form Validation Messages
@@ -25,23 +25,9 @@ This application automatically generates views for listing, detailing, creating,
 - [ ] Set up Record Defaults (On Create)
 ### Logic
 - [ ] Build Logic
-# Angular Development
-## Development server
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
-
-## Code scaffolding
-
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
-
-## Build
-
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
-
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+## Documentation
+For detailed setup and usage instructions, see:
+- [CLAUDE.md](./CLAUDE.md) - Comprehensive developer guide and architecture documentation
+- [example/README.md](./example/README.md) - Docker Compose setup with PostgreSQL, PostgREST, and Keycloak
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Common issues and solutions, especially for RBAC configuration

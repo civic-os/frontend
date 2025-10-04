@@ -130,12 +130,16 @@ docker-compose logs -f postgres
 docker-compose logs -f postgrest
 ```
 
-The database initialization script (`example/init-scripts/init.sql`) automatically creates:
-- PostgREST roles (`web_anon`, `authenticated`)
-- Civic OS user tables (`civic_os_users`, `civic_os_users_private`)
-- Metadata schema (`metadata.entities`, `metadata.properties`, etc.)
-- Dynamic views (`schema_entities`, `schema_properties`)
-- Example application (Pot Hole Observation System)
+The database initialization script (`example/init-scripts/00_init.sh`) runs all SQL files from the `postgres/` directory in alphabetical order, which automatically creates:
+- PostgREST roles (`web_anon`, `authenticated`) - `postgres/0_postgrest_setup.sql`
+- Civic OS user tables (`civic_os_users`, `civic_os_users_private`) - `postgres/1_civic_os_schema.sql`
+- Metadata schema (`metadata.entities`, `metadata.properties`, `metadata.roles`, `metadata.permissions`, etc.) - `postgres/1_civic_os_schema.sql`
+- RBAC functions (`get_user_roles()`, `has_permission()`, `is_admin()`) - `postgres/2_rbac_functions.sql`
+- Dynamic views (`schema_entities`, `schema_properties`) - `postgres/1_civic_os_schema.sql`
+- Default roles and sample permissions - `postgres/3_rbac_sample_data.sql`
+- Example application (Pot Hole Observation System) - `example/init-scripts/01_pot_hole_schema.sql` and `02_pot_hole_data.sql`
+
+The Pot Hole Observation System serves as a reference implementation, demonstrating tables for issue tracking, work packages, bids, and status management.
 
 ### Environment Configuration
 - **Development**: `src/environments/environment.development.ts` - Points to `http://localhost:3000/` (Docker PostgREST)
@@ -236,6 +240,8 @@ Admins can manage role permissions via the **Permissions** page (`/permissions`)
 5. Changes are saved automatically
 
 **Note**: The Permissions page requires the `admin` role both at the database level (`public.is_admin()` check) and in the UI (menu visibility).
+
+**Troubleshooting**: If you encounter issues with RBAC, such as JWT roles not being recognized or permissions not working correctly, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed debugging steps and common solutions.
 
 ## Styling
 

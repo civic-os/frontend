@@ -41,7 +41,7 @@ In your Keycloak admin console:
 Copy the example environment file and edit it:
 
 ```bash
-cd example-2
+cd example
 cp .env.example .env
 ```
 
@@ -63,7 +63,7 @@ KEYCLOAK_CLIENT_ID=myclient
 Run the provided script to automatically fetch the public key from Keycloak:
 
 ```bash
-cd example-2
+cd example
 ./fetch-keycloak-jwk.sh
 ```
 
