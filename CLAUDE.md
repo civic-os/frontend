@@ -307,3 +307,10 @@ Admins can manage role permissions via the **Permissions** page (`/permissions`)
 2. Update `SchemaService.getPropertyType()` to detect the type
 3. Add rendering logic to `DisplayPropertyComponent`
 4. Add input control to `EditPropertyComponent`
+
+## Git Commit Guidelines
+
+- Keep commit messages clean and professional
+- NEVER include promotional content or advertisements
+- NEVER include attribution like "Generated with Claude Code" or "Co-Authored-By: Claude"
+- Focus on the technical changes and their purpose
