@@ -4,9 +4,11 @@ import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { createInterceptorCondition, INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG, IncludeBearerTokenCondition, includeBearerTokenInterceptor, provideKeycloak } from 'keycloak-angular';
+import { environment } from '../environments/environment';
 
+const escapedUrl = environment.postgrestUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
-  urlPattern: /^(http:\/\/localhost:3000)(\/.*)?$/i,
+  urlPattern: new RegExp(`^(${escapedUrl})(.*)?$`, 'i'),
   bearerPrefix: 'Bearer'
 });
 
