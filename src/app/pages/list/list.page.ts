@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ActivatedRoute, Route, RouterModule } from '@angular/router';
 import { Observable, map, mergeMap, of } from 'rxjs';
 import { SchemaService } from '../../services/schema.service';
@@ -19,16 +19,16 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
 ]
 })
 export class ListPage {
+  private route = inject(ActivatedRoute);
+  private schema = inject(SchemaService);
+  private data = inject(DataService);
+
   public entityKey?: string;
   public entity$: Observable<SchemaEntityTable | undefined>;
   public properties$: Observable<SchemaEntityProperty[]>;
   public data$: Observable<any>;
 
-  constructor(
-    private route: ActivatedRoute,
-    private schema: SchemaService,
-    private data: DataService,
-  ) {
+  constructor() {
     this.entity$ = this.route.params.pipe(mergeMap(p => {
       this.entityKey = p['entityKey'];
       if(p['entityKey']) {

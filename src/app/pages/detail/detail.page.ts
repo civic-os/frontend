@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Observable, map, mergeMap, of } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { ActivatedRoute, RouterModule } from '@angular/router';
@@ -19,17 +19,17 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
 ]
 })
 export class DetailPage {
+  private route = inject(ActivatedRoute);
+  private schema = inject(SchemaService);
+  private data = inject(DataService);
+
   public entityKey?: string;
   public entityId?: string;
   public entity$: Observable<SchemaEntityTable | undefined>;
   public properties$: Observable<SchemaEntityProperty[]>;
   public data$: Observable<any>;
 
-  constructor(
-    private route: ActivatedRoute,
-    private schema: SchemaService,
-    private data: DataService,
-  ) {
+  constructor() {
     this.entity$ = this.route.params.pipe(mergeMap(p => {
       this.entityKey = p['entityKey'];
       this.entityId = p['entityId'];

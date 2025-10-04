@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, filter, map, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { EntityData } from '../interfaces/entity';
@@ -11,12 +11,7 @@ import { ErrorService } from './error.service';
   providedIn: 'root'
 })
 export class DataService {
-
-  constructor(
-    private http: HttpClient,
-  ) {
-    
-  }
+  private http = inject(HttpClient);
 
   private get(url: string): Observable<any> {
     return this.http.get(environment.postgrestUrl + url);

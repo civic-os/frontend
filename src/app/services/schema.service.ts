@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { Observable, map, of, tap } from 'rxjs';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../interfaces/entity';
@@ -9,15 +9,11 @@ import { ValidatorFn, Validators } from '@angular/forms';
   providedIn: 'root'
 })
 export class SchemaService {
+  private http = inject(HttpClient);
+
   public properties?: SchemaEntityProperty[];
   public tables?: SchemaEntityTable[];
   public static hideFields: string[] = ['id', 'created_at', 'updated_at'];
-
-  constructor(
-    private http: HttpClient,
-  ) {
-
-  }
 
   private getSchema() {
     return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_entities')

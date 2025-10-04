@@ -20,15 +20,15 @@ import { AuthService } from './services/auth.service';
     styleUrl: './app.component.css'
 })
 export class AppComponent {
+  private schema = inject(SchemaService);
+  private router = inject(Router);
+  public auth = inject(AuthService);
+
   public drawerOpen: boolean = false;
   title = 'frontend';
-  public menuItems$: Observable<SchemaEntityTable[] | undefined>;
-  constructor(
-    private schema: SchemaService,
-    private router: Router,
-    public auth: AuthService,
-  ) {
-    this.menuItems$ = this.schema.getEntities();
+  public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntities();
+
+  constructor() {
     this.schema.init();
   }
 

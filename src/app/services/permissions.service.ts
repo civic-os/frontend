@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { SchemaService } from './schema.service';
@@ -24,11 +24,8 @@ export interface RolePermission {
   providedIn: 'root'
 })
 export class PermissionsService {
-
-  constructor(
-    private http: HttpClient,
-    private schema: SchemaService
-  ) { }
+  private http = inject(HttpClient);
+  private schema = inject(SchemaService);
 
   getRoles(): Observable<Role[]> {
     return this.http.post<Role[]>(

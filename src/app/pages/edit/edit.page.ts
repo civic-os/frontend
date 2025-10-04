@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { SchemaService } from '../../services/schema.service';
 import { Observable, map, mergeMap, of, tap } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -22,6 +22,11 @@ import { LetDirective } from '@ngrx/component';
     styleUrl: './edit.page.css'
 })
 export class EditPage {
+  private route = inject(ActivatedRoute);
+  private schema = inject(SchemaService);
+  private data = inject(DataService);
+  private router = inject(Router);
+
   public entityKey?: string;
   public entityId?: string;
   public entity$: Observable<SchemaEntityTable | undefined>;
@@ -32,12 +37,7 @@ export class EditPage {
   @ViewChild('successDialog') successDialog!: DialogComponent;
   @ViewChild('errorDialog') errorDialog!: DialogComponent;
 
-  constructor(
-    private route: ActivatedRoute,
-    private schema: SchemaService,
-    private data: DataService,
-    private router: Router,
-  ) {
+  constructor() {
     this.entity$ = this.route.params.pipe(mergeMap(p => {
       this.entityKey = p['entityKey'];
       this.entityId = p['entityId'];

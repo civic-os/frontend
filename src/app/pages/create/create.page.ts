@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { Observable, mergeMap, of, tap } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -22,6 +22,11 @@ import { DialogComponent } from "../../components/dialog/dialog.component";
 ]
 })
 export class CreatePage {
+  private route = inject(ActivatedRoute);
+  private schema = inject(SchemaService);
+  private data = inject(DataService);
+  private router = inject(Router);
+
   public entityKey?: string;
   public entity$: Observable<SchemaEntityTable | undefined>;
   public properties$: Observable<SchemaEntityProperty[]>;
@@ -29,13 +34,8 @@ export class CreatePage {
   public createForm?: FormGroup;
   @ViewChild('successDialog') successDialog!: DialogComponent;
   @ViewChild('errorDialog') errorDialog!: DialogComponent;
-  
-  constructor(
-    private route: ActivatedRoute,
-    private schema: SchemaService,
-    private data: DataService,
-    private router: Router,
-  ) {
+
+  constructor() {
     this.entity$ = this.route.params.pipe(mergeMap(p => {
       this.entityKey = p['entityKey'];
       if(p['entityKey']) {

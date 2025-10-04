@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { PermissionsService, Role, RolePermission } from '../../services/permissions.service';
@@ -20,6 +20,9 @@ interface PermissionMatrix {
   styleUrl: './permissions.page.css'
 })
 export class PermissionsPage {
+  private permissionsService = inject(PermissionsService);
+  public auth = inject(AuthService);
+
   roles: Role[] = [];
   selectedRoleId?: number;
   permissionMatrix: PermissionMatrix[] = [];
@@ -28,10 +31,7 @@ export class PermissionsPage {
   isAdmin = false;
   permissionTypes = ['create', 'read', 'update', 'delete'];
 
-  constructor(
-    private permissionsService: PermissionsService,
-    public auth: AuthService
-  ) {
+  constructor() {
     this.checkAdminAndLoadData();
   }
 

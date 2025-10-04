@@ -8,17 +8,16 @@ import { SchemaService } from './schema.service';
   providedIn: 'root'
 })
 export class AuthService {
+  private data = inject(DataService);
+  private schema = inject(SchemaService);
+  private keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
+
   authenticated = false;
   userRoles: string[] = [];
 
-  constructor(
-    private data: DataService,
-    private schema: SchemaService,
-  ) {
-    const keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
-
+  constructor() {
     effect(() => {
-      const keycloakEvent = keycloakSignal();
+      const keycloakEvent = this.keycloakSignal();
 
       if (keycloakEvent.type === KeycloakEventType.Ready) {
         this.authenticated = typeEventArgs<ReadyArgs>(keycloakEvent.args);

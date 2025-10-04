@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, inject, Input } from '@angular/core';
 import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 
 import { Observable, map } from 'rxjs';
@@ -23,6 +23,8 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
     ]
 })
 export class EditPropertyComponent {
+  private data = inject(DataService);
+
   @Input('property') prop!: SchemaEntityProperty;
   @Input('formGroup') form!: FormGroup;
   public selectOptions$?: Observable<{id: number, text: string}[]>;
@@ -30,10 +32,6 @@ export class EditPropertyComponent {
   propType!: EntityPropertyType;
 
   public EntityPropertyType = EntityPropertyType;
-  
-  constructor(
-    private data: DataService,
-  ) {}
 
   ngOnInit() {
     this.propType = this.prop.type;
