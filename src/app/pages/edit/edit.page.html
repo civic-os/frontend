@@ -1,7 +1,7 @@
 <div class="prose">
-  <ng-container *ngrxLet="entity$ as entity">@if (entity) {
-    <ng-container *ngrxLet="properties$ as props">@if (props) {
-      <ng-container *ngrxLet="data$ as data">@if (data) {
+  @if (entity$ | async; as entity) {
+    @if (properties$ | async; as props) {
+      @if (data$ | async; as data) {
         <h1>{{ entity.display_name }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub></h1>
         @if (editForm) {
           <form [formGroup]="editForm" (ngSubmit)="submitForm($event)">
@@ -17,8 +17,8 @@
             </button>
           </form>
         }
-      }</ng-container>
-    }</ng-container>
+      }
+    }
     <app-dialog #successDialog>
       <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
       <button class="btn mx-2" (click)="navToRecord(entity.table_name, entityId)">Back to record</button>
@@ -27,5 +27,5 @@
       <button class="btn mx-2">Try again</button>
       <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
     </app-dialog>
-  }</ng-container>
+  }
 </div>

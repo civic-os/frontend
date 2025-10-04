@@ -1,7 +1,7 @@
 <div class="prose">
-  <ng-container *ngrxLet="entity$ as entity">@if (entity) {
-    <ng-container *ngrxLet="properties$ as props">@if (props) {
-      <ng-container *ngrxLet="data$ as data">@if (data) {
+  @if (entity$ | async; as entity) {
+    @if (properties$ | async; as props) {
+      @if (data$ | async; as data) {
         <h1 class="mt-4">{{ entity.display_name }}: {{ data.display_name }}
           @if (entity.update) {
             <button class="btn btn-accent ml-8" [routerLink]="'/edit/' + entityKey + '/' + data.id">
@@ -16,7 +16,7 @@
             <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>
           </div>
         }
-      }</ng-container>
-    }</ng-container>
-  }</ng-container>
+      }
+    }
+  }
 </div>

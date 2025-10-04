@@ -40,14 +40,14 @@ INSERT INTO metadata.permissions (table_name, permission) VALUES
   ('WorkPackageStatus', 'delete')
 ON CONFLICT (table_name, permission) DO NOTHING;
 
--- Grant read permission to anonymous users for all tables
+-- Grant read permission to all roles for all tables
 INSERT INTO metadata.permission_roles (permission_id, role_id)
 SELECT p.id, r.id
 FROM metadata.permissions p
 CROSS JOIN metadata.roles r
 WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage', 'WorkPackageStatus')
   AND p.permission = 'read'
-  AND r.display_name = 'anonymous'
+  AND r.display_name IN ('anonymous', 'user', 'editor', 'admin')
 ON CONFLICT DO NOTHING;
 
 -- Grant create/update to authenticated users (user, editor, admin)

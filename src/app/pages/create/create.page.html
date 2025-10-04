@@ -1,6 +1,6 @@
 <div class="prose">
-  <ng-container *ngrxLet="entity$ as entity">@if (entity) {
-    <ng-container *ngrxLet="properties$ as props">@if (props) {
+  @if (entity$ | async; as entity) {
+    @if (properties$ | async; as props) {
       <h1>New {{ entity.display_name }}</h1>
       @if (createForm) {
         <form [formGroup]="createForm" (ngSubmit)="submitForm($event)">
@@ -16,7 +16,7 @@
           </button>
         </form>
       }
-    }</ng-container>
+    }
     <app-dialog #successDialog>
       <button class="btn mx-2" (click)="navToCreate(entity.table_name)">Create another {{entity.display_name}}</button>
       <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
@@ -25,5 +25,5 @@
       <button class="btn mx-2">Try again</button>
       <button class="btn mx-2" (click)="navToList(entity.table_name)">Back to {{entity.display_name}} list</button>
     </app-dialog>
-  }</ng-container>
+  }
 </div>

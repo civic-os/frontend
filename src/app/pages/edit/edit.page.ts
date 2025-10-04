@@ -8,13 +8,13 @@ import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity
 import { DialogComponent } from '../../components/dialog/dialog.component';
 
 import { EditPropertyComponent } from '../../components/edit-property/edit-property.component';
-import { LetDirective } from '@ngrx/component';
+import { CommonModule } from '@angular/common';
 
 @Component({
     selector: 'app-edit',
     imports: [
     EditPropertyComponent,
-    LetDirective,
+    CommonModule,
     ReactiveFormsModule,
     DialogComponent
 ],
@@ -67,8 +67,7 @@ export class EditPage {
     this.data$ = this.properties$.pipe(mergeMap(props => {
       if(props && this.entityKey) {
         let columns = props
-          // .map(x => SchemaService.propertyToSelectString(x));
-          .map(x => x.column_name);
+          .map(x => SchemaService.propertyToSelectString(x));
         return this.data.getData({key: this.entityKey, entityId: this.entityId, fields: columns})
           .pipe(map(x => x[0]));
       } else {

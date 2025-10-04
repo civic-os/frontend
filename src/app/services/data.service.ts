@@ -36,10 +36,17 @@ export class DataService {
   }
 
   public createData(entity: string, data: any): Observable<ApiResponse> {
-    return this.http.post(environment.postgrestUrl + entity, data)
+    return this.http.post(environment.postgrestUrl + entity, data, {
+      headers: {
+        Prefer: 'return=representation'
+      }
+    })
       .pipe(
-        catchError(this.parseApiError),
-        map(this.parseApiResponse),
+        catchError((err) => this.parseApiError(err)),
+        map(body => {
+          // If we got here, it's a successful response
+          return <ApiResponse>{success: true, body: body};
+        }),
       );
   }
   public editData(entity: string, id: string | number, data: any): Observable<ApiResponse> {

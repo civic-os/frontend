@@ -4,7 +4,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { SchemaService } from './services/schema.service';
 import { Observable } from 'rxjs';
 import { OpenAPIV2 } from 'openapi-types';
-import { LetDirective } from '@ngrx/component';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SchemaEntityTable } from './interfaces/entity';
 import { AuthService } from './services/auth.service';
@@ -13,7 +13,7 @@ import { AuthService } from './services/auth.service';
     selector: 'app-root',
     imports: [
     RouterOutlet,
-    LetDirective,
+    CommonModule,
     FormsModule
 ],
     templateUrl: './app.component.html',

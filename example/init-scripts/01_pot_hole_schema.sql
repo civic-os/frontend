@@ -24,7 +24,8 @@ CREATE TABLE "public"."Issue" (
 	"display_name" TEXT NOT NULL,
 	"status" BIGINT NOT NULL DEFAULT '1'::BIGINT,
 	"created_user" UUID DEFAULT public.current_user_id(),
-	"work_package" BIGINT
+	"work_package" BIGINT,
+	"location" geography(Point, 4326)
 );
 
 -- IssueStatus table
@@ -308,6 +309,14 @@ CREATE TRIGGER set_created_at_trigger
   BEFORE INSERT ON public."WorkPackageStatus"
   FOR EACH ROW
   EXECUTE FUNCTION public.set_created_at();
+
+-- Computed field function to expose geography as text for PostgREST
+CREATE OR REPLACE FUNCTION public.location_text("Issue")
+RETURNS text AS $$
+  SELECT ST_AsText($1.location);
+$$ LANGUAGE SQL STABLE;
+
+GRANT EXECUTE ON FUNCTION public.location_text("Issue") TO web_anon, authenticated;
 
 -- Notify PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

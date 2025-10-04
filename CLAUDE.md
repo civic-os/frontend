@@ -54,6 +54,39 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 - `IntegerNumber`: `int4`/`int8` → Number input
 - `TextShort`: `varchar` → Text input
 - `TextLong`: `text` → Textarea
+- `GeoPoint`: `geography(Point, 4326)` → Interactive map (Leaflet) with location picker
+
+#### Geography (GeoPoint) Type Requirements
+
+**IMPORTANT**: When adding a geography column, you must create a paired computed field function for PostgREST to expose the data in a readable format.
+
+**Pattern**: For each geography column `<column_name>`, create a function `<column_name>_text`:
+
+```sql
+-- Example: Issue table with location column
+CREATE TABLE "public"."Issue" (
+  "location" geography(Point, 4326)
+);
+
+-- Required computed field function
+CREATE OR REPLACE FUNCTION public.location_text("Issue")
+RETURNS text AS $$
+  SELECT ST_AsText($1.location);
+$$ LANGUAGE SQL STABLE;
+
+GRANT EXECUTE ON FUNCTION public.location_text("Issue") TO web_anon, authenticated;
+```
+
+**How it works**:
+1. The computed field function converts geography to Well-Known Text format (e.g., `"POINT(-83.6875 43.0125)"`)
+2. PostgREST automatically exposes `<column_name>_text` as a virtual computed field
+3. The frontend's `SchemaService.propertyToSelectString()` detects GeoPoint types and selects `location:location_text` (using PostgREST aliasing)
+4. Data returns with the original column name: `{"location": "POINT(-83.6875 43.0125)"}`
+5. Display/edit components parse the WKT string to extract coordinates for the map
+
+**Data format**:
+- **Insert/Update**: Send EWKT string `"SRID=4326;POINT(lng lat)"`
+- **Read**: Receive WKT string `"POINT(lng lat)"` (aliased to column name)
 
 ## Development Commands
 

@@ -268,7 +268,16 @@ SELECT
   columns.is_updatable::text = 'YES'::text AS is_updatable,
   relations.join_schema,
   relations.join_table,
-  relations.join_column
+  relations.join_column,
+  -- Extract geography/geometry subtype (e.g., 'Point' from 'geography(Point,4326)')
+  CASE
+    WHEN columns.udt_name::text IN ('geography', 'geometry') THEN
+      SUBSTRING(
+        pg_type_info.formatted_type
+        FROM '\(([A-Za-z]+)'
+      )
+    ELSE NULL
+  END AS geography_type
 FROM information_schema.columns
 LEFT JOIN (
   SELECT
@@ -297,6 +306,20 @@ LEFT JOIN (
 LEFT JOIN metadata.properties
   ON properties.table_name = columns.table_name::name
   AND properties.column_name = columns.column_name::name
+LEFT JOIN (
+  SELECT
+    c.relname AS table_name,
+    a.attname AS column_name,
+    format_type(a.atttypid, a.atttypmod) AS formatted_type
+  FROM pg_attribute a
+  JOIN pg_class c ON a.attrelid = c.oid
+  JOIN pg_namespace n ON c.relnamespace = n.oid
+  WHERE n.nspname = 'public'
+    AND a.attnum > 0
+    AND NOT a.attisdropped
+) pg_type_info
+  ON pg_type_info.table_name = columns.table_name::name
+  AND pg_type_info.column_name = columns.column_name::name
 WHERE columns.table_schema::name = 'public'::name
   AND columns.table_name::name IN (
     SELECT schema_entities.table_name FROM schema_entities

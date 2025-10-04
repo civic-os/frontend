@@ -1,0 +1,14 @@
+.leaflet-map-edit {
+  height: 300px;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 0.5rem;
+  cursor: crosshair;
+  position: relative;
+  overflow: hidden;
+}
+
+.geo-point-edit {
+  width: 100%;
+  max-width: 400px;
+}

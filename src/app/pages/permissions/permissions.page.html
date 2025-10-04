@@ -1,19 +1,19 @@
 <div class="container mx-auto p-6">
   <h1 class="text-3xl font-bold mb-6">Permissions Management</h1>
 
-  @if (error) {
+  @if (error()) {
     <div class="alert alert-error mb-4">
-      <span>{{ error }}</span>
+      <span>{{ error() }}</span>
     </div>
   }
 
-  @if (loading) {
+  @if (loading()) {
     <div class="flex justify-center items-center min-h-[400px]">
       <span class="loading loading-spinner loading-lg"></span>
     </div>
   }
 
-  @if (!loading && isAdmin && !error) {
+  @if (!loading() && isAdmin() && !error()) {
     <div>
       <!-- Role Selector -->
       <div class="w-full max-w-xs mb-6">
@@ -23,9 +23,9 @@
         <select
           id="role-selector"
           class="select"
-          [(ngModel)]="selectedRoleId"
-          (ngModelChange)="onRoleChange()">
-          @for (role of roles; track role) {
+          [ngModel]="selectedRoleId()"
+          (ngModelChange)="selectedRoleId.set($event); onRoleChange()">
+          @for (role of roles(); track role) {
             <option [value]="role.id">
               {{ role.display_name }}
             </option>
@@ -45,7 +45,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (row of permissionMatrix; track row) {
+            @for (row of permissionMatrix(); track row) {
               <tr>
                 <td class="font-semibold">{{ row.tableName }}</td>
                 <td class="text-center">

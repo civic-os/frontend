@@ -1,5 +1,5 @@
 <div class="prose max-w-none">
-  <ng-container *ngrxLet="entity$ as entity">@if (entity) {
+  @if (entity$ | async; as entity) {
     <h1>{{ entity.display_name }} List</h1>
     <div class="overflow-x-auto">
       @if (entity.insert) {
@@ -8,7 +8,7 @@
         </button>
       }
       <table class="table">
-        <ng-container *ngrxLet="properties$ as props">@if (props) {
+        @if (properties$ | async; as props) {
           <!-- head -->
           <thead>
             <tr>
@@ -17,7 +17,7 @@
               }
             </tr>
           </thead>
-          <ng-container *ngrxLet="data$ as data">
+          @if (data$ | async; as data) {
             <tbody>
               @if (data?.length) {
                 @for (row of data; track row) {
@@ -35,9 +35,9 @@
                 </tr>
               }
             </tbody>
-          </ng-container>
-        }</ng-container>
+          }
+        }
       </table>
     </div>
-  }</ng-container>
+  }
 </div>

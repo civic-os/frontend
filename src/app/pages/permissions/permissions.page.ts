@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 import { PermissionsService, Role, RolePermission } from '../../services/permissions.service';
 import { AuthService } from '../../services/auth.service';
 import { forkJoin } from 'rxjs';
@@ -15,7 +16,7 @@ interface PermissionMatrix {
 
 @Component({
   selector: 'app-permissions',
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './permissions.page.html',
   styleUrl: './permissions.page.css'
 })
@@ -23,12 +24,13 @@ export class PermissionsPage {
   private permissionsService = inject(PermissionsService);
   public auth = inject(AuthService);
 
-  roles: Role[] = [];
-  selectedRoleId?: number;
-  permissionMatrix: PermissionMatrix[] = [];
-  loading = true;
-  error?: string;
-  isAdmin = false;
+  // Use signals for reactive state in zoneless mode
+  roles = signal<Role[]>([]);
+  selectedRoleId = signal<number | undefined>(undefined);
+  permissionMatrix = signal<PermissionMatrix[]>([]);
+  loading = signal(true);
+  error = signal<string | undefined>(undefined);
+  isAdmin = signal(false);
   permissionTypes = ['create', 'read', 'update', 'delete'];
 
   constructor() {
@@ -38,35 +40,35 @@ export class PermissionsPage {
   private checkAdminAndLoadData() {
     this.permissionsService.isAdmin().subscribe({
       next: (isAdmin) => {
-        this.isAdmin = isAdmin;
+        this.isAdmin.set(isAdmin);
         if (isAdmin) {
           this.loadRoles();
         } else {
-          this.error = 'Admin access required';
-          this.loading = false;
+          this.error.set('Admin access required');
+          this.loading.set(false);
         }
       },
       error: (err) => {
-        this.error = 'Failed to verify admin access';
-        this.loading = false;
+        this.error.set('Failed to verify admin access');
+        this.loading.set(false);
       }
     });
   }
 
   private loadRoles() {
     this.permissionsService.getRoles().subscribe({
-      next: (roles) => {
-        this.roles = roles;
-        if (roles.length > 0) {
-          this.selectedRoleId = roles[0].id;
+      next: (rolesData) => {
+        this.roles.set(rolesData);
+        if (rolesData.length > 0) {
+          this.selectedRoleId.set(rolesData[0].id);
           this.loadPermissions();
         } else {
-          this.loading = false;
+          this.loading.set(false);
         }
       },
       error: (err) => {
-        this.error = 'Failed to load roles';
-        this.loading = false;
+        this.error.set('Failed to load roles');
+        this.loading.set(false);
       }
     });
   }
@@ -76,26 +78,27 @@ export class PermissionsPage {
   }
 
   private loadPermissions() {
-    if (this.selectedRoleId === undefined) return;
+    const roleId = this.selectedRoleId();
+    if (roleId === undefined) return;
 
-    this.loading = true;
+    this.loading.set(true);
     forkJoin({
       tables: this.permissionsService.getTables(),
-      permissions: this.permissionsService.getRolePermissions(this.selectedRoleId)
+      permissions: this.permissionsService.getRolePermissions(roleId)
     }).subscribe({
       next: ({ tables, permissions }) => {
         this.buildPermissionMatrix(tables, permissions);
-        this.loading = false;
+        this.loading.set(false);
       },
       error: (err) => {
-        this.error = 'Failed to load permissions';
-        this.loading = false;
+        this.error.set('Failed to load permissions');
+        this.loading.set(false);
       }
     });
   }
 
   private buildPermissionMatrix(tables: string[], permissions: RolePermission[]) {
-    this.permissionMatrix = tables.map(tableName => {
+    const matrix = tables.map(tableName => {
       const tablePerms = permissions.filter(p => p.table_name === tableName);
       return {
         tableName,
@@ -105,32 +108,38 @@ export class PermissionsPage {
         delete: tablePerms.find(p => p.permission_type === 'delete')?.has_permission || false
       };
     });
+    this.permissionMatrix.set(matrix);
   }
 
   togglePermission(tableName: string, permission: string, currentValue: boolean) {
-    if (this.selectedRoleId === undefined) return;
+    const roleId = this.selectedRoleId();
+    if (roleId === undefined) return;
 
     const newValue = !currentValue;
 
     this.permissionsService.setRolePermission(
-      this.selectedRoleId,
+      roleId,
       tableName,
       permission,
       newValue
     ).subscribe({
       next: (response) => {
         if (response.success) {
-          // Update local matrix
-          const row = this.permissionMatrix.find(r => r.tableName === tableName);
-          if (row) {
-            (row as any)[permission] = newValue;
-          }
+          // Update local matrix using signal update
+          this.permissionMatrix.update(matrix => {
+            const updated = [...matrix];
+            const row = updated.find(r => r.tableName === tableName);
+            if (row) {
+              (row as any)[permission] = newValue;
+            }
+            return updated;
+          });
         } else {
-          this.error = response.error?.humanMessage || 'Failed to update permission';
+          this.error.set(response.error?.humanMessage || 'Failed to update permission');
         }
       },
       error: (err) => {
-        this.error = 'Failed to update permission';
+        this.error.set('Failed to update permission');
       }
     });
   }

@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 
 import { EditPropertyComponent } from "../../components/edit-property/edit-property.component";
-import { LetDirective } from '@ngrx/component';
+import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
 import { DialogComponent } from "../../components/dialog/dialog.component";
@@ -16,7 +16,7 @@ import { DialogComponent } from "../../components/dialog/dialog.component";
     styleUrl: './create.page.css',
     imports: [
     EditPropertyComponent,
-    LetDirective,
+    CommonModule,
     ReactiveFormsModule,
     DialogComponent
 ]

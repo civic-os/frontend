@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
 
-import { LetDirective } from '@ngrx/component';
+import { CommonModule } from '@angular/common';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 
 @Component({
@@ -13,7 +13,7 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
     templateUrl: './detail.page.html',
     styleUrl: './detail.page.css',
     imports: [
-    LetDirective,
+    CommonModule,
     RouterModule,
     DisplayPropertyComponent
 ]
@@ -49,7 +49,6 @@ export class DetailPage {
     }));
     this.data$ = this.properties$.pipe(mergeMap(props => {
       if(props && this.entityKey) {
-        console.log(props)
         let columns = props
           .map(x => SchemaService.propertyToSelectString(x));
         return this.data.getData({key: this.entityKey, fields: columns, entityId: this.entityId})

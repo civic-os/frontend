@@ -28,6 +28,7 @@ export interface SchemaEntityProperty {
     join_schema: string,
     join_table: string,
     join_column: string,
+    geography_type: string,
 
     type: EntityPropertyType, // Calculated in Schema Service
 }
@@ -45,6 +46,7 @@ export enum EntityPropertyType {
     DecimalNumber,
     ForeignKeyName,
     User,
+    GeoPoint,
 }
 
 export interface EntityData {
