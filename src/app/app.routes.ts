@@ -3,8 +3,13 @@ import { ListPage } from './pages/list/list.page';
 import { DetailPage } from './pages/detail/detail.page';
 import { CreatePage } from './pages/create/create.page';
 import { EditPage } from './pages/edit/edit.page';
+import { PermissionsPage } from './pages/permissions/permissions.page';
 
 export const routes: Routes = [
+    {
+        path: 'permissions',
+        component: PermissionsPage
+    },
     {
         path: 'view/:entityKey',
         component: ListPage

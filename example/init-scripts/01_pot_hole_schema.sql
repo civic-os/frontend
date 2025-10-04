@@ -305,3 +305,6 @@ CREATE TRIGGER set_created_at_trigger
   BEFORE INSERT ON public."WorkPackageStatus"
   FOR EACH ROW
   EXECUTE FUNCTION public.set_created_at();
+
+-- Notify PostgREST to reload schema cache
+NOTIFY pgrst, 'reload schema';

@@ -160,6 +160,83 @@ The `SchemaService.propertyToSelectString()` method builds PostgREST-compatible 
   - Client ID: `myclient`
 - Bearer token automatically included for requests to `localhost:3000` via `includeBearerTokenInterceptor`
 
+## Role-Based Access Control (RBAC)
+
+### Database-Driven Permissions
+
+Civic OS uses a flexible RBAC system where permissions are stored in the database:
+
+- **Roles** (`metadata.roles`): Defines user roles (e.g., `anonymous`, `user`, `editor`, `admin`)
+- **Permissions** (`metadata.permissions`): Defines table-level CRUD permissions (`create`, `read`, `update`, `delete`)
+- **Permission Roles** (`metadata.permission_roles`): Junction table mapping roles to permissions
+
+### Default Roles
+
+The system comes with four predefined roles (defined in `postgres/3_rbac_sample_data.sql`):
+- `anonymous` - Unauthenticated users
+- `user` - Standard authenticated user
+- `editor` - Can create and edit content
+- `admin` - Full administrative access (required for permissions management UI)
+
+### Configuring Keycloak Roles
+
+For roles to work, you must configure Keycloak to include role claims in JWT tokens:
+
+1. **Access Keycloak Admin Console**
+   - Navigate to `https://auth.civic-os.org` (or your Keycloak URL)
+   - Login with admin credentials
+   - Select the `civic-os-dev` realm
+
+2. **Create Realm Roles**
+   - Go to **Realm Roles** → **Create Role**
+   - Create roles matching database roles: `user`, `editor`, `admin`
+   - The `anonymous` role is automatically assigned by the backend for unauthenticated requests
+
+3. **Assign Roles to Users**
+   - Go to **Users** → Select your user
+   - Click **Role Mapping** tab
+   - Click **Assign Role**
+   - Select roles (e.g., `admin`) and click **Assign**
+
+4. **Configure Client Scopes** (if roles aren't appearing in JWT)
+   - Go to **Client Scopes** → **roles** → **Mappers** tab
+   - Ensure there's a mapper with:
+     - Mapper Type: `User Realm Role`
+     - Token Claim Name: `realm_access.roles` or `roles`
+     - Add to ID token: ON
+     - Add to access token: ON
+     - Add to userinfo: ON
+
+5. **Verify JWT Token Contents**
+   - After logging in, check browser console for JWT token
+   - Or use `jwt.io` to decode your access token
+   - Ensure roles appear in token payload under `realm_access.roles` or `roles`
+
+### How Roles Work in Civic OS
+
+**Backend (PostgreSQL)**:
+- `public.get_user_roles()` extracts roles from JWT claims
+- `public.has_permission(table_name, permission)` checks if user's roles grant access
+- `public.is_admin()` checks if user has the `admin` role
+- Row Level Security (RLS) policies use these functions to enforce permissions
+
+**Frontend (Angular)**:
+- `AuthService.userRoles` populated from Keycloak JWT on login
+- `AuthService.hasRole(roleName)` checks for specific role
+- `AuthService.isAdmin()` checks for admin role
+- UI elements conditionally rendered based on roles
+
+### Managing Permissions (Admin Only)
+
+Admins can manage role permissions via the **Permissions** page (`/permissions`):
+1. Login as a user with the `admin` role
+2. Open the left menu and click **Permissions** under the Admin section
+3. Select a role from the dropdown
+4. Toggle checkboxes to grant/revoke CRUD permissions for each table
+5. Changes are saved automatically
+
+**Note**: The Permissions page requires the `admin` role both at the database level (`public.is_admin()` check) and in the UI (menu visibility).
+
 ## Styling
 
 - **Tailwind CSS** for utility classes

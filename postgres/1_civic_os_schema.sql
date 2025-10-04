@@ -351,3 +351,6 @@ CREATE TRIGGER set_updated_at_trigger
 GRANT USAGE ON SCHEMA public TO web_anon, authenticated;
 GRANT SELECT ON public.civic_os_users TO web_anon, authenticated;
 GRANT SELECT ON public.civic_os_users_private TO authenticated;
+
+-- Notify PostgREST to reload schema cache
+NOTIFY pgrst, 'reload schema';

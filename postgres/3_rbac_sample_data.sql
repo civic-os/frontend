@@ -69,3 +69,31 @@ WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage
   AND p.permission = 'delete'
   AND r.display_name IN ('editor', 'admin')
 ON CONFLICT DO NOTHING;
+
+-- Create permissions for metadata management tables (admin-only)
+INSERT INTO metadata.permissions (table_name, permission) VALUES
+  ('roles', 'read'),
+  ('roles', 'create'),
+  ('roles', 'update'),
+  ('roles', 'delete'),
+  ('permissions', 'read'),
+  ('permissions', 'create'),
+  ('permissions', 'update'),
+  ('permissions', 'delete'),
+  ('permission_roles', 'read'),
+  ('permission_roles', 'create'),
+  ('permission_roles', 'update'),
+  ('permission_roles', 'delete')
+ON CONFLICT (table_name, permission) DO NOTHING;
+
+-- Grant all metadata permissions to admin role only
+INSERT INTO metadata.permission_roles (permission_id, role_id)
+SELECT p.id, r.id
+FROM metadata.permissions p
+CROSS JOIN metadata.roles r
+WHERE p.table_name IN ('roles', 'permissions', 'permission_roles')
+  AND r.display_name = 'admin'
+ON CONFLICT DO NOTHING;
+
+-- Notify PostgREST to reload schema cache
+NOTIFY pgrst, 'reload schema';

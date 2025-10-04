@@ -49,6 +49,12 @@
 		<ul *ngIf="menuItems" class="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
 			<!-- Sidebar content here -->
 			<li *ngFor="let entity of menuItems" (click)="navigate(entity.table_name)"><a>{{ entity.display_name }}</a></li>
+
+			<!-- Permissions link (admin-only) -->
+			<li *ngIf="auth.isAdmin()" class="menu-title mt-4">
+				<span>Admin</span>
+			</li>
+			<li *ngIf="auth.isAdmin()" (click)="navigateToPermissions()"><a>Permissions</a></li>
 		</ul>
 	</ng-container>
   </div>

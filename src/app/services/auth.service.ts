@@ -8,6 +8,7 @@ import { DataService } from './data.service';
 })
 export class AuthService {
   authenticated = false;
+  userRoles: string[] = [];
 
   constructor(
     private data: DataService,
@@ -21,6 +22,7 @@ export class AuthService {
         this.authenticated = typeEventArgs<ReadyArgs>(keycloakEvent.args);
 
         if (this.authenticated) {
+          this.loadUserRoles();
           this.data.refreshCurrentUser().subscribe({
             next: (result) => {
               if (result.success) {
@@ -36,10 +38,36 @@ export class AuthService {
 
       if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
         this.authenticated = false;
+        this.userRoles = [];
       }
     });
   }
   private readonly keycloak = inject(Keycloak);
+
+  private loadUserRoles() {
+    try {
+      const tokenParsed = this.keycloak.tokenParsed;
+      if (tokenParsed) {
+        // Keycloak stores roles in different places depending on configuration
+        // Try realm_access.roles first, then resource_access, then a custom 'roles' claim
+        this.userRoles = tokenParsed['realm_access']?.['roles'] ||
+                        tokenParsed['resource_access']?.['myclient']?.['roles'] ||
+                        tokenParsed['roles'] ||
+                        [];
+      }
+    } catch (error) {
+      console.error('Error loading user roles:', error);
+      this.userRoles = [];
+    }
+  }
+
+  hasRole(roleName: string): boolean {
+    return this.userRoles.includes(roleName);
+  }
+
+  isAdmin(): boolean {
+    return this.hasRole('admin');
+  }
 
   login() {
     this.keycloak.login();

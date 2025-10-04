@@ -118,3 +118,6 @@ CREATE TRIGGER set_updated_at_trigger
 --   AND p.permission = 'delete'
 --   AND r.display_name IN ('editor', 'admin')
 -- ON CONFLICT DO NOTHING;
+
+-- Notify PostgREST to reload schema cache
+NOTIFY pgrst, 'reload schema';

@@ -38,6 +38,11 @@ export class AppComponent {
     this.drawerOpen = false;
   }
 
+  public navigateToPermissions() {
+    this.router.navigate(['permissions']);
+    this.drawerOpen = false;
+  }
+
   public getMenuKeys(menuItems: OpenAPIV2.DefinitionsObject | undefined) : string[] {
     if(menuItems) {
       return Object.keys(menuItems).sort();
