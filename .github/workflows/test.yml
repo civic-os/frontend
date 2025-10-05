@@ -25,7 +25,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Run unit tests
-        run: npm test -- --no-watch --browsers=ChromeHeadlessCI --code-coverage
+        run: npm run test:headless -- --code-coverage
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
