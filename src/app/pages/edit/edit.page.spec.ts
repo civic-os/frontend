@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { EditPage } from './edit.page';
 
 describe('EditPage', () => {
@@ -8,13 +10,17 @@ describe('EditPage', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EditPage]
+      imports: [EditPage],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([]),
+        provideHttpClient()
+      ]
     })
     .compileComponents();
-    
+
     fixture = TestBed.createComponent(EditPage);
     component = fixture.componentInstance;
-    fixture.detectChanges();
   });
 
   it('should create', () => {

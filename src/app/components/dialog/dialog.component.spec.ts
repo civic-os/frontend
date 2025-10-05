@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { provideZonelessChangeDetection } from '@angular/core';
 import { DialogComponent } from './dialog.component';
 
 describe('DialogComponent', () => {
@@ -8,13 +8,13 @@ describe('DialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DialogComponent]
+      imports: [DialogComponent],
+      providers: [provideZonelessChangeDetection()]
     })
     .compileComponents();
-    
+
     fixture = TestBed.createComponent(DialogComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
   });
 
   it('should create', () => {
