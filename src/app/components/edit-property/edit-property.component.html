@@ -42,8 +42,16 @@
 
   @if (propType == EntityPropertyType.GeoPoint) {
     <div class="geo-point-edit">
-      <div [id]="'edit-map-' + prop.column_name" class="leaflet-map-edit mb-2"></div>
-      <div class="flex gap-2">
+      <app-geo-point-map
+        mode="edit"
+        [initialValue]="form.get(prop.column_name)?.value"
+        [externalLocation]="currentLocation"
+        width="100%"
+        height="300px"
+        maxWidth="400px"
+        (valueChange)="onMapValueChange($event)">
+      </app-geo-point-map>
+      <div class="flex gap-2 mt-2">
         <button type="button" class="btn btn-sm btn-primary" (click)="useCurrentLocation()">
           <span class="material-symbols-outlined text-sm">my_location</span>
           Use My Location

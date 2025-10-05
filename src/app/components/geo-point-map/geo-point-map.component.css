@@ -1,0 +1,10 @@
+.leaflet-map {
+  border-radius: 0.5rem;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.leaflet-map.edit-mode {
+  cursor: crosshair;
+}

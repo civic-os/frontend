@@ -48,15 +48,22 @@
       }
     }
     @if (propType == EntityPropertyType.GeoPoint) {
-      @if (getCoordinates(datum); as coords) {
+      @if (datum) {
         <div class="geo-point-display">
-          <div [id]="'map-' + prop.column_name" class="leaflet-map-display"></div>
-          <div class="text-xs mt-1">
-            {{ coords[1] | number:'1.6-6' }}, {{ coords[0] | number:'1.6-6' }}
-          </div>
+          <app-geo-point-map
+            mode="display"
+            [initialValue]="datum"
+            width="300px"
+            height="200px">
+          </app-geo-point-map>
+          @if (getCoordinates(datum); as coords) {
+            <div class="text-xs mt-1">
+              {{ coords[1] | number:'1.6-6' }}, {{ coords[0] | number:'1.6-6' }}
+            </div>
+          }
         </div>
       }
-      @if (!getCoordinates(datum)) {
+      @if (!datum) {
         <em>No location set</em>
       }
     }

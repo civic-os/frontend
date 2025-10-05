@@ -18,6 +18,14 @@ Civic OS is a meta-application framework that automatically generates CRUD (Crea
 5. **Dynamic Pages** → List/Detail/Create/Edit pages render based on schema metadata
 6. **Smart Components** → `DisplayPropertyComponent` and `EditPropertyComponent` adapt to property types
 
+### Key Components
+
+**GeoPointMapComponent** (`src/app/components/geo-point-map/`)
+- Reusable Leaflet map component for geography Point fields
+- Supports both display (static) and edit (interactive) modes
+- Handles WKT/EWKT parsing, marker placement, and user location
+- Used by DisplayPropertyComponent and EditPropertyComponent for GeoPoint fields
+
 ### Key Services
 
 **SchemaService** (`src/app/services/schema.service.ts`)
