@@ -6,6 +6,7 @@
   cursor: crosshair;
   position: relative;
   overflow: hidden;
+  z-index: 1;
 }
 
 .geo-point-edit {

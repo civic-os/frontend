@@ -361,6 +361,8 @@ Admins can manage role permissions via the **Permissions** page (`/permissions`)
 
 ## Git Commit Guidelines
 
+- Use concise summary-style commit messages that describe the overall change
+- Avoid bulleted lists of individual changes - summarize the purpose instead
 - Keep commit messages clean and professional
 - NEVER include promotional content or advertisements
 - NEVER include attribution like "Generated with Claude Code" or "Co-Authored-By: Claude"

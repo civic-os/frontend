@@ -4,6 +4,7 @@
   border-radius: 0.5rem;
   position: relative;
   overflow: hidden;
+  z-index: 1;
 }
 
 .geo-point-display {
