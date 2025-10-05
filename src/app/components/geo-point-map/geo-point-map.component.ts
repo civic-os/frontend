@@ -8,15 +8,15 @@ import { environment } from '../../../environments/environment';
   templateUrl: './geo-point-map.component.html',
   styleUrl: './geo-point-map.component.css'
 })
-export class GeoPointMapComponent implements AfterViewInit, OnDestroy, OnChanges {
+export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   @Input() mode: 'display' | 'edit' = 'display';
   @Input() initialValue: string | null = null;
   @Input() width: string = '100%';
   @Input() height: string = '300px';
   @Input() maxWidth?: string;
-  @Input() externalLocation?: { lat: number; lng: number }; // For "Use My Location" button
 
   @Output() valueChange = new EventEmitter<string>();
+  @Output() coordinatesChange = new EventEmitter<[number, number] | null>();
 
   private map?: L.Map;
   private marker?: L.Marker;
@@ -28,16 +28,6 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy, OnChanges
     setTimeout(() => {
       this.initializeMap();
     }, 0);
-  }
-
-  ngOnChanges(changes: SimpleChanges) {
-    // Handle external location updates (e.g., from "Use My Location" button)
-    if (changes['externalLocation'] && !changes['externalLocation'].firstChange) {
-      const location = changes['externalLocation'].currentValue;
-      if (location && this.map) {
-        this.setLocation(location.lat, location.lng);
-      }
-    }
   }
 
   ngOnDestroy() {
@@ -81,6 +71,8 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy, OnChanges
     if (coords) {
       this.currentLng = coords[0];
       this.currentLat = coords[1];
+      // Emit initial coordinates
+      this.coordinatesChange.emit([coords[0], coords[1]]);
     }
 
     // Determine initial center
@@ -167,6 +159,9 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy, OnChanges
       this.createMarker(lat, lng);
     }
 
+    // Emit coordinates for display
+    this.coordinatesChange.emit([lng, lat]);
+
     // Emit value change for edit mode
     if (this.mode === 'edit') {
       const ewkt = `SRID=4326;POINT(${lng} ${lat})`;
@@ -174,10 +169,19 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy, OnChanges
     }
   }
 
-  getCoordinates(): [number, number] | null {
-    if (this.currentLat !== undefined && this.currentLng !== undefined) {
-      return [this.currentLng, this.currentLat];
+  public useCurrentLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          this.setLocation(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          alert('Unable to get your location. Please check your browser permissions.');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
     }
-    return null;
   }
 }

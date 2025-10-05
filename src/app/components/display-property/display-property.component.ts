@@ -20,6 +20,7 @@ export class DisplayPropertyComponent {
   @Input('linkRelated') linkRelated: boolean = true;
 
   propType!: EntityPropertyType;
+  displayCoordinates: [number, number] | null = null;
 
   public EntityPropertyType = EntityPropertyType;
 
@@ -27,18 +28,7 @@ export class DisplayPropertyComponent {
     this.propType = this.prop.type;
   }
 
-  // Helper to parse coordinates from WKT/EWKT format for display
-  getCoordinates(datum: any): number[] | null {
-    if (!datum) return null;
-
-    // Handle WKT/EWKT format: "POINT(lng lat)" or "SRID=4326;POINT(lng lat)"
-    if (typeof datum === 'string') {
-      const match = datum.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
-      if (match) {
-        return [parseFloat(match[1]), parseFloat(match[2])];
-      }
-    }
-
-    return null;
+  onCoordinatesChange(coords: [number, number] | null) {
+    this.displayCoordinates = coords;
   }
 }

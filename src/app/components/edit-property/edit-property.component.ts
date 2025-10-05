@@ -1,7 +1,7 @@
-import { Component, inject, Input, OnDestroy } from '@angular/core';
+import { Component, inject, Input } from '@angular/core';
 import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 
-import { Observable, map, Subscription } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { DataService } from '../../services/data.service';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { NgxCurrencyDirective } from 'ngx-currency';
@@ -24,7 +24,7 @@ import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
         provideNgxMask(),
     ]
 })
-export class EditPropertyComponent implements OnDestroy {
+export class EditPropertyComponent {
   private data = inject(DataService);
 
   @Input('property') prop!: SchemaEntityProperty;
@@ -34,10 +34,6 @@ export class EditPropertyComponent implements OnDestroy {
   propType!: EntityPropertyType;
 
   public EntityPropertyType = EntityPropertyType;
-
-  // GeoPoint properties
-  public currentLocation?: { lat: number; lng: number };
-  private valueChangeSubscription?: Subscription;
 
   ngOnInit() {
     this.propType = this.prop.type;
@@ -55,29 +51,6 @@ export class EditPropertyComponent implements OnDestroy {
           }
         });
       }));
-    }
-  }
-
-  ngOnDestroy() {
-    this.valueChangeSubscription?.unsubscribe();
-  }
-
-  public useCurrentLocation() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          this.currentLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          alert('Unable to get your location. Please check your browser permissions.');
-        }
-      );
-    } else {
-      alert('Geolocation is not supported by your browser.');
     }
   }
 
