@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { DisplayPropertyComponent } from './display-property.component';
 import { EntityPropertyType } from '../../interfaces/entity';
 import { MOCK_PROPERTIES, MOCK_DATA, createMockProperty } from '../../testing';
@@ -14,7 +15,10 @@ describe('DisplayPropertyComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DisplayPropertyComponent],
-      providers: [provideZonelessChangeDetection()]
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([])
+      ]
     })
     .compileComponents();
 
@@ -30,7 +34,7 @@ describe('DisplayPropertyComponent', () => {
   describe('TextShort Type', () => {
     it('should render plain text value', () => {
       component.prop = MOCK_PROPERTIES.textShort;
-      component.datum = MOCK_DATA.textValue;
+      component.datum = 'Test Issue';  // Pass string directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -64,7 +68,7 @@ describe('DisplayPropertyComponent', () => {
   describe('Boolean Type', () => {
     it('should render checked icon for true value', () => {
       component.prop = MOCK_PROPERTIES.boolean;
-      component.datum = MOCK_DATA.booleanTrue;
+      component.datum = true;  // Boolean value directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -76,7 +80,7 @@ describe('DisplayPropertyComponent', () => {
 
     it('should render unchecked icon for false value', () => {
       component.prop = MOCK_PROPERTIES.boolean;
-      component.datum = MOCK_DATA.booleanFalse;
+      component.datum = false;  // Boolean value directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -90,7 +94,7 @@ describe('DisplayPropertyComponent', () => {
   describe('IntegerNumber Type', () => {
     it('should render formatted number', () => {
       component.prop = MOCK_PROPERTIES.integer;
-      component.datum = MOCK_DATA.integer;
+      component.datum = 42;  // Number directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -156,7 +160,7 @@ describe('DisplayPropertyComponent', () => {
   describe('ForeignKeyName Type', () => {
     it('should render linked display_name when linkRelated is true', () => {
       component.prop = MOCK_PROPERTIES.foreignKey;
-      component.datum = MOCK_DATA.foreignKey;
+      component.datum = { id: 1, display_name: 'Open' };  // ForeignKey data directly, not nested
       component.linkRelated = true;
       component.ngOnInit();
       fixture.detectChanges();
@@ -169,7 +173,7 @@ describe('DisplayPropertyComponent', () => {
 
     it('should render plain display_name when linkRelated is false', () => {
       component.prop = MOCK_PROPERTIES.foreignKey;
-      component.datum = MOCK_DATA.foreignKey;
+      component.datum = { id: 1, display_name: 'Open' };  // ForeignKey data directly, not nested
       component.linkRelated = false;
       component.ngOnInit();
       fixture.detectChanges();
@@ -195,7 +199,14 @@ describe('DisplayPropertyComponent', () => {
   describe('User Type', () => {
     it('should render user with private information', () => {
       component.prop = MOCK_PROPERTIES.user;
-      component.datum = MOCK_DATA.user;
+      component.datum = {
+        display_name: 'John Doe',
+        private: {
+          display_name: 'John Doe',
+          email: 'john@example.com',
+          phone: '555-1234'
+        }
+      };
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -243,7 +254,7 @@ describe('DisplayPropertyComponent', () => {
       expect(mapInstance.height).toBe('200px');
     });
 
-    it('should display coordinates when available', () => {
+    it('should display coordinates when available', async () => {
       component.prop = MOCK_PROPERTIES.geoPoint;
       component.datum = MOCK_DATA.geoPoint.location;
       component.ngOnInit();
@@ -251,6 +262,7 @@ describe('DisplayPropertyComponent', () => {
 
       // Simulate coordinates emission from map component
       component.onCoordinatesChange([-83.6875, 43.0125]);
+      await new Promise(resolve => setTimeout(resolve, 10));
       fixture.detectChanges();
 
       const coordsDiv = fixture.debugElement.query(By.css('.text-xs'));
@@ -260,14 +272,14 @@ describe('DisplayPropertyComponent', () => {
       expect(coordsText).toContain('-83.6875'); // Longitude
     });
 
-    it('should show "No location set" for null GeoPoint', () => {
+    it('should show "Not Set" for null GeoPoint', () => {
       component.prop = MOCK_PROPERTIES.geoPoint;
       component.datum = null;
       component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
-      expect(textContent).toContain('No location set');
+      expect(textContent).toContain('Not Set');
     });
   });
 

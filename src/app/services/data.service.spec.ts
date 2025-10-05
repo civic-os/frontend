@@ -347,16 +347,6 @@ describe('DataService', () => {
   });
 
   describe('Error Handling', () => {
-    it('should parse HTTP error response and set httpCode', (done) => {
-      service.getData({ key: 'Issue', fields: [] }).subscribe(response => {
-        // getData doesn't use catchError, so this won't be called
-      });
-
-      const req = httpMock.expectOne(req => req.url.includes('Issue'));
-      req.flush({ message: 'Not found' }, { status: 404, statusText: 'Not Found' });
-      done();
-    });
-
     it('should handle network errors gracefully', (done) => {
       const newData = { name: 'Test' };
 

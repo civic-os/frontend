@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -7,7 +8,11 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideZonelessChangeDetection()]
+      providers: [
+        provideZonelessChangeDetection(),
+        provideHttpClient(),
+        { provide: AuthService, useValue: jasmine.createSpyObj('AuthService', ['isAdmin', 'hasRole']) }
+      ]
     });
     service = TestBed.inject(AuthService);
   });

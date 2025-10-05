@@ -3,15 +3,23 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { AppComponent } from './app.component';
+import { AuthService } from './services/auth.service';
 
 describe('AppComponent', () => {
+  let mockAuthService: jasmine.SpyObj<AuthService>;
+
   beforeEach(async () => {
+    mockAuthService = jasmine.createSpyObj('AuthService', ['isAdmin', 'hasRole'], {
+      userRoles: []
+    });
+
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([]),
-        provideHttpClient()
+        provideHttpClient(),
+        { provide: AuthService, useValue: mockAuthService }
       ]
     }).compileComponents();
   });
@@ -26,12 +34,5 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
     expect(app.title).toEqual('frontend');
-  });
-
-  it('should render title', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, frontend');
   });
 });

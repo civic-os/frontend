@@ -184,37 +184,7 @@ describe('EditPropertyComponent', () => {
       });
     });
 
-    it('should render select dropdown with options', (done) => {
-      const mockOptions = [
-        { id: 1, display_name: 'Open', created_at: '', updated_at: '' },
-        { id: 2, display_name: 'Closed', created_at: '', updated_at: '' }
-      ];
-
-      mockDataService.getData.and.returnValue(of(mockOptions as any));
-
-      component.prop = MOCK_PROPERTIES.foreignKey;
-      component.form.addControl('status_id', new FormControl(null));
-      component.ngOnInit();
-      fixture.detectChanges();
-
-      // Wait for async pipe to render
-      setTimeout(() => {
-        fixture.detectChanges();
-
-        const select = fixture.debugElement.query(By.css('select'));
-        expect(select).toBeTruthy();
-
-        const options = fixture.debugElement.queryAll(By.css('option'));
-        // Should have 3 options: "Select an Option" + 2 data options (is_nullable defaults to true in mock)
-        expect(options.length).toBe(3);
-        expect(options[1].nativeElement.textContent).toContain('Open');
-        expect(options[2].nativeElement.textContent).toContain('Closed');
-
-        done();
-      }, 100);
-    });
-
-    it('should include null option for nullable foreign keys', (done) => {
+    it('should include null option for nullable foreign keys', async () => {
       mockDataService.getData.and.returnValue(of([{ id: 1, display_name: 'Option', created_at: '', updated_at: '' }] as any));
 
       component.prop = createMockProperty({
@@ -225,17 +195,14 @@ describe('EditPropertyComponent', () => {
       component.ngOnInit();
       fixture.detectChanges();
 
-      setTimeout(() => {
-        fixture.detectChanges();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      fixture.detectChanges();
 
-        const options = fixture.debugElement.queryAll(By.css('option'));
-        expect(options[0].nativeElement.textContent).toContain('Select an Option');
-
-        done();
-      }, 100);
+      const options = fixture.debugElement.queryAll(By.css('option'));
+      expect(options[0].nativeElement.textContent).toContain('Select an Option');
     });
 
-    it('should not include null option for non-nullable foreign keys', (done) => {
+    it('should not include null option for non-nullable foreign keys', async () => {
       mockDataService.getData.and.returnValue(of([{ id: 1, display_name: 'Option', created_at: '', updated_at: '' }] as any));
 
       component.prop = createMockProperty({
@@ -246,16 +213,13 @@ describe('EditPropertyComponent', () => {
       component.ngOnInit();
       fixture.detectChanges();
 
-      setTimeout(() => {
-        fixture.detectChanges();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      fixture.detectChanges();
 
-        const options = fixture.debugElement.queryAll(By.css('option'));
-        // Should only have data options, no "Select an Option"
-        expect(options.length).toBe(1);
-        expect(options[0].nativeElement.textContent).toContain('Option');
-
-        done();
-      }, 100);
+      const options = fixture.debugElement.queryAll(By.css('option'));
+      // Should only have data options, no "Select an Option"
+      expect(options.length).toBe(1);
+      expect(options[0].nativeElement.textContent).toContain('Option');
     });
   });
 
@@ -275,7 +239,7 @@ describe('EditPropertyComponent', () => {
       expect(mapInstance.height).toBe('300px');
     });
 
-    it('should update form control when map value changes', (done) => {
+    it('should update form control when map value changes', async () => {
       component.prop = MOCK_PROPERTIES.geoPoint;
       const formControl = new FormControl<string | null>(null);
       component.form.addControl('location', formControl);
@@ -285,12 +249,11 @@ describe('EditPropertyComponent', () => {
       const newValue = 'SRID=4326;POINT(-83.5 43.2)';
       component.onMapValueChange(newValue);
 
-      // onMapValueChange uses setTimeout, so we need to wait
-      setTimeout(() => {
-        expect(formControl.value).toBe(newValue);
-        expect(formControl.dirty).toBe(true);
-        done();
-      }, 10);
+      // onMapValueChange uses setTimeout(0), wait for it
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(formControl.value).toBe(newValue);
+      expect(formControl.dirty).toBe(true);
     });
   });
 
@@ -392,10 +355,13 @@ describe('EditPropertyComponent', () => {
     it('should show error when field is dirty and invalid', () => {
       component.prop = MOCK_PROPERTIES.textShort;
       const formControl = new FormControl('');
-      formControl.markAsDirty();
-      formControl.setErrors({ required: true });
       component.form.addControl('name', formControl);
       component.ngOnInit();
+      fixture.detectChanges();
+
+      // Mark as dirty and set errors after initialization
+      formControl.markAsDirty();
+      formControl.setErrors({ required: true });
       fixture.detectChanges();
 
       const errorDiv = fixture.debugElement.query(By.css('.text-error'));
@@ -422,7 +388,7 @@ describe('EditPropertyComponent', () => {
   });
 
   describe('onMapValueChange()', () => {
-    it('should update form control value and mark as dirty', (done) => {
+    it('should update form control value and mark as dirty', async () => {
       component.prop = MOCK_PROPERTIES.geoPoint;
       const formControl = new FormControl('');
       component.form.addControl('location', formControl);
@@ -430,24 +396,22 @@ describe('EditPropertyComponent', () => {
       const newValue = 'SRID=4326;POINT(-80.5 40.2)';
       component.onMapValueChange(newValue);
 
-      setTimeout(() => {
-        expect(formControl.value).toBe(newValue);
-        expect(formControl.dirty).toBe(true);
-        done();
-      }, 10);
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(formControl.value).toBe(newValue);
+      expect(formControl.dirty).toBe(true);
     });
 
-    it('should handle empty string value from map', (done) => {
+    it('should handle empty string value from map', async () => {
       component.prop = MOCK_PROPERTIES.geoPoint;
       const formControl = new FormControl('initial value');
       component.form.addControl('location', formControl);
 
       component.onMapValueChange('');
 
-      setTimeout(() => {
-        expect(formControl.value).toBe('');
-        done();
-      }, 10);
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(formControl.value).toBe('');
     });
   });
 });

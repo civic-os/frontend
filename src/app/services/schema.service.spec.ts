@@ -149,12 +149,12 @@ describe('SchemaService', () => {
     });
 
     it('should detect IntegerNumber for int4', () => {
-      const prop = createMockProperty({ udt_name: 'int4', join_column: '' });
+      const prop = createMockProperty({ udt_name: 'int4', join_column: null as any });
       expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.IntegerNumber);
     });
 
     it('should detect IntegerNumber for int8', () => {
-      const prop = createMockProperty({ udt_name: 'int8', join_column: '' });
+      const prop = createMockProperty({ udt_name: 'int8', join_column: null as any });
       expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.IntegerNumber);
     });
 
@@ -217,7 +217,7 @@ describe('SchemaService', () => {
 
     it('should prioritize ForeignKeyName over IntegerNumber', () => {
       // int4 alone should be IntegerNumber
-      const intProp = createMockProperty({ udt_name: 'int4', join_column: '' });
+      const intProp = createMockProperty({ udt_name: 'int4', join_column: null as any });
       expect(service['getPropertyType'](intProp)).toBe(EntityPropertyType.IntegerNumber);
 
       // int4 with join_column should be ForeignKeyName
@@ -268,10 +268,10 @@ describe('SchemaService', () => {
   describe('getPropsForList()', () => {
     it('should filter out hidden fields', (done) => {
       const mockProps: SchemaEntityProperty[] = [
-        createMockProperty({ column_name: 'id', udt_name: 'int4' }),
-        createMockProperty({ column_name: 'name', udt_name: 'varchar' }),
-        createMockProperty({ column_name: 'created_at', udt_name: 'timestamp' }),
-        createMockProperty({ column_name: 'updated_at', udt_name: 'timestamp' })
+        createMockProperty({ table_name: 'Issue', column_name: 'id', udt_name: 'int4' }),
+        createMockProperty({ table_name: 'Issue', column_name: 'name', udt_name: 'varchar' }),
+        createMockProperty({ table_name: 'Issue', column_name: 'created_at', udt_name: 'timestamp' }),
+        createMockProperty({ table_name: 'Issue', column_name: 'updated_at', udt_name: 'timestamp' })
       ];
 
       service.getPropsForList(MOCK_ENTITIES.issue).subscribe(props => {
@@ -305,9 +305,9 @@ describe('SchemaService', () => {
   describe('getPropsForCreate()', () => {
     it('should filter out generated and identity columns', (done) => {
       const mockProps: SchemaEntityProperty[] = [
-        createMockProperty({ column_name: 'id', is_identity: true }),
-        createMockProperty({ column_name: 'name', is_updatable: true }),
-        createMockProperty({ column_name: 'computed', is_generated: true })
+        createMockProperty({ table_name: 'Issue', column_name: 'id', is_identity: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'name', is_updatable: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'computed', is_generated: true })
       ];
 
       service.getPropsForCreate(MOCK_ENTITIES.issue).subscribe(props => {
@@ -321,8 +321,8 @@ describe('SchemaService', () => {
 
     it('should filter out non-updatable columns', (done) => {
       const mockProps: SchemaEntityProperty[] = [
-        createMockProperty({ column_name: 'name', is_updatable: true }),
-        createMockProperty({ column_name: 'readonly', is_updatable: false })
+        createMockProperty({ table_name: 'Issue', column_name: 'name', is_updatable: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'readonly', is_updatable: false })
       ];
 
       service.getPropsForCreate(MOCK_ENTITIES.issue).subscribe(props => {
@@ -336,9 +336,9 @@ describe('SchemaService', () => {
 
     it('should filter out hidden fields (id, created_at, updated_at)', (done) => {
       const mockProps: SchemaEntityProperty[] = [
-        createMockProperty({ column_name: 'name', is_updatable: true }),
-        createMockProperty({ column_name: 'created_at', is_updatable: false }),
-        createMockProperty({ column_name: 'updated_at', is_updatable: false })
+        createMockProperty({ table_name: 'Issue', column_name: 'name', is_updatable: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'created_at', is_updatable: false }),
+        createMockProperty({ table_name: 'Issue', column_name: 'updated_at', is_updatable: false })
       ];
 
       service.getPropsForCreate(MOCK_ENTITIES.issue).subscribe(props => {
@@ -354,8 +354,8 @@ describe('SchemaService', () => {
   describe('getPropsForEdit()', () => {
     it('should use same logic as getPropsForCreate', (done) => {
       const mockProps: SchemaEntityProperty[] = [
-        createMockProperty({ column_name: 'name', is_updatable: true }),
-        createMockProperty({ column_name: 'id', is_identity: true })
+        createMockProperty({ table_name: 'Issue', column_name: 'name', is_updatable: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'id', is_identity: true })
       ];
 
       service.getPropsForEdit(MOCK_ENTITIES.issue).subscribe(props => {

@@ -43,8 +43,12 @@ export class DataService {
     })
       .pipe(
         catchError((err) => this.parseApiError(err)),
-        map(body => {
-          // If we got here, it's a successful response
+        map((body: any) => {
+          // Check if it's already an ApiResponse from catchError
+          if (body?.success === false) {
+            return body as ApiResponse;
+          }
+          // Otherwise, it's a successful response
           return <ApiResponse>{success: true, body: body};
         }),
       );
@@ -56,7 +60,7 @@ export class DataService {
       }
     })
       .pipe(
-        catchError(this.parseApiError),
+        catchError((err) => this.parseApiError(err)),
         map(this.parseApiResponse),
         map(x => this.checkEditResult(data, x)),
       );
@@ -65,7 +69,7 @@ export class DataService {
   public refreshCurrentUser(): Observable<ApiResponse> {
     return this.http.post(environment.postgrestUrl + 'rpc/refresh_current_user', {})
       .pipe(
-        catchError(this.parseApiError),
+        catchError((err) => this.parseApiError(err)),
         map(this.parseApiResponse),
       );
   }
@@ -78,9 +82,14 @@ export class DataService {
     }
   }
   private checkEditResult(input: any, representation: any) {
-    console.log(input, representation.body[0]);
+    // If it's already an error response, return it as-is
+    if (representation?.success === false) {
+      return representation;
+    }
+
+    console.log(input, representation.body?.[0]);
     let identical: boolean;
-    if(representation?.body[0] == undefined) {
+    if(representation?.body?.[0] == undefined) {
       identical = false;
     } else {
       identical = (representation != undefined) && Object.keys(input).every(key => {
