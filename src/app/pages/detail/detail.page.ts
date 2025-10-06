@@ -36,7 +36,7 @@ export class DetailPage {
       if(p['entityKey']) {
         return this.schema.getEntity(p['entityKey']);
       } else {
-        return of();
+        return of(undefined);
       }
     }));
     this.properties$ = this.entity$.pipe(mergeMap(e => {
@@ -48,13 +48,13 @@ export class DetailPage {
       }
     }));
     this.data$ = this.properties$.pipe(mergeMap(props => {
-      if(props && this.entityKey) {
+      if(props && props.length > 0 && this.entityKey) {
         let columns = props
           .map(x => SchemaService.propertyToSelectString(x));
         return this.data.getData({key: this.entityKey, fields: columns, entityId: this.entityId})
           .pipe(map(x => x[0]));
       } else {
-        return of();
+        return of(undefined);
       }
     }));
   }

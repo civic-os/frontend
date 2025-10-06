@@ -44,7 +44,7 @@ export class EditPage {
       if(p['entityKey'] && p['entityId']) {
         return this.schema.getEntity(p['entityKey']);
       } else {
-        return of();
+        return of(undefined);
       }
     }));
     this.properties$ = this.entity$.pipe(mergeMap(e => {
@@ -65,19 +65,21 @@ export class EditPage {
       }
     }));
     this.data$ = this.properties$.pipe(mergeMap(props => {
-      if(props && this.entityKey) {
+      if(props && props.length > 0 && this.entityKey) {
         let columns = props
           .map(x => SchemaService.propertyToSelectString(x));
         return this.data.getData({key: this.entityKey, entityId: this.entityId, fields: columns})
           .pipe(map(x => x[0]));
       } else {
-        return of();
+        return of(undefined);
       }
     }),
     tap(data => {
-      Object.keys(data)
-        .filter(key => !['id'].includes(key))
-        .forEach(key => this.editForm?.controls[key].setValue((<any>data)[key]));
+      if (data) {
+        Object.keys(data)
+          .filter(key => !['id'].includes(key))
+          .forEach(key => this.editForm?.controls[key]?.setValue((<any>data)[key]));
+      }
     })
     );
   }

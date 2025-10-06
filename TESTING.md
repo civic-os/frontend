@@ -569,6 +569,236 @@ describe('ListPage Observable chains', () => {
 });
 ```
 
+## Common Testing Pitfalls and Solutions
+
+### Pitfall 1: RxJS Observable Hanging (Empty `of()`)
+
+**Problem:** Using `of()` without arguments causes observables to complete without emitting, leading to tests that timeout waiting for values.
+
+```typescript
+// ❌ WRONG - Observable completes without emitting
+constructor() {
+  this.entity$ = this.route.params.pipe(mergeMap(p => {
+    if(p['entityKey']) {
+      return this.schema.getEntity(p['entityKey']);
+    } else {
+      return of(); // ❌ Never emits! Tests hang waiting for value
+    }
+  }));
+}
+```
+
+**Solution:** Always emit a value with `of()`:
+
+```typescript
+// ✅ CORRECT - Observable emits undefined then completes
+constructor() {
+  this.entity$ = this.route.params.pipe(mergeMap(p => {
+    if(p['entityKey']) {
+      return this.schema.getEntity(p['entityKey']);
+    } else {
+      return of(undefined); // ✅ Emits undefined, allowing tests to complete
+    }
+  }));
+}
+```
+
+**Files affected:** ListPage, DetailPage, CreatePage - all caused 5-15 second timeouts.
+
+### Pitfall 2: Missing Service Mocks for Child Components
+
+**Problem:** When testing pages that render child components using services, forgetting to mock all required service methods causes runtime errors.
+
+```typescript
+// ❌ WRONG - CreatePage renders EditPropertyComponent which needs getData()
+beforeEach(() => {
+  mockDataService = jasmine.createSpyObj('DataService', ['createData']);
+  // ❌ Missing 'getData' - EditPropertyComponent will crash!
+});
+```
+
+**Solution:** Mock all service methods used by child components:
+
+```typescript
+// ✅ CORRECT - Mock all service methods needed by component tree
+beforeEach(() => {
+  mockDataService = jasmine.createSpyObj('DataService', ['createData', 'getData']);
+
+  // Setup default return values for child components
+  mockDataService.getData.and.returnValue(of([]));
+});
+```
+
+**Common scenario:** Foreign key dropdowns in `EditPropertyComponent` need `getData()` to populate options.
+
+### Pitfall 3: DOM-Dependent Libraries in Unit Tests
+
+**Problem:** Testing components that use DOM-dependent libraries (like Leaflet maps) in headless test environments causes "element not found" errors.
+
+```typescript
+// ❌ WRONG - Trying to test Leaflet map creation in unit tests
+it('should initialize map', (done) => {
+  fixture.detectChanges();
+
+  setTimeout(() => {
+    expect(component['map']).toBeDefined(); // ❌ Fails - DOM element not found
+    done();
+  }, 100);
+});
+```
+
+**Solution:** Mock the initialization method, not the library itself:
+
+```typescript
+// ✅ CORRECT - Mock initializeMap to prevent DOM operations
+beforeEach(() => {
+  spyOn<any>(component, 'initializeMap');
+});
+
+it('should call initializeMap after view init', (done) => {
+  fixture.detectChanges();
+
+  setTimeout(() => {
+    expect(component['initializeMap']).toHaveBeenCalled();
+    done();
+  }, 10);
+});
+```
+
+For testing map-dependent methods that require a map object:
+
+```typescript
+// ✅ CORRECT - Provide mock map object for methods that need it
+beforeEach(() => {
+  component['map'] = {
+    setView: jasmine.createSpy('setView'),
+    getZoom: jasmine.createSpy('getZoom').and.returnValue(13),
+    addLayer: jasmine.createSpy('addLayer'),
+    remove: jasmine.createSpy('remove')
+  } as any;
+});
+
+it('should update location', () => {
+  component['setLocation'](43.0, -83.5);
+  expect(component['currentLat']).toBe(43.0);
+  expect(component['currentLng']).toBe(-83.5);
+});
+```
+
+### Pitfall 4: Object Operations on Undefined Data
+
+**Problem:** Applying operations like `Object.keys()` to data that might be undefined causes runtime errors.
+
+```typescript
+// ❌ WRONG - Assumes data is always defined
+this.data$ = this.properties$.pipe(
+  mergeMap(props => {
+    return this.data.getData({...})
+      .pipe(map(x => x[0]));
+  }),
+  tap(data => {
+    Object.keys(data) // ❌ Crashes if data is undefined
+      .forEach(key => this.editForm?.controls[key].setValue(data[key]));
+  })
+);
+```
+
+**Solution:** Add null/undefined checks before operations:
+
+```typescript
+// ✅ CORRECT - Guard against undefined data
+this.data$ = this.properties$.pipe(
+  mergeMap(props => {
+    if (props && props.length > 0 && this.entityKey) {
+      return this.data.getData({...})
+        .pipe(map(x => x[0]));
+    } else {
+      return of(undefined); // Explicit undefined for empty state
+    }
+  }),
+  tap(data => {
+    if (data) { // ✅ Check before using
+      Object.keys(data)
+        .forEach(key => this.editForm?.controls[key]?.setValue(data[key]));
+    }
+  })
+);
+```
+
+### Pitfall 5: Excessive setTimeout Delays in Tests
+
+**Problem:** Using long `setTimeout` delays (100ms+) causes tests to run slowly and can still have race conditions.
+
+```typescript
+// ❌ WRONG - Long timeout makes tests slow, still fragile
+it('should update dialog', (done) => {
+  component.submitForm({});
+
+  setTimeout(() => { // ❌ 100ms delay per test adds up!
+    expect(component.successDialog.open).toHaveBeenCalled();
+    done();
+  }, 100);
+});
+```
+
+**Solution:** Use minimal delays (10ms) or test synchronously when possible:
+
+```typescript
+// ✅ CORRECT - Minimal timeout for async operations
+it('should update dialog', (done) => {
+  component.submitForm({});
+
+  setTimeout(() => {
+    expect(component.successDialog.open).toHaveBeenCalled();
+    done();
+  }, 10); // ✅ 10ms is enough for microtask queue
+});
+
+// ✅ BETTER - Test synchronously when possible
+it('should call service method', () => {
+  component.submitForm({});
+
+  // No setTimeout needed for synchronous assertions
+  expect(mockDataService.createData).toHaveBeenCalled();
+});
+```
+
+### Debugging Hanging Tests
+
+When tests hang or timeout, follow these steps:
+
+1. **Identify the hanging test:**
+   ```bash
+   # Run tests and check where execution stops
+   npm test -- --no-watch --browsers=ChromeHeadless
+   # Note: "Executed X of Y" - test X is the problematic one
+   ```
+
+2. **Run isolated test file:**
+   ```bash
+   # Test specific file to isolate issue
+   npm test -- --no-watch --browsers=ChromeHeadless --include='**/problem.spec.ts'
+   ```
+
+3. **Check for common issues:**
+   - Observable never emitting (use `of(value)` not `of()`)
+   - Missing service mocks in child components
+   - `done()` callback not being called in async tests
+   - DOM elements not available in headless mode
+   - Long setTimeout delays accumulating
+
+4. **Use console logging sparingly:**
+   ```typescript
+   it('should complete', (done) => {
+     console.log('Test started'); // Debug checkpoint
+     observable$.subscribe(value => {
+       console.log('Got value:', value); // Verify emission
+       expect(value).toBeDefined();
+       done();
+     });
+   });
+   ```
+
 ## Future Enhancements
 
 1. **E2E Testing**: Add Cypress/Playwright tests for full user flows
@@ -586,5 +816,5 @@ describe('ListPage Observable chains', () => {
 
 ---
 
-**Last Updated**: 2025-10-04
+**Last Updated**: 2025-10-06
 **Maintainer**: Development Team

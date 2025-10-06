@@ -45,6 +45,8 @@ module.exports = function (config) {
         ]
       }
     },
-    restartOnFileChange: true
+    restartOnFileChange: true,
+    browserNoActivityTimeout: 60000, // 60 seconds (default is 30 seconds)
+    captureTimeout: 210000 // 3.5 minutes (default is 60 seconds)
   });
 };

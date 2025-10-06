@@ -41,7 +41,7 @@ export class CreatePage {
       if(p['entityKey']) {
         return this.schema.getEntity(p['entityKey']);
       } else {
-        return of();
+        return of(undefined);
       }
     }));
     this.properties$ = this.entity$.pipe(mergeMap(e => {
@@ -51,7 +51,7 @@ export class CreatePage {
             this.createForm = new FormGroup(
               Object.fromEntries(
                 props.map(p => [p.column_name, new FormControl(
-                  SchemaService.getDefaultValueForProperty(p), 
+                  SchemaService.getDefaultValueForProperty(p),
                   SchemaService.getFormValidatorsForProperty(p))])
               )
             );
