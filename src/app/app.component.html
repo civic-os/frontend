@@ -59,13 +59,14 @@
           @for (entity of menuItems; track entity) {
             <li (click)="navigate(entity.table_name)"><a>{{ entity.display_name }}</a></li>
           }
-          <!-- Permissions link (admin-only) -->
+          <!-- Admin section (admin-only) -->
           @if (auth.isAdmin()) {
             <li class="menu-title mt-4">
               <span>Admin</span>
             </li>
           }
           @if (auth.isAdmin()) {
+            <li (click)="navigateToEntityManagement()"><a>Entities</a></li>
             <li (click)="navigateToPermissions()"><a>Permissions</a></li>
           }
         </ul>

@@ -8,15 +8,17 @@ This application automatically generates views for listing, detailing, creating,
 - [x] Build Entity metadata table
 - [x] Build Property metadata table
 - [x] Build out User table with public and private fields
-- [x] Build Roles/Permissions schema
 - [ ] Allow one-to-many and many-to-many Properties
 - [ ] Build scheme for editable Properties, default values, etc.
 - [ ] Add Form Validation Messages
 - [ ] Allow sorting/layout of Property Views/Lists
 - [ ] Add User Profile and management
-- [ ] Add Login/Logout Screens
+- [x] Add Login/Logout Screens (uses Keycloak Auth)
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
 - [ ] Expand Form Validation by use of `CHECK` statements
+### Roles
+- [x] Build Roles/Permissions schema
+- [ ] Allow creation of Roles on the Permissions screen (or a role-specific screen). Include display name, description
 ### Workflow
 - [ ] Build table structure for attaching workflow to Entity (Use Properties table)
 - [ ] Build Trigger rules to restrict transitions
@@ -24,7 +26,20 @@ This application automatically generates views for listing, detailing, creating,
 - [ ] Limit UI Selectors based on Workflow
 - [ ] Set up Record Defaults (On Create)
 ### Logic
-- [ ] Build Logic
+- [ ] Build manually triggerable Logic (via Button on Entity page)
+### General
+- [ ] ADA/WCAG Compatibility
+- [ ] SOC II Compliance
+- [ ] Allow Angular app to be configured at container runtime (for flexible deployments)
+
+## To Do [(Phase 2)](https://github.com/civic-os/vision#phase-2-introspection-tools)
+### Schema
+- [ ] Build automatic generation of Entity Relationship Diagrams showing how schema works
+### Workflow
+- [ ] Build automatic generation of Workflow diagrams showing how workflows operate
+### Logic
+- [ ] Build automatic generation of Block Diagrams showing how Logic works
+
 
 ## Documentation
 For detailed setup and usage instructions, see:

@@ -1,7 +1,14 @@
 <div class="prose">
   @if (entity$ | async; as entity) {
     @if (properties$ | async; as props) {
-      <h1>New {{ entity.display_name }}</h1>
+      <h1>
+        New {{ entity.display_name }}
+        @if (entity.description) {
+          <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
+            <span class="material-symbols-outlined text-info cursor-help ml-2 text-2xl align-middle">help_outline</span>
+          </div>
+        }
+      </h1>
       @if (createForm) {
         <form [formGroup]="createForm" (ngSubmit)="submitForm($event)">
           @for (prop of props; track prop) {

@@ -1,0 +1,151 @@
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { EntityManagementService } from './entity-management.service';
+import { environment } from '../../environments/environment';
+
+describe('EntityManagementService', () => {
+  let service: EntityManagementService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideZonelessChangeDetection(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        EntityManagementService
+      ]
+    });
+    service = TestBed.inject(EntityManagementService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+
+  describe('Basic Service Setup', () => {
+    it('should be created', () => {
+      expect(service).toBeTruthy();
+    });
+  });
+
+  describe('upsertEntityMetadata()', () => {
+    it('should call RPC function with correct parameters', (done) => {
+      service.upsertEntityMetadata('Issue', 'Issues', 'Track issues', 1).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_entity_metadata');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        p_table_name: 'Issue',
+        p_display_name: 'Issues',
+        p_description: 'Track issues',
+        p_sort_order: 1
+      });
+      req.flush({});
+    });
+
+    it('should handle null values', (done) => {
+      service.upsertEntityMetadata('Issue', null, null, null).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_entity_metadata');
+      expect(req.request.body).toEqual({
+        p_table_name: 'Issue',
+        p_display_name: null,
+        p_description: null,
+        p_sort_order: null
+      });
+      req.flush({});
+    });
+
+    it('should handle errors', (done) => {
+      service.upsertEntityMetadata('Issue', 'Issues', null, 1).subscribe(response => {
+        expect(response.success).toBe(false);
+        expect(response.error?.humanMessage).toBe('Failed to save entity metadata');
+        done();
+      });
+
+      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_entity_metadata');
+      req.flush({ message: 'Admin access required' }, { status: 403, statusText: 'Forbidden' });
+    });
+  });
+
+  describe('updateEntitiesOrder()', () => {
+    it('should call RPC function for each entity', (done) => {
+      const entities = [
+        { table_name: 'Issue', sort_order: 0 },
+        { table_name: 'WorkPackage', sort_order: 1 },
+        { table_name: 'Bid', sort_order: 2 }
+      ];
+
+      service.updateEntitiesOrder(entities).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      // Expect 3 separate RPC calls - use match to get all requests
+      const requests = httpMock.match(environment.postgrestUrl + 'rpc/update_entity_sort_order');
+      expect(requests.length).toBe(3);
+
+      expect(requests[0].request.body).toEqual({ p_table_name: 'Issue', p_sort_order: 0 });
+      expect(requests[1].request.body).toEqual({ p_table_name: 'WorkPackage', p_sort_order: 1 });
+      expect(requests[2].request.body).toEqual({ p_table_name: 'Bid', p_sort_order: 2 });
+
+      requests.forEach(req => req.flush({}));
+    });
+
+    it('should handle empty array', (done) => {
+      service.updateEntitiesOrder([]).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      httpMock.expectNone(environment.postgrestUrl + 'rpc/update_entity_sort_order');
+    });
+
+    it('should handle errors', (done) => {
+      const entities = [{ table_name: 'Issue', sort_order: 0 }];
+
+      service.updateEntitiesOrder(entities).subscribe(response => {
+        expect(response.success).toBe(false);
+        expect(response.error?.humanMessage).toBe('Failed to update entities order');
+        done();
+      });
+
+      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/update_entity_sort_order');
+      req.flush({ message: 'Error' }, { status: 500, statusText: 'Internal Server Error' });
+    });
+  });
+
+  describe('isAdmin()', () => {
+    it('should call RPC function', (done) => {
+      service.isAdmin().subscribe(result => {
+        expect(result).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({});
+      req.flush(true);
+    });
+
+    it('should return false on error', (done) => {
+      service.isAdmin().subscribe(result => {
+        expect(result).toBe(false);
+        done();
+      });
+
+      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      req.flush({}, { status: 401, statusText: 'Unauthorized' });
+    });
+  });
+});

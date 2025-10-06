@@ -1,6 +1,13 @@
 <div class="prose max-w-none">
   @if (entity$ | async; as entity) {
-    <h1>{{ entity.display_name }} List</h1>
+    <h1>
+      {{ entity.display_name }} List
+      @if (entity.description) {
+        <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
+          <span class="material-symbols-outlined text-info cursor-help ml-2 text-2xl align-middle">help_outline</span>
+        </div>
+      }
+    </h1>
     <div class="overflow-x-auto">
       @if (entity.insert) {
         <button class="btn btn-primary" [routerLink]="'/create/' + entityKey">

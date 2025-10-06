@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { Observable, map, of, tap } from 'rxjs';
+import { BehaviorSubject, Observable, filter, map, of, tap } from 'rxjs';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../interfaces/entity';
 import { ValidatorFn, Validators } from '@angular/forms';
 
@@ -12,28 +12,39 @@ export class SchemaService {
   private http = inject(HttpClient);
 
   public properties?: SchemaEntityProperty[];
-  public tables?: SchemaEntityTable[];
+  private tablesSubject = new BehaviorSubject<SchemaEntityTable[] | undefined>(undefined);
   public static hideFields: string[] = ['id', 'created_at', 'updated_at'];
 
   private getSchema() {
     return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_entities')
     .pipe(tap(tables => {
-      this.tables = tables;
+      this.tablesSubject.next(tables);
     }));
   }
 
   public init() {
-    // this.getSchema().subscribe();
+    // Load schema on init
+    this.getSchema().subscribe();
   }
 
   public refreshCache() {
-    // Refresh schema in background - current values remain available until new ones arrive
+    // Refresh schema in background - new values will emit to subscribers
     this.getSchema().subscribe();
     this.getProperties().subscribe();
   }
 
   public getEntities(): Observable<SchemaEntityTable[]> {
-    return this.tables ? of(this.tables) : this.getSchema();
+    // Always return the reactive BehaviorSubject observable
+    const observable = this.tablesSubject.asObservable().pipe(
+      filter((tables): tables is SchemaEntityTable[] => tables !== undefined)
+    );
+
+    // If no data yet, trigger a fetch in the background
+    if (!this.tablesSubject.value) {
+      this.getSchema().subscribe();
+    }
+
+    return observable;
   }
   public getEntity(key: string): Observable<SchemaEntityTable | undefined> {
     return this.getEntities().pipe(map(e => {

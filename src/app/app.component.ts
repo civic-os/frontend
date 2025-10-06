@@ -42,6 +42,11 @@ export class AppComponent {
     this.drawerOpen = false;
   }
 
+  public navigateToEntityManagement() {
+    this.router.navigate(['entity-management']);
+    this.drawerOpen = false;
+  }
+
   public getMenuKeys(menuItems: OpenAPIV2.DefinitionsObject | undefined) : string[] {
     if(menuItems) {
       return Object.keys(menuItems).sort();

@@ -4,11 +4,16 @@ import { DetailPage } from './pages/detail/detail.page';
 import { CreatePage } from './pages/create/create.page';
 import { EditPage } from './pages/edit/edit.page';
 import { PermissionsPage } from './pages/permissions/permissions.page';
+import { EntityManagementPage } from './pages/entity-management/entity-management.page';
 
 export const routes: Routes = [
     {
         path: 'permissions',
         component: PermissionsPage
+    },
+    {
+        path: 'entity-management',
+        component: EntityManagementPage
     },
     {
         path: 'view/:entityKey',

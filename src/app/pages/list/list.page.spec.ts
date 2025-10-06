@@ -229,4 +229,30 @@ describe('ListPage', () => {
       });
     });
   });
+
+  describe('Entity Description Tooltip', () => {
+    it('should display entity with description in template', (done) => {
+      const entityWithDescription = { ...MOCK_ENTITIES.issue, description: 'Track system issues' };
+      mockSchemaService.getEntity.and.returnValue(of(entityWithDescription));
+      mockSchemaService.getPropsForList.and.returnValue(of([]));
+      mockDataService.getData.and.returnValue(of([] as any));
+
+      component.entity$.subscribe(entity => {
+        expect(entity?.description).toBe('Track system issues');
+        done();
+      });
+    });
+
+    it('should handle entities without description', (done) => {
+      const entityWithoutDescription = { ...MOCK_ENTITIES.issue, description: null };
+      mockSchemaService.getEntity.and.returnValue(of(entityWithoutDescription));
+      mockSchemaService.getPropsForList.and.returnValue(of([]));
+      mockDataService.getData.and.returnValue(of([] as any));
+
+      component.entity$.subscribe(entity => {
+        expect(entity?.description).toBeNull();
+        done();
+      });
+    });
+  });
 });

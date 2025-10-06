@@ -2,7 +2,14 @@
   @if (entity$ | async; as entity) {
     @if (properties$ | async; as props) {
       @if (data$ | async; as data) {
-        <h1>{{ entity.display_name }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub></h1>
+        <h1>
+          {{ entity.display_name }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub>
+          @if (entity.description) {
+            <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
+              <span class="material-symbols-outlined text-info cursor-help ml-2 text-2xl align-middle">help_outline</span>
+            </div>
+          }
+        </h1>
         @if (editForm) {
           <form [formGroup]="editForm" (ngSubmit)="submitForm($event)">
             @for (prop of props; track prop) {

@@ -126,6 +126,16 @@ CREATE TABLE metadata.entities (
   sort_order INT
 );
 
+ALTER TABLE metadata.entities ENABLE ROW LEVEL SECURITY;
+
+-- Admins can manage entity metadata
+CREATE POLICY "Admins can manage entities"
+  ON metadata.entities
+  FOR ALL
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
 -- Property metadata table
 CREATE TABLE metadata.properties (
   table_name NAME,
@@ -169,6 +179,7 @@ CREATE TABLE metadata.permission_roles (
 -- Grant permissions on metadata schema
 GRANT USAGE ON SCHEMA metadata TO web_anon, authenticated;
 GRANT SELECT ON metadata.entities TO web_anon, authenticated;
+GRANT UPDATE, INSERT ON metadata.entities TO authenticated;
 GRANT SELECT ON metadata.properties TO web_anon, authenticated;
 GRANT SELECT ON metadata.permissions TO web_anon, authenticated;
 GRANT SELECT ON metadata.roles TO web_anon, authenticated;
@@ -371,6 +382,58 @@ CREATE TRIGGER set_updated_at_trigger
   BEFORE INSERT OR UPDATE ON public.civic_os_users_private
   FOR EACH ROW
   EXECUTE FUNCTION public.set_updated_at();
+
+-- =====================================================
+-- Entity Management RPC Functions
+-- =====================================================
+
+-- Upsert entity metadata (admin only)
+CREATE OR REPLACE FUNCTION public.upsert_entity_metadata(
+  p_table_name NAME,
+  p_display_name TEXT,
+  p_description TEXT,
+  p_sort_order INT
+)
+RETURNS void AS $$
+BEGIN
+  -- Check if user is admin
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Admin access required';
+  END IF;
+
+  -- Upsert the entity metadata
+  INSERT INTO metadata.entities (table_name, display_name, description, sort_order)
+  VALUES (p_table_name, p_display_name, p_description, p_sort_order)
+  ON CONFLICT (table_name) DO UPDATE
+    SET display_name = EXCLUDED.display_name,
+        description = EXCLUDED.description,
+        sort_order = EXCLUDED.sort_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.upsert_entity_metadata(NAME, TEXT, TEXT, INT) TO authenticated;
+
+-- Update entity sort order (admin only)
+CREATE OR REPLACE FUNCTION public.update_entity_sort_order(
+  p_table_name NAME,
+  p_sort_order INT
+)
+RETURNS void AS $$
+BEGIN
+  -- Check if user is admin
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Admin access required';
+  END IF;
+
+  -- Update or insert with just sort_order
+  INSERT INTO metadata.entities (table_name, sort_order)
+  VALUES (p_table_name, p_sort_order)
+  ON CONFLICT (table_name) DO UPDATE
+    SET sort_order = EXCLUDED.sort_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.update_entity_sort_order(NAME, INT) TO authenticated;
 
 -- =====================================================
 -- Grant schema permissions

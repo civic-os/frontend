@@ -327,6 +327,33 @@ Admins can manage role permissions via the **Permissions** page (`/permissions`)
 
 **Note**: The Permissions page requires the `admin` role both at the database level (`public.is_admin()` check) and in the UI (menu visibility).
 
+### Managing Entity Configuration (Admin Only)
+
+Admins can customize how entities appear in the application via the **Entities** page (`/entity-management`):
+
+**Features**:
+- **Display Names**: Override table names with user-friendly labels (e.g., "Issue" → "Issues")
+- **Descriptions**: Add helpful descriptions that appear as tooltips on List, Create, and Edit pages
+- **Drag-to-Reorder**: Change menu order by dragging entities
+- **Auto-save**: Changes save automatically with visual feedback
+
+**Access**:
+1. Login as a user with the `admin` role
+2. Open the left menu and click **Entities** under the Admin section
+3. Drag entities to reorder them in the menu
+4. Edit display names and descriptions inline
+5. Changes automatically refresh the menu without page reload
+
+**Database Schema**:
+- Entity metadata stored in `metadata.entities` table
+- Protected by RLS policies requiring admin role
+- Updates via RPC functions: `upsert_entity_metadata()`, `update_entity_sort_order()`
+
+**UI Components**:
+- **EntityManagementService** (`src/app/services/entity-management.service.ts`): Handles entity metadata CRUD operations
+- **EntityManagementPage** (`src/app/pages/entity-management/`): Admin UI with drag-drop powered by Angular CDK
+- **Tooltips**: Description tooltips use DaisyUI's tooltip component with `help_outline` icon
+
 **Troubleshooting**: If you encounter issues with RBAC, such as JWT roles not being recognized or permissions not working correctly, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed debugging steps and common solutions.
 
 ## Styling

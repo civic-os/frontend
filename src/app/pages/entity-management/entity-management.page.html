@@ -1,0 +1,87 @@
+<div class="container mx-auto p-6">
+  <h1 class="text-3xl font-bold mb-6">Entity Management</h1>
+
+  @if (error()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center items-center min-h-[400px]">
+      <span class="loading loading-spinner loading-lg"></span>
+    </div>
+  }
+
+  @if (!loading() && isAdmin() && !error()) {
+    <div class="mb-4">
+      <p class="text-sm text-base-content/70">
+        Drag entities to reorder them. Changes are saved automatically.
+      </p>
+    </div>
+
+    <div
+      class="space-y-2"
+      cdkDropList
+      (cdkDropListDropped)="onDrop($event)">
+      @for (entity of entities(); track entity.table_name) {
+        <div
+          class="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
+          cdkDrag>
+          <div class="card-body p-4">
+            <div class="flex items-center gap-4">
+              <!-- Drag Handle -->
+              <div class="cursor-move flex-shrink-0" cdkDragHandle>
+                <span class="material-symbols-outlined text-base-content/50">drag_indicator</span>
+              </div>
+
+              <!-- Entity Info -->
+              <div class="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Table Name (read-only) -->
+                <div>
+                  <label class="label label-text text-xs">Table Name</label>
+                  <div class="font-mono text-sm font-semibold">{{ entity.table_name }}</div>
+                </div>
+
+                <!-- Display Name (editable) -->
+                <div>
+                  <label class="label label-text text-xs">Display Name</label>
+                  <input
+                    type="text"
+                    class="input input-sm input-bordered w-full"
+                    [(ngModel)]="entity.customDisplayName"
+                    (ngModelChange)="onDisplayNameChange(entity)"
+                    (blur)="onFieldBlur(entity)"
+                    [placeholder]="getDisplayNamePlaceholder(entity)" />
+                </div>
+
+                <!-- Description (editable) -->
+                <div>
+                  <label class="label label-text text-xs">Description</label>
+                  <input
+                    type="text"
+                    class="input input-sm input-bordered w-full"
+                    [(ngModel)]="entity.customDescription"
+                    (ngModelChange)="onDescriptionChange(entity)"
+                    (blur)="onFieldBlur(entity)"
+                    placeholder="Optional description" />
+                </div>
+              </div>
+
+              <!-- Status Indicator (aligned with input fields) -->
+              <div class="flex-shrink-0 w-6 flex items-center justify-center self-center">
+                @if (isSaving(entity.table_name)) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                } @else if (isSaved(entity.table_name)) {
+                  <span class="material-symbols-outlined text-success text-lg transition-opacity duration-1000"
+                        [class.opacity-0]="isFading(entity.table_name)"
+                        [class.opacity-100]="!isFading(entity.table_name)">check_circle</span>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
