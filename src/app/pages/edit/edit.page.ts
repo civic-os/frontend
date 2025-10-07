@@ -85,16 +85,33 @@ export class EditPage {
   }
 
   submitForm(contents: any) {
-    console.log(this.entityKey, this.entityId, this.editForm)
-    console.log(this.editForm?.value);
     if(this.entityKey && this.entityId && this.editForm) {
       this.data.editData(this.entityKey, this.entityId, this.editForm.value)
-        .subscribe(result => {
-          console.log(result);
-          if(result.success) {
-            this.successDialog.open();
-          } else {
-            this.errorDialog.open(result.error);
+        .subscribe({
+          next: (result) => {
+            if(result.success === true) {
+              if (this.successDialog) {
+                this.successDialog.open();
+              } else {
+                console.error('Success dialog not available');
+              }
+            } else {
+              if (this.errorDialog) {
+                this.errorDialog.open(result.error);
+              } else {
+                console.error('Error dialog not available', result.error);
+              }
+            }
+          },
+          error: (err) => {
+            console.error('Unexpected error during edit:', err);
+            if (this.errorDialog) {
+              this.errorDialog.open({
+                httpCode: 500,
+                message: 'An unexpected error occurred',
+                humanMessage: 'System Error'
+              });
+            }
           }
         });
     }

@@ -43,13 +43,13 @@ export class DataService {
     })
       .pipe(
         catchError((err) => this.parseApiError(err)),
-        map((body: any) => {
-          // Check if it's already an ApiResponse from catchError
-          if (body?.success === false) {
-            return body as ApiResponse;
+        map((response: any) => {
+          // If it's already an error response from catchError, return as-is
+          if (response && typeof response === 'object' && 'success' in response && response.success === false) {
+            return response as ApiResponse;
           }
-          // Otherwise, it's a successful response
-          return <ApiResponse>{success: true, body: body};
+          // Otherwise, it's a successful HTTP response
+          return <ApiResponse>{success: true, body: response};
         }),
       );
   }
@@ -61,8 +61,14 @@ export class DataService {
     })
       .pipe(
         catchError((err) => this.parseApiError(err)),
-        map(this.parseApiResponse),
-        map(x => this.checkEditResult(data, x)),
+        map((response) => {
+          // If it's already an error response from catchError, return as-is
+          if (response && typeof response === 'object' && 'success' in response && response.success === false) {
+            return response as ApiResponse;
+          }
+          // Otherwise, it's a successful HTTP response - wrap it
+          return this.checkEditResult(data, {success: true, body: response});
+        }),
       );
   }
 
@@ -70,12 +76,20 @@ export class DataService {
     return this.http.post(environment.postgrestUrl + 'rpc/refresh_current_user', {})
       .pipe(
         catchError((err) => this.parseApiError(err)),
-        map(this.parseApiResponse),
+        map((response) => {
+          // If it's already an error response from catchError, return as-is
+          if (response && typeof response === 'object' && 'success' in response && response.success === false) {
+            return response as ApiResponse;
+          }
+          // Otherwise, it's a successful response
+          return <ApiResponse>{success: true, body: response};
+        }),
       );
   }
 
   private parseApiResponse(body: any) {
-    if(body?.success == false) {
+    // Check if it's already an error response with strict equality
+    if(body && typeof body === 'object' && 'success' in body && body.success === false) {
       return body;
     } else {
       return <ApiResponse>{success: true, body: body};
@@ -87,20 +101,52 @@ export class DataService {
       return representation;
     }
 
-    console.log(input, representation.body?.[0]);
     let identical: boolean;
-    if(representation?.body?.[0] == undefined) {
+    if(representation?.body?.[0] === undefined) {
       identical = false;
     } else {
-      identical = (representation != undefined) && Object.keys(input).every(key => {
-        return input[key] == representation.body[0][key];
+      identical = (representation !== undefined) && Object.keys(input).every(key => {
+        return input[key] === representation.body[0][key];
       });
     }
-    return <ApiResponse>{success: identical, error: identical ? null : {humanMessage: "Could not update", message: "Please contact support"}};
+
+    if (identical) {
+      return <ApiResponse>{success: true, body: representation.body};
+    } else {
+      return <ApiResponse>{
+        success: false,
+        error: {
+          httpCode: 400,
+          message: "The update was not applied. The returned data does not match the submitted data.",
+          humanMessage: "Could not update",
+          hint: "Please verify your changes and try again. If the problem persists, contact support."
+        }
+      };
+    }
   }
   private parseApiError(evt: HttpErrorResponse): Observable<ApiResponse> {
-    let error = <ApiError>evt.error;
-    error.httpCode = evt.status;
+    // Safely handle various error response formats
+    let error: ApiError;
+
+    if (evt.error && typeof evt.error === 'object') {
+      // PostgREST or structured error response
+      error = {
+        httpCode: evt.status,
+        code: evt.error.code,
+        details: evt.error.details,
+        hint: evt.error.hint,
+        message: evt.error.message || evt.statusText || 'Unknown error',
+        humanMessage: '' // Will be set below
+      };
+    } else {
+      // Unstructured error (string, null, undefined, network error, etc.)
+      error = {
+        httpCode: evt.status,
+        message: typeof evt.error === 'string' ? evt.error : (evt.statusText || 'Unknown error'),
+        humanMessage: '' // Will be set below
+      };
+    }
+
     error.humanMessage = ErrorService.parseToHuman(error);
     let resp: ApiResponse = {success: false, error: error};
     return of(resp);

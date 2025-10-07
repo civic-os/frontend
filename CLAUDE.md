@@ -394,6 +394,73 @@ Admins can customize how entities appear in the application via the **Entities**
 3. Add rendering logic to `DisplayPropertyComponent`
 4. Add input control to `EditPropertyComponent`
 
+### Angular 20 Reactive State with Signals
+
+**IMPORTANT**: Angular 20 requires Signals for reactive component state to ensure proper change detection, especially with the new control flow syntax (`@if`, `@for`) and zoneless change detection.
+
+**When to use Signals**:
+- Any component property that changes during runtime and is displayed in the template
+- Properties that control conditional rendering (`@if`, `@else`)
+- Data fetched from APIs that updates the UI
+- Form state, loading indicators, error messages
+
+**Pattern**:
+```typescript
+import { Component, signal } from '@angular/core';
+
+export class MyComponent {
+  // ✅ Use Signal for reactive state
+  data = signal<MyData | undefined>(undefined);
+  loading = signal(true);
+  error = signal<string | undefined>(undefined);
+
+  loadData() {
+    this.dataService.fetch().subscribe({
+      next: (result) => {
+        this.data.set(result);  // Update signal
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.error.set(err.message);
+        this.loading.set(false);
+      }
+    });
+  }
+}
+```
+
+**Template syntax**:
+```html
+<!-- Access signal values with () -->
+@if (loading()) {
+  <span class="loading"></span>
+}
+
+<!-- Use 'as' syntax for type narrowing -->
+@if (data(); as myData) {
+  <p>{{ myData.name }}</p>
+  <p>{{ myData.value }}</p>
+}
+
+@if (error(); as err) {
+  <div class="alert alert-error">{{ err }}</div>
+}
+```
+
+**Common mistake**:
+```typescript
+// ❌ Plain property - may not trigger change detection in Angular 20
+public error?: ApiError;
+
+// Template won't reliably update
+@if (this.error) { ... }
+```
+
+**Reference implementations**:
+- `DialogComponent` (src/app/components/dialog/dialog.component.ts) - Uses Signal for error state
+- `PermissionsPage` (src/app/pages/permissions/permissions.page.ts) - Uses Signals throughout
+- `EntityManagementPage` (src/app/pages/entity-management/entity-management.page.ts) - Signal-based reactive state
+
 ## Git Commit Guidelines
 
 - Use concise summary-style commit messages that describe the overall change

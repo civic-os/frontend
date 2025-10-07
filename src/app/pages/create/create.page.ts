@@ -64,16 +64,33 @@ export class CreatePage {
   }
 
   submitForm(contents: any) {
-    console.log(contents)
-    console.log(this.createForm?.value);
     if(this.entityKey && this.createForm) {
       this.data.createData(this.entityKey, this.createForm.value)
-        .subscribe(result => {
-          console.log(result);
-          if(result.success) {
-            this.successDialog.open();
-          } else {
-            this.errorDialog.open(result.error);
+        .subscribe({
+          next: (result) => {
+            if(result.success === true) {
+              if (this.successDialog) {
+                this.successDialog.open();
+              } else {
+                console.error('Success dialog not available');
+              }
+            } else {
+              if (this.errorDialog) {
+                this.errorDialog.open(result.error);
+              } else {
+                console.error('Error dialog not available', result.error);
+              }
+            }
+          },
+          error: (err) => {
+            console.error('Unexpected error during create:', err);
+            if (this.errorDialog) {
+              this.errorDialog.open({
+                httpCode: 500,
+                message: 'An unexpected error occurred',
+                humanMessage: 'System Error'
+              });
+            }
           }
         });
     }

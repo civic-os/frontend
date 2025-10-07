@@ -4,10 +4,10 @@ export interface ApiResponse {
     body?: any;
 }
 export interface ApiError {
-    httpCode: number;
+    httpCode?: number;
     code?: string;
-    details: string;
-    hint: string;
+    details?: string;
+    hint?: string;
     humanMessage: string;
     message: string;
 }
