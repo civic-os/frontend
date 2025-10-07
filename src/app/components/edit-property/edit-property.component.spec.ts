@@ -28,9 +28,6 @@ describe('EditPropertyComponent', () => {
 
     fixture = TestBed.createComponent(EditPropertyComponent);
     component = fixture.componentInstance;
-
-    // Setup basic form for all tests
-    component.form = new FormGroup({});
   });
 
   it('should create', () => {
@@ -39,8 +36,11 @@ describe('EditPropertyComponent', () => {
 
   describe('TextShort Type', () => {
     it('should render text input', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
-      component.form.addControl('name', new FormControl(''));
+      const formGroup = new FormGroup({
+        name: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -50,8 +50,11 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should bind form control to input', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
-      component.form.addControl('name', new FormControl('Initial Value'));
+      const formGroup = new FormGroup({
+        name: new FormControl('Initial Value')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -62,8 +65,11 @@ describe('EditPropertyComponent', () => {
 
   describe('TextLong Type', () => {
     it('should render textarea', () => {
-      component.prop = MOCK_PROPERTIES.textLong;
-      component.form.addControl('description', new FormControl(''));
+      const formGroup = new FormGroup({
+        description: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textLong);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -75,8 +81,11 @@ describe('EditPropertyComponent', () => {
 
   describe('Boolean Type', () => {
     it('should render checkbox', () => {
-      component.prop = MOCK_PROPERTIES.boolean;
-      component.form.addControl('is_active', new FormControl(false));
+      const formGroup = new FormGroup({
+        is_active: new FormControl(false)
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.boolean);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -86,8 +95,11 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should reflect checked state from form control', () => {
-      component.prop = MOCK_PROPERTIES.boolean;
-      component.form.addControl('is_active', new FormControl(true));
+      const formGroup = new FormGroup({
+        is_active: new FormControl(true)
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.boolean);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -98,8 +110,11 @@ describe('EditPropertyComponent', () => {
 
   describe('IntegerNumber Type', () => {
     it('should render number input with step=1', () => {
-      component.prop = MOCK_PROPERTIES.integer;
-      component.form.addControl('count', new FormControl(0));
+      const formGroup = new FormGroup({
+        count: new FormControl(0)
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.integer);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -111,8 +126,11 @@ describe('EditPropertyComponent', () => {
 
   describe('Money Type', () => {
     it('should render currency input', () => {
-      component.prop = MOCK_PROPERTIES.money;
-      component.form.addControl('amount', new FormControl(null));
+      const formGroup = new FormGroup({
+        amount: new FormControl(null)
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.money);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -123,8 +141,11 @@ describe('EditPropertyComponent', () => {
 
   describe('Date Type', () => {
     it('should render date input', () => {
-      component.prop = MOCK_PROPERTIES.date;
-      component.form.addControl('due_date', new FormControl(''));
+      const formGroup = new FormGroup({
+        due_date: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.date);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -135,8 +156,11 @@ describe('EditPropertyComponent', () => {
 
   describe('DateTime Type', () => {
     it('should render datetime input', () => {
-      component.prop = MOCK_PROPERTIES.dateTime;
-      component.form.addControl('created_at', new FormControl(''));
+      const formGroup = new FormGroup({
+        created_at: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.dateTime);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -147,8 +171,11 @@ describe('EditPropertyComponent', () => {
 
   describe('DateTimeLocal Type', () => {
     it('should render datetime-local input', () => {
-      component.prop = MOCK_PROPERTIES.dateTimeLocal;
-      component.form.addControl('updated_at', new FormControl(''));
+      const formGroup = new FormGroup({
+        updated_at: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.dateTimeLocal);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -166,8 +193,11 @@ describe('EditPropertyComponent', () => {
 
       mockDataService.getData.and.returnValue(of(mockOptions as any));
 
-      component.prop = MOCK_PROPERTIES.foreignKey;
-      component.form.addControl('status_id', new FormControl(null));
+      const formGroup = new FormGroup({
+        status_id: new FormControl(null)
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.foreignKey);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
 
       expect(mockDataService.getData).toHaveBeenCalledWith({
@@ -187,11 +217,14 @@ describe('EditPropertyComponent', () => {
     it('should include null option for nullable foreign keys', async () => {
       mockDataService.getData.and.returnValue(of([{ id: 1, display_name: 'Option', created_at: '', updated_at: '' }] as any));
 
-      component.prop = createMockProperty({
+      const formGroup = new FormGroup({
+        status_id: new FormControl(null)
+      });
+      fixture.componentRef.setInput('property', createMockProperty({
         ...MOCK_PROPERTIES.foreignKey,
         is_nullable: true
-      });
-      component.form.addControl('status_id', new FormControl(null));
+      }));
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -205,11 +238,14 @@ describe('EditPropertyComponent', () => {
     it('should not include null option for non-nullable foreign keys', async () => {
       mockDataService.getData.and.returnValue(of([{ id: 1, display_name: 'Option', created_at: '', updated_at: '' }] as any));
 
-      component.prop = createMockProperty({
+      const formGroup = new FormGroup({
+        status_id: new FormControl(1)
+      });
+      fixture.componentRef.setInput('property', createMockProperty({
         ...MOCK_PROPERTIES.foreignKey,
         is_nullable: false
-      });
-      component.form.addControl('status_id', new FormControl(1));
+      }));
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -225,8 +261,11 @@ describe('EditPropertyComponent', () => {
 
   describe('GeoPoint Type', () => {
     it('should render GeoPointMapComponent in edit mode', () => {
-      component.prop = MOCK_PROPERTIES.geoPoint;
-      component.form.addControl('location', new FormControl(null));
+      const formGroup = new FormGroup({
+        location: new FormControl(null)
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -234,15 +273,18 @@ describe('EditPropertyComponent', () => {
       expect(mapComponent).toBeTruthy();
 
       const mapInstance = mapComponent.componentInstance as GeoPointMapComponent;
-      expect(mapInstance.mode).toBe('edit');
-      expect(mapInstance.width).toBe('100%');
-      expect(mapInstance.height).toBe('300px');
+      expect(mapInstance.mode()).toBe('edit');
+      expect(mapInstance.width()).toBe('100%');
+      expect(mapInstance.height()).toBe('300px');
     });
 
     it('should update form control when map value changes', async () => {
-      component.prop = MOCK_PROPERTIES.geoPoint;
       const formControl = new FormControl<string | null>(null);
-      component.form.addControl('location', formControl);
+      const formGroup = new FormGroup({
+        location: formControl
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -259,8 +301,11 @@ describe('EditPropertyComponent', () => {
 
   describe('Unknown Type', () => {
     it('should not render any input for unknown types', () => {
-      component.prop = MOCK_PROPERTIES.unknown;
-      component.form.addControl('unknown_field', new FormControl(''));
+      const formGroup = new FormGroup({
+        unknown_field: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.unknown);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -272,8 +317,11 @@ describe('EditPropertyComponent', () => {
 
   describe('Label Rendering', () => {
     it('should render label with display_name', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
-      component.form.addControl('name', new FormControl(''));
+      const formGroup = new FormGroup({
+        name: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -282,11 +330,14 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should add asterisk for required (non-nullable) fields', () => {
-      component.prop = createMockProperty({
+      const formGroup = new FormGroup({
+        name: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', createMockProperty({
         ...MOCK_PROPERTIES.textShort,
         is_nullable: false
-      });
-      component.form.addControl('name', new FormControl(''));
+      }));
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -295,11 +346,14 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should not add asterisk for nullable fields', () => {
-      component.prop = createMockProperty({
+      const formGroup = new FormGroup({
+        name: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', createMockProperty({
         ...MOCK_PROPERTIES.textShort,
         is_nullable: true
-      });
-      component.form.addControl('name', new FormControl(''));
+      }));
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -310,12 +364,15 @@ describe('EditPropertyComponent', () => {
 
   describe('Validation Error Display', () => {
     it('should show required error when field is touched and empty', () => {
-      component.prop = createMockProperty({
+      const formControl = new FormControl('', { validators: [] });
+      const formGroup = new FormGroup({
+        name: formControl
+      });
+      fixture.componentRef.setInput('property', createMockProperty({
         ...MOCK_PROPERTIES.textShort,
         is_nullable: false
-      });
-      const formControl = new FormControl('', { validators: [] });
-      component.form.addControl('name', formControl);
+      }));
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -330,9 +387,12 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should not show error when field is valid', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
       const formControl = new FormControl('Valid Value');
-      component.form.addControl('name', formControl);
+      const formGroup = new FormGroup({
+        name: formControl
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -341,10 +401,13 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should not show error when field is invalid but not touched', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
       const formControl = new FormControl('');
       formControl.setErrors({ required: true });
-      component.form.addControl('name', formControl);
+      const formGroup = new FormGroup({
+        name: formControl
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -353,9 +416,12 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should show error when field is dirty and invalid', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
       const formControl = new FormControl('');
-      component.form.addControl('name', formControl);
+      const formGroup = new FormGroup({
+        name: formControl
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -371,16 +437,22 @@ describe('EditPropertyComponent', () => {
 
   describe('Component Initialization', () => {
     it('should set propType from property type on init', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
-      component.form.addControl('name', new FormControl(''));
+      const formGroup = new FormGroup({
+        name: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
 
       expect(component.propType).toBe(EntityPropertyType.TextShort);
     });
 
     it('should not call getData for non-ForeignKey types', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
-      component.form.addControl('name', new FormControl(''));
+      const formGroup = new FormGroup({
+        name: new FormControl('')
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
 
       expect(mockDataService.getData).not.toHaveBeenCalled();
@@ -389,9 +461,12 @@ describe('EditPropertyComponent', () => {
 
   describe('onMapValueChange()', () => {
     it('should update form control value and mark as dirty', async () => {
-      component.prop = MOCK_PROPERTIES.geoPoint;
       const formControl = new FormControl('');
-      component.form.addControl('location', formControl);
+      const formGroup = new FormGroup({
+        location: formControl
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
+      fixture.componentRef.setInput('formGroup', formGroup);
 
       const newValue = 'SRID=4326;POINT(-80.5 40.2)';
       component.onMapValueChange(newValue);
@@ -403,9 +478,12 @@ describe('EditPropertyComponent', () => {
     });
 
     it('should handle empty string value from map', async () => {
-      component.prop = MOCK_PROPERTIES.geoPoint;
       const formControl = new FormControl('initial value');
-      component.form.addControl('location', formControl);
+      const formGroup = new FormGroup({
+        location: formControl
+      });
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
+      fixture.componentRef.setInput('formGroup', formGroup);
 
       component.onMapValueChange('');
 

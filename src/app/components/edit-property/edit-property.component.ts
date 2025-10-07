@@ -1,4 +1,4 @@
-import { Component, inject, Input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 
 import { Observable, map } from 'rxjs';
@@ -27,8 +27,8 @@ import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
 export class EditPropertyComponent {
   private data = inject(DataService);
 
-  @Input('property') prop!: SchemaEntityProperty;
-  @Input('formGroup') form!: FormGroup;
+  prop = input.required<SchemaEntityProperty>({ alias: 'property' });
+  form = input.required<FormGroup>({ alias: 'formGroup' });
   public selectOptions$?: Observable<{id: number, text: string}[]>;
 
   propType!: EntityPropertyType;
@@ -36,11 +36,12 @@ export class EditPropertyComponent {
   public EntityPropertyType = EntityPropertyType;
 
   ngOnInit() {
-    this.propType = this.prop.type;
+    const prop = this.prop();
+    this.propType = prop.type;
     if(this.propType == EntityPropertyType.ForeignKeyName) {
       this.selectOptions$ = this.data.getData({
-        key: this.prop.join_table,
-        fields: ['id:' + this.prop.join_column, 'display_name'],
+        key: prop.join_table,
+        fields: ['id:' + prop.join_column, 'display_name'],
         orderField: 'id',
       })
       .pipe(map(data => {
@@ -56,9 +57,11 @@ export class EditPropertyComponent {
 
   public onMapValueChange(ewkt: string) {
     // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
+    const prop = this.prop();
+    const form = this.form();
     setTimeout(() => {
-      this.form.get(this.prop.column_name)?.setValue(ewkt);
-      this.form.get(this.prop.column_name)?.markAsDirty();
+      form.get(prop.column_name)?.setValue(ewkt);
+      form.get(prop.column_name)?.markAsDirty();
     }, 0);
   }
 }

@@ -48,24 +48,24 @@ describe('GeoPointMapComponent', () => {
 
   describe('Component Inputs', () => {
     it('should have default mode of display', () => {
-      expect(component.mode).toBe('display');
+      expect(component.mode()).toBe('display');
     });
 
     it('should have default width of 100%', () => {
-      expect(component.width).toBe('100%');
+      expect(component.width()).toBe('100%');
     });
 
     it('should have default height of 300px', () => {
-      expect(component.height).toBe('300px');
+      expect(component.height()).toBe('300px');
     });
 
     it('should have null initialValue by default', () => {
-      expect(component.initialValue).toBeNull();
+      expect(component.initialValue()).toBeNull();
     });
 
     it('should accept edit mode', () => {
-      component.mode = 'edit';
-      expect(component.mode).toBe('edit');
+      fixture.componentRef.setInput('mode', 'edit');
+      expect(component.mode()).toBe('edit');
     });
   });
 
@@ -164,11 +164,11 @@ describe('GeoPointMapComponent', () => {
 
   describe('Event Emitters', () => {
     it('should emit coordinatesChange with initial value', (done) => {
-      component.initialValue = 'POINT(-83.6875 43.0125)';
+      fixture.componentRef.setInput('initialValue', 'POINT(-83.6875 43.0125)');
 
       // Mock initializeMap to prevent Leaflet operations but allow coordinate parsing
       spyOn<any>(component, 'initializeMap').and.callFake(() => {
-        const coords = component['parseWKT'](component.initialValue);
+        const coords = component['parseWKT'](component.initialValue());
         if (coords) {
           component.coordinatesChange.emit([coords[0], coords[1]]);
         }
@@ -185,7 +185,7 @@ describe('GeoPointMapComponent', () => {
     });
 
     it('should not emit coordinates for null initial value', (done) => {
-      component.initialValue = null;
+      fixture.componentRef.setInput('initialValue', null);
       let emitted = false;
 
       // Mock initializeMap to prevent Leaflet operations
@@ -207,8 +207,8 @@ describe('GeoPointMapComponent', () => {
 
   describe('Display Mode', () => {
     beforeEach(() => {
-      component.mode = 'display';
-      component.initialValue = 'POINT(-83.6875 43.0125)';
+      fixture.componentRef.setInput('mode', 'display');
+      fixture.componentRef.setInput('initialValue', 'POINT(-83.6875 43.0125)');
       // Mock initializeMap to prevent Leaflet DOM operations in tests
       spyOn<any>(component, 'initializeMap');
     });
@@ -240,7 +240,7 @@ describe('GeoPointMapComponent', () => {
 
   describe('Edit Mode', () => {
     beforeEach(() => {
-      component.mode = 'edit';
+      fixture.componentRef.setInput('mode', 'edit');
       // Mock initializeMap to prevent Leaflet DOM operations in tests
       spyOn<any>(component, 'initializeMap');
     });
@@ -362,7 +362,7 @@ describe('GeoPointMapComponent', () => {
 
   describe('setLocation private method', () => {
     beforeEach(() => {
-      component.mode = 'edit';
+      fixture.componentRef.setInput('mode', 'edit');
       // Mock the map object to prevent Leaflet operations
       component['map'] = createMockMap();
     });
@@ -393,7 +393,7 @@ describe('GeoPointMapComponent', () => {
     });
 
     it('should not emit valueChange in display mode', () => {
-      component.mode = 'display';
+      fixture.componentRef.setInput('mode', 'display');
       let emitted = false;
 
       component.valueChange.subscribe(() => {

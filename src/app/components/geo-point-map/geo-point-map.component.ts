@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, AfterViewInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, input, output, AfterViewInit, OnDestroy } from '@angular/core';
 import * as L from 'leaflet';
 import { environment } from '../../../environments/environment';
 
@@ -9,14 +9,14 @@ import { environment } from '../../../environments/environment';
   styleUrl: './geo-point-map.component.css'
 })
 export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
-  @Input() mode: 'display' | 'edit' = 'display';
-  @Input() initialValue: string | null = null;
-  @Input() width: string = '100%';
-  @Input() height: string = '300px';
-  @Input() maxWidth?: string;
+  mode = input<'display' | 'edit'>('display');
+  initialValue = input<string | null>(null);
+  width = input<string>('100%');
+  height = input<string>('300px');
+  maxWidth = input<string | undefined>(undefined);
 
-  @Output() valueChange = new EventEmitter<string>();
-  @Output() coordinatesChange = new EventEmitter<[number, number] | null>();
+  valueChange = output<string>();
+  coordinatesChange = output<[number, number] | null>();
 
   private map?: L.Map;
   private marker?: L.Marker;
@@ -67,7 +67,7 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     if (!mapElement) return;
 
     // Parse initial coordinates
-    const coords = this.parseWKT(this.initialValue);
+    const coords = this.parseWKT(this.initialValue());
     if (coords) {
       this.currentLng = coords[0];
       this.currentLat = coords[1];
@@ -81,15 +81,16 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
       : environment.map.defaultCenter;
 
     // Create map with mode-specific options
+    const mode = this.mode();
     const mapOptions: L.MapOptions = {
       center: center,
-      zoom: this.mode === 'display' ? 15 : environment.map.defaultZoom,
+      zoom: mode === 'display' ? 15 : environment.map.defaultZoom,
       zoomSnap: 1,
       zoomDelta: 1,
     };
 
     // Disable all interactions for display mode
-    if (this.mode === 'display') {
+    if (mode === 'display') {
       Object.assign(mapOptions, {
         dragging: false,
         touchZoom: false,
@@ -113,7 +114,7 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     }
 
     // Add click handler for edit mode
-    if (this.mode === 'edit') {
+    if (mode === 'edit') {
       this.map.on('click', (e: L.LeafletMouseEvent) => {
         // Adjust click coordinates to account for center anchor vs tip anchor
         const point = this.map!.latLngToContainerPoint(e.latlng);
@@ -126,7 +127,7 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   }
 
   private createMarker(lat: number, lng: number) {
-    const isDraggable = this.mode === 'edit';
+    const isDraggable = this.mode() === 'edit';
 
     if (this.marker) {
       this.marker.setLatLng([lat, lng]);
@@ -163,7 +164,7 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     this.coordinatesChange.emit([lng, lat]);
 
     // Emit value change for edit mode
-    if (this.mode === 'edit') {
+    if (this.mode() === 'edit') {
       const ewkt = `SRID=4326;POINT(${lng} ${lat})`;
       this.valueChange.emit(ewkt);
     }

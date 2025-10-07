@@ -33,8 +33,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('TextShort Type', () => {
     it('should render plain text value', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
-      component.datum = 'Test Issue';  // Pass string directly, not wrapped in object
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('datum', 'Test Issue');  // Pass string directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -43,8 +43,8 @@ describe('DisplayPropertyComponent', () => {
     });
 
     it('should show "Not Set" for null TextShort values', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
-      component.datum = null;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('datum', null);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -55,8 +55,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('TextLong Type', () => {
     it('should render long text value', () => {
-      component.prop = MOCK_PROPERTIES.textLong;
-      component.datum = 'This is a long description with many details';
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textLong);
+      fixture.componentRef.setInput('datum', 'This is a long description with many details');
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -67,8 +67,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('Boolean Type', () => {
     it('should render checked icon for true value', () => {
-      component.prop = MOCK_PROPERTIES.boolean;
-      component.datum = true;  // Boolean value directly, not wrapped in object
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.boolean);
+      fixture.componentRef.setInput('datum', true);  // Boolean value directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -79,8 +79,8 @@ describe('DisplayPropertyComponent', () => {
     });
 
     it('should render unchecked icon for false value', () => {
-      component.prop = MOCK_PROPERTIES.boolean;
-      component.datum = false;  // Boolean value directly, not wrapped in object
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.boolean);
+      fixture.componentRef.setInput('datum', false);  // Boolean value directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -93,8 +93,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('IntegerNumber Type', () => {
     it('should render formatted number', () => {
-      component.prop = MOCK_PROPERTIES.integer;
-      component.datum = 42;  // Number directly, not wrapped in object
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.integer);
+      fixture.componentRef.setInput('datum', 42);  // Number directly, not wrapped in object
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -106,8 +106,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('Money Type', () => {
     it('should render currency formatted value', () => {
-      component.prop = MOCK_PROPERTIES.money;
-      component.datum = 1234.56;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.money);
+      fixture.componentRef.setInput('datum', 1234.56);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -119,8 +119,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('Date Type', () => {
     it('should render formatted date', () => {
-      component.prop = MOCK_PROPERTIES.date;
-      component.datum = '2025-12-31';
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.date);
+      fixture.componentRef.setInput('datum', '2025-12-31');
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -133,8 +133,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('DateTime Type', () => {
     it('should render formatted datetime with medium format', () => {
-      component.prop = MOCK_PROPERTIES.dateTime;
-      component.datum = '2025-10-04T12:00:00';
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.dateTime);
+      fixture.componentRef.setInput('datum', '2025-10-04T12:00:00');
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -146,8 +146,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('DateTimeLocal Type', () => {
     it('should render formatted datetime with full format', () => {
-      component.prop = MOCK_PROPERTIES.dateTimeLocal;
-      component.datum = '2025-10-04T15:30:00-04:00';
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.dateTimeLocal);
+      fixture.componentRef.setInput('datum', '2025-10-04T15:30:00-04:00');
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -159,9 +159,9 @@ describe('DisplayPropertyComponent', () => {
 
   describe('ForeignKeyName Type', () => {
     it('should render linked display_name when linkRelated is true', () => {
-      component.prop = MOCK_PROPERTIES.foreignKey;
-      component.datum = { id: 1, display_name: 'Open' };  // ForeignKey data directly, not nested
-      component.linkRelated = true;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.foreignKey);
+      fixture.componentRef.setInput('datum', { id: 1, display_name: 'Open' });  // ForeignKey data directly, not nested
+      fixture.componentRef.setInput('linkRelated', true);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -172,9 +172,9 @@ describe('DisplayPropertyComponent', () => {
     });
 
     it('should render plain display_name when linkRelated is false', () => {
-      component.prop = MOCK_PROPERTIES.foreignKey;
-      component.datum = { id: 1, display_name: 'Open' };  // ForeignKey data directly, not nested
-      component.linkRelated = false;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.foreignKey);
+      fixture.componentRef.setInput('datum', { id: 1, display_name: 'Open' });  // ForeignKey data directly, not nested
+      fixture.componentRef.setInput('linkRelated', false);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -186,8 +186,8 @@ describe('DisplayPropertyComponent', () => {
     });
 
     it('should handle null foreign key value', () => {
-      component.prop = MOCK_PROPERTIES.foreignKey;
-      component.datum = null;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.foreignKey);
+      fixture.componentRef.setInput('datum', null);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -198,15 +198,15 @@ describe('DisplayPropertyComponent', () => {
 
   describe('User Type', () => {
     it('should render user with private information', () => {
-      component.prop = MOCK_PROPERTIES.user;
-      component.datum = {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.user);
+      fixture.componentRef.setInput('datum', {
         display_name: 'John Doe',
         private: {
           display_name: 'John Doe',
           email: 'john@example.com',
           phone: '555-1234'
         }
-      };
+      });
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -216,8 +216,8 @@ describe('DisplayPropertyComponent', () => {
     });
 
     it('should render user without private information', () => {
-      component.prop = MOCK_PROPERTIES.user;
-      component.datum = { display_name: 'Jane Smith' };
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.user);
+      fixture.componentRef.setInput('datum', { display_name: 'Jane Smith' });
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -227,8 +227,8 @@ describe('DisplayPropertyComponent', () => {
     });
 
     it('should handle null user value', () => {
-      component.prop = MOCK_PROPERTIES.user;
-      component.datum = null;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.user);
+      fixture.componentRef.setInput('datum', null);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -239,8 +239,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('GeoPoint Type', () => {
     it('should render GeoPointMapComponent with WKT value', () => {
-      component.prop = MOCK_PROPERTIES.geoPoint;
-      component.datum = MOCK_DATA.geoPoint.location;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
+      fixture.componentRef.setInput('datum', MOCK_DATA.geoPoint.location);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -248,15 +248,15 @@ describe('DisplayPropertyComponent', () => {
       expect(mapComponent).toBeTruthy();
 
       const mapInstance = mapComponent.componentInstance as GeoPointMapComponent;
-      expect(mapInstance.mode).toBe('display');
-      expect(mapInstance.initialValue).toBe('POINT(-83.6875 43.0125)');
-      expect(mapInstance.width).toBe('300px');
-      expect(mapInstance.height).toBe('200px');
+      expect(mapInstance.mode()).toBe('display');
+      expect(mapInstance.initialValue()).toBe('POINT(-83.6875 43.0125)');
+      expect(mapInstance.width()).toBe('300px');
+      expect(mapInstance.height()).toBe('200px');
     });
 
     it('should display coordinates when available', async () => {
-      component.prop = MOCK_PROPERTIES.geoPoint;
-      component.datum = MOCK_DATA.geoPoint.location;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
+      fixture.componentRef.setInput('datum', MOCK_DATA.geoPoint.location);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -273,8 +273,8 @@ describe('DisplayPropertyComponent', () => {
     });
 
     it('should show "Not Set" for null GeoPoint', () => {
-      component.prop = MOCK_PROPERTIES.geoPoint;
-      component.datum = null;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
+      fixture.componentRef.setInput('datum', null);
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -285,8 +285,8 @@ describe('DisplayPropertyComponent', () => {
 
   describe('Unknown Type', () => {
     it('should render raw datum value for unknown types', () => {
-      component.prop = MOCK_PROPERTIES.unknown;
-      component.datum = 'Unknown value';
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.unknown);
+      fixture.componentRef.setInput('datum', 'Unknown value');
       component.ngOnInit();
       fixture.detectChanges();
 
@@ -305,8 +305,8 @@ describe('DisplayPropertyComponent', () => {
       ];
 
       types.forEach(prop => {
-        component.prop = prop;
-        component.datum = null;
+        fixture.componentRef.setInput('property', prop);
+        fixture.componentRef.setInput('datum', null);
         component.ngOnInit();
         fixture.detectChanges();
 
@@ -333,14 +333,14 @@ describe('DisplayPropertyComponent', () => {
 
   describe('Component Initialization', () => {
     it('should set propType from property type on init', () => {
-      component.prop = MOCK_PROPERTIES.textShort;
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
       component.ngOnInit();
 
       expect(component.propType).toBe(EntityPropertyType.TextShort);
     });
 
     it('should default linkRelated to true', () => {
-      expect(component.linkRelated).toBe(true);
+      expect(component.linkRelated()).toBe(true);
     });
   });
 });

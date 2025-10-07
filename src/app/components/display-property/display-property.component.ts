@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { RouterModule } from '@angular/router';
 import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
@@ -15,9 +15,9 @@ import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
     styleUrl: './display-property.component.css'
 })
 export class DisplayPropertyComponent {
-  @Input('property') prop!: SchemaEntityProperty;
-  @Input('datum') datum: any;
-  @Input('linkRelated') linkRelated: boolean = true;
+  prop = input.required<SchemaEntityProperty>({ alias: 'property' });
+  datum = input<any>();
+  linkRelated = input<boolean>(true);
 
   propType!: EntityPropertyType;
   displayCoordinates: [number, number] | null = null;
@@ -25,7 +25,7 @@ export class DisplayPropertyComponent {
   public EntityPropertyType = EntityPropertyType;
 
   ngOnInit() {
-    this.propType = this.prop.type;
+    this.propType = this.prop().type;
   }
 
   onCoordinatesChange(coords: [number, number] | null) {
