@@ -249,13 +249,17 @@ describe('DataService', () => {
     it('should handle string IDs', (done) => {
       const updatedData = { name: 'Updated' };
 
-      service.editData('Issue', 'abc-123', updatedData).subscribe();
+      service.editData('Issue', 'abc-123', updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
 
       const req = httpMock.expectOne(req =>
         req.url.includes('Issue?id=eq.abc-123')
       );
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.url).toContain('id=eq.abc-123');
       req.flush([{ id: 'abc-123', name: 'Updated' }]);
-      done();
     });
 
     it('should validate update success by comparing returned data', (done) => {
@@ -264,7 +268,7 @@ describe('DataService', () => {
 
       service.editData('Issue', 1, updatedData).subscribe(response => {
         expect(response.success).toBe(true);
-        expect(response.error).toBeNull();
+        expect(response.error).toBeUndefined();
         done();
       });
 
