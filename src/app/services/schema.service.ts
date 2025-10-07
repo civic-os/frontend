@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { BehaviorSubject, Observable, filter, map, of, tap } from 'rxjs';
+import { Observable, filter, map, of, ReplaySubject, tap } from 'rxjs';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../interfaces/entity';
 import { ValidatorFn, Validators } from '@angular/forms';
 
@@ -12,13 +12,23 @@ export class SchemaService {
   private http = inject(HttpClient);
 
   public properties?: SchemaEntityProperty[];
-  private tablesSubject = new BehaviorSubject<SchemaEntityTable[] | undefined>(undefined);
+  private tables = signal<SchemaEntityTable[] | undefined>(undefined);
+  private tablesSubject = new ReplaySubject<SchemaEntityTable[]>(1);
+
+  // Sync signal to subject for backward compatibility with Observable API
+  private _syncEffect = effect(() => {
+    const tables = this.tables();
+    if (tables !== undefined) {
+      this.tablesSubject.next(tables);
+    }
+  });
+
   public static hideFields: string[] = ['id', 'created_at', 'updated_at'];
 
   private getSchema() {
     return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_entities')
     .pipe(tap(tables => {
-      this.tablesSubject.next(tables);
+      this.tables.set(tables);
     }));
   }
 
@@ -34,17 +44,13 @@ export class SchemaService {
   }
 
   public getEntities(): Observable<SchemaEntityTable[]> {
-    // Always return the reactive BehaviorSubject observable
-    const observable = this.tablesSubject.asObservable().pipe(
-      filter((tables): tables is SchemaEntityTable[] => tables !== undefined)
-    );
-
     // If no data yet, trigger a fetch in the background
-    if (!this.tablesSubject.value) {
+    if (!this.tables()) {
       this.getSchema().subscribe();
     }
 
-    return observable;
+    // Return observable that's synced with signal via effect
+    return this.tablesSubject.asObservable();
   }
   public getEntity(key: string): Observable<SchemaEntityTable | undefined> {
     return this.getEntities().pipe(map(e => {

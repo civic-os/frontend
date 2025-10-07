@@ -14,12 +14,6 @@ export class DialogComponent {
   // Use Signal for reactive state in Angular 20
   public error = signal<ApiError | undefined>(undefined);
 
-  constructor(
-
-  ) {
-
-  }
-
   public open(errorParam?: ApiError) {
     // Validate and normalize error parameter
     if (errorParam !== undefined && errorParam !== null) {

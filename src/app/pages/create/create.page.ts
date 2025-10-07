@@ -29,40 +29,35 @@ export class CreatePage {
   private router = inject(Router);
 
   public entityKey?: string;
-  public entity$: Observable<SchemaEntityTable | undefined>;
-  public properties$: Observable<SchemaEntityProperty[]>;
+  public entity$: Observable<SchemaEntityTable | undefined> = this.route.params.pipe(mergeMap(p => {
+    this.entityKey = p['entityKey'];
+    if(p['entityKey']) {
+      return this.schema.getEntity(p['entityKey']);
+    } else {
+      return of(undefined);
+    }
+  }));
+  public properties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
+    if(e) {
+      let props = this.schema.getPropsForCreate(e)
+        .pipe(tap(props => {
+          this.createForm = new FormGroup(
+            Object.fromEntries(
+              props.map(p => [p.column_name, new FormControl(
+                SchemaService.getDefaultValueForProperty(p),
+                SchemaService.getFormValidatorsForProperty(p))])
+            )
+          );
+        }));
+      return props;
+    } else {
+      return of([]);
+    }
+  }));
 
   public createForm?: FormGroup;
   @ViewChild('successDialog') successDialog!: DialogComponent;
   @ViewChild('errorDialog') errorDialog!: DialogComponent;
-
-  constructor() {
-    this.entity$ = this.route.params.pipe(mergeMap(p => {
-      this.entityKey = p['entityKey'];
-      if(p['entityKey']) {
-        return this.schema.getEntity(p['entityKey']);
-      } else {
-        return of(undefined);
-      }
-    }));
-    this.properties$ = this.entity$.pipe(mergeMap(e => {
-      if(e) {
-        let props = this.schema.getPropsForCreate(e)
-          .pipe(tap(props => {
-            this.createForm = new FormGroup(
-              Object.fromEntries(
-                props.map(p => [p.column_name, new FormControl(
-                  SchemaService.getDefaultValueForProperty(p),
-                  SchemaService.getFormValidatorsForProperty(p))])
-              )
-            );
-          }));
-        return props;
-      } else {
-        return of([]);
-      }
-    }));
-  }
 
   submitForm(contents: any) {
     if(this.entityKey && this.createForm) {

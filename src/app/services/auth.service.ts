@@ -1,4 +1,4 @@
-import { effect, inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable, signal } from '@angular/core';
 import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType, KeycloakService, ReadyArgs, typeEventArgs } from 'keycloak-angular';
 import Keycloak from 'keycloak-js';
 import { DataService } from './data.service';
@@ -12,17 +12,17 @@ export class AuthService {
   private schema = inject(SchemaService);
   private keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
 
-  authenticated = false;
-  userRoles: string[] = [];
+  authenticated = signal(false);
+  userRoles = signal<string[]>([]);
 
   constructor() {
     effect(() => {
       const keycloakEvent = this.keycloakSignal();
 
       if (keycloakEvent.type === KeycloakEventType.Ready) {
-        this.authenticated = typeEventArgs<ReadyArgs>(keycloakEvent.args);
+        this.authenticated.set(typeEventArgs<ReadyArgs>(keycloakEvent.args));
 
-        if (this.authenticated) {
+        if (this.authenticated()) {
           this.loadUserRoles();
           this.data.refreshCurrentUser().subscribe({
             next: (result) => {
@@ -41,8 +41,8 @@ export class AuthService {
       }
 
       if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
-        this.authenticated = false;
-        this.userRoles = [];
+        this.authenticated.set(false);
+        this.userRoles.set([]);
 
         // Refresh schema cache when user logs out
         this.schema.refreshCache();
@@ -57,19 +57,20 @@ export class AuthService {
       if (tokenParsed) {
         // Keycloak stores roles in different places depending on configuration
         // Try realm_access.roles first, then resource_access, then a custom 'roles' claim
-        this.userRoles = tokenParsed['realm_access']?.['roles'] ||
+        const roles = tokenParsed['realm_access']?.['roles'] ||
                         tokenParsed['resource_access']?.['myclient']?.['roles'] ||
                         tokenParsed['roles'] ||
                         [];
+        this.userRoles.set(roles);
       }
     } catch (error) {
       console.error('Error loading user roles:', error);
-      this.userRoles = [];
+      this.userRoles.set([]);
     }
   }
 
   hasRole(roleName: string): boolean {
-    return this.userRoles.includes(roleName);
+    return this.userRoles().includes(roleName);
   }
 
   isAdmin(): boolean {

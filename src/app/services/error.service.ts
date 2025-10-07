@@ -5,8 +5,6 @@ import { ApiError } from '../interfaces/api';
   providedIn: 'root'
 })
 export class ErrorService {
-
-  constructor() { }
   public static parseToHuman(err: ApiError): string {
     //https://postgrest.org/en/stable/references/errors.html
     if(err.code == '42501') {

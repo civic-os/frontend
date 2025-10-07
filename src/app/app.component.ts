@@ -26,11 +26,11 @@ export class AppComponent {
 
   public drawerOpen: boolean = false;
   title = 'frontend';
-  public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntities();
 
-  constructor() {
-    this.schema.init();
-  }
+  // Initialize schema on app startup
+  private _schemaInit = this.schema.init();
+
+  public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntities();
 
   public navigate(key: string) {
     this.router.navigate(['view', key]);

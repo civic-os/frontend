@@ -30,9 +30,56 @@ export class EditPage {
 
   public entityKey?: string;
   public entityId?: string;
-  public entity$: Observable<SchemaEntityTable | undefined>;
-  public properties$: Observable<SchemaEntityProperty[]>;
-  public data$: Observable<any>;
+  public entity$: Observable<SchemaEntityTable | undefined> = this.route.params.pipe(mergeMap(p => {
+    this.entityKey = p['entityKey'];
+    this.entityId = p['entityId'];
+    if(p['entityKey'] && p['entityId']) {
+      return this.schema.getEntity(p['entityKey']);
+    } else {
+      return of(undefined);
+    }
+  }));
+  public properties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
+    if(e) {
+      return this.schema.getPropsForEdit(e)
+        .pipe(tap(props => {
+          this.currentProps = props;
+        }));
+    } else {
+      return of([]);
+    }
+  }));
+  public data$: Observable<any> = this.properties$.pipe(mergeMap(props => {
+    if(props && props.length > 0 && this.entityKey) {
+      let columns = props
+        .map(x => SchemaService.propertyToSelectStringForEdit(x));
+      return this.data.getData({key: this.entityKey, entityId: this.entityId, fields: columns})
+        .pipe(map(x => x[0]));
+    } else {
+      return of(undefined);
+    }
+  }),
+  tap(data => {
+    if (data && this.currentProps.length > 0) {
+      // Create form with actual data values, not defaults
+      const formConfig = Object.fromEntries(
+        this.currentProps.map(p => {
+          const value = (data as any)[p.column_name];
+          return [
+            p.column_name,
+            new FormControl(
+              value,
+              SchemaService.getFormValidatorsForProperty(p)
+            )
+          ];
+        })
+      );
+
+      this.editForm.set(new FormGroup(formConfig));
+    }
+    this.loading.set(false);
+  })
+  );
 
   public editForm = signal<FormGroup | undefined>(undefined);
   public loading = signal(true);
@@ -40,59 +87,6 @@ export class EditPage {
 
   @ViewChild('successDialog') successDialog!: DialogComponent;
   @ViewChild('errorDialog') errorDialog!: DialogComponent;
-
-  constructor() {
-    this.entity$ = this.route.params.pipe(mergeMap(p => {
-      this.entityKey = p['entityKey'];
-      this.entityId = p['entityId'];
-      if(p['entityKey'] && p['entityId']) {
-        return this.schema.getEntity(p['entityKey']);
-      } else {
-        return of(undefined);
-      }
-    }));
-    this.properties$ = this.entity$.pipe(mergeMap(e => {
-      if(e) {
-        return this.schema.getPropsForEdit(e)
-          .pipe(tap(props => {
-            this.currentProps = props;
-          }));
-      } else {
-        return of([]);
-      }
-    }));
-    this.data$ = this.properties$.pipe(mergeMap(props => {
-      if(props && props.length > 0 && this.entityKey) {
-        let columns = props
-          .map(x => SchemaService.propertyToSelectStringForEdit(x));
-        return this.data.getData({key: this.entityKey, entityId: this.entityId, fields: columns})
-          .pipe(map(x => x[0]));
-      } else {
-        return of(undefined);
-      }
-    }),
-    tap(data => {
-      if (data && this.currentProps.length > 0) {
-        // Create form with actual data values, not defaults
-        const formConfig = Object.fromEntries(
-          this.currentProps.map(p => {
-            const value = (data as any)[p.column_name];
-            return [
-              p.column_name,
-              new FormControl(
-                value,
-                SchemaService.getFormValidatorsForProperty(p)
-              )
-            ];
-          })
-        );
-
-        this.editForm.set(new FormGroup(formConfig));
-      }
-      this.loading.set(false);
-    })
-    );
-  }
 
   submitForm(contents: any) {
     const form = this.editForm();
