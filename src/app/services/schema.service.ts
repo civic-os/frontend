@@ -90,6 +90,31 @@ export class SchemaService {
       (prop.type == EntityPropertyType.GeoPoint) ? prop.column_name + ':' + prop.column_name + '_text' :
       prop.column_name;
   }
+
+  /**
+   * Returns the PostgREST select string for a property in edit forms.
+   * For FK fields, returns only the column name (raw ID) instead of embedded objects.
+   * Edit forms need primitive IDs for form controls, not display objects.
+   */
+  public static propertyToSelectStringForEdit(prop: SchemaEntityProperty): string {
+    // For FK fields in edit forms, we only need the raw ID value
+    if (prop.type === EntityPropertyType.ForeignKeyName) {
+      return prop.column_name;
+    }
+
+    // GeoPoint still needs the computed _text field
+    if (prop.type === EntityPropertyType.GeoPoint) {
+      return prop.column_name + ':' + prop.column_name + '_text';
+    }
+
+    // User fields also need just the ID for edit forms
+    if (prop.type === EntityPropertyType.User) {
+      return prop.column_name;
+    }
+
+    // Everything else uses the column name directly
+    return prop.column_name;
+  }
   public getPropsForList(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropertiesForEntity(table)
       .pipe(map(props => {

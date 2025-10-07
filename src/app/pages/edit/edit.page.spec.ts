@@ -132,10 +132,10 @@ describe('EditPage', () => {
       mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
       mockDataService.getData.and.returnValue(of([{ id: 42, name: 'Test', count: 5 }] as any));
 
-      component.properties$.subscribe(() => {
-        expect(component.editForm).toBeDefined();
-        expect(component.editForm?.get('name')).toBeDefined();
-        expect(component.editForm?.get('count')).toBeDefined();
+      component.data$.subscribe(() => {
+        expect(component.editForm()).toBeDefined();
+        expect(component.editForm()?.get('name')).toBeDefined();
+        expect(component.editForm()?.get('count')).toBeDefined();
         done();
       });
     });
@@ -153,9 +153,9 @@ describe('EditPage', () => {
       mockDataService.getData.and.returnValue(of(mockData as any));
 
       component.data$.subscribe(() => {
-        expect(component.editForm?.get('name')?.value).toBe('Test Issue');
-        expect(component.editForm?.get('count')?.value).toBe(10);
-        expect(component.editForm?.get('is_active')?.value).toBe(true);
+        expect(component.editForm()?.get('name')?.value).toBe('Test Issue');
+        expect(component.editForm()?.get('count')?.value).toBe(10);
+        expect(component.editForm()?.get('is_active')?.value).toBe(true);
         done();
       });
     });
@@ -170,7 +170,7 @@ describe('EditPage', () => {
 
       component.data$.subscribe(() => {
         // Note: FormGroup.get returns null for non-existent controls, not undefined
-        expect(component.editForm?.get('id')).toBeNull();
+        expect(component.editForm()?.get('id')).toBeNull();
         done();
       });
     });
@@ -186,7 +186,7 @@ describe('EditPage', () => {
       mockDataService.getData.and.returnValue(of(mockData as any));
 
       component.data$.subscribe(() => {
-        const nameControl = component.editForm?.get('name');
+        const nameControl = component.editForm()?.get('name');
         nameControl?.setValue('');
         expect(nameControl?.hasError('required')).toBe(true);
         done();
@@ -212,7 +212,7 @@ describe('EditPage', () => {
       mockDataService.editData.and.returnValue(of({ success: true }));
 
       component.data$.subscribe(() => {
-        component.editForm?.patchValue({ name: 'Updated Name' });
+        component.editForm()?.patchValue({ name: 'Updated Name' });
         component.submitForm({});
 
         setTimeout(() => {
@@ -280,7 +280,7 @@ describe('EditPage', () => {
     it('should not submit when editForm is undefined', () => {
       component.entityKey = 'Issue';
       component.entityId = '42';
-      component.editForm = undefined;
+      component.editForm.set(undefined);
       component.submitForm({});
 
       expect(mockDataService.editData).not.toHaveBeenCalled();
@@ -329,7 +329,7 @@ describe('EditPage', () => {
         callCount++;
         if (callCount === 1) {
           expect(data.id).toBe(42);
-          expect(component.editForm?.get('name')?.value).toBe('Issue 42');
+          expect(component.editForm()?.get('name')?.value).toBe('Issue 42');
 
           // Trigger route change to different record
           routeParams.next({ entityKey: 'Issue', entityId: '99' });
@@ -338,7 +338,7 @@ describe('EditPage', () => {
           expect(component.entityId).toBe('99');
           // Form should be repopulated with new data
           setTimeout(() => {
-            expect(component.editForm?.get('name')?.value).toBe('Issue 99');
+            expect(component.editForm()?.get('name')?.value).toBe('Issue 99');
             done();
           }, 10);
         }
@@ -360,12 +360,12 @@ describe('EditPage', () => {
         callCount++;
         if (callCount === 1) {
           expect(component.entityKey).toBe('Issue');
-          expect(component.editForm).toBeDefined();
+          expect(component.editForm()).toBeDefined();
 
           routeParams.next({ entityKey: 'Status', entityId: '5' });
         } else if (callCount === 2) {
           expect(component.entityKey).toBe('Status');
-          expect(component.editForm).toBeDefined();
+          expect(component.editForm()).toBeDefined();
           done();
         }
       });
@@ -408,7 +408,7 @@ describe('EditPage', () => {
         expect(callArgs.fields).toContain('count');
         expect(callArgs.fields).toContain('amount');
         expect(callArgs.fields).toContain('due_date');
-        expect(callArgs.fields).toContain('status_id:Status(id,display_name)');
+        expect(callArgs.fields).toContain('status_id'); // Edit forms use raw ID, not embedded object
         expect(callArgs.fields).toContain('location:location_text');
         done();
       });

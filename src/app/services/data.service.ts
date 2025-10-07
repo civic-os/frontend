@@ -95,6 +95,111 @@ export class DataService {
       return <ApiResponse>{success: true, body: body};
     }
   }
+  /**
+   * Parses EWKB hex string for POINT geometry and returns EWKT.
+   * EWKB format for Point with SRID: [byte order][type][SRID][X][Y]
+   * Example: 0101000020E6100000... = SRID=4326;POINT(x y)
+   */
+  private parseEWKBPoint(hexString: string): string | null {
+    try {
+      // EWKB Point with SRID is 50 hex chars (25 bytes)
+      if (hexString.length < 50) {
+        return null;
+      }
+
+      // Byte order (01 = little-endian)
+      const byteOrder = hexString.substring(0, 2);
+      if (byteOrder !== '01') {
+        return null; // Only support little-endian
+      }
+
+      // Geometry type (20000001 for Point with SRID in little-endian)
+      const geomType = hexString.substring(2, 10);
+      if (geomType !== '01000020') {
+        return null; // Only support Point
+      }
+
+      // SRID (4 bytes little-endian)
+      const sridHex = hexString.substring(10, 18);
+      const srid = this.parseLE32(sridHex);
+
+      // X coordinate (8 bytes little-endian double)
+      const xHex = hexString.substring(18, 34);
+      const x = this.parseLE64Double(xHex);
+
+      // Y coordinate (8 bytes little-endian double)
+      const yHex = hexString.substring(34, 50);
+      const y = this.parseLE64Double(yHex);
+
+      return `SRID=${srid};POINT(${x} ${y})`;
+    } catch (error) {
+      console.error('Error parsing EWKB:', error);
+      return null;
+    }
+  }
+
+  /** Parse 32-bit little-endian integer from hex */
+  private parseLE32(hex: string): number {
+    const bytes = hex.match(/.{2}/g)!.reverse();
+    return parseInt(bytes.join(''), 16);
+  }
+
+  /** Parse 64-bit little-endian double from hex */
+  private parseLE64Double(hex: string): number {
+    const bytes = hex.match(/.{2}/g)!.reverse().join('');
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    for (let i = 0; i < 8; i++) {
+      view.setUint8(i, parseInt(bytes.substring(i * 2, i * 2 + 2), 16));
+    }
+    return view.getFloat64(0, false); // false = big-endian (since we reversed bytes)
+  }
+
+  /**
+   * Compares geography/geometry fields by converting EWKB to EWKT.
+   * Input: EWKT format like "SRID=4326;POINT(-83 43)"
+   * Response: EWKB hex format like "0101000020E6100000..."
+   */
+  private compareGeographyValues(inputValue: any, responseValue: any): { isGeography: boolean, matches: boolean } {
+    if (typeof inputValue !== 'string' || typeof responseValue !== 'string') {
+      return { isGeography: false, matches: false };
+    }
+
+    // Check if input looks like EWKT (starts with SRID= or is WKT geometry type)
+    const isInputEWKT = inputValue.startsWith('SRID=') ||
+                        /^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)\s*\(/i.test(inputValue);
+
+    // Check if response looks like EWKB hex (long hex string starting with 01)
+    const isResponseEWKB = /^01[0-9A-F]{10,}$/i.test(responseValue);
+
+    if (!isInputEWKT || !isResponseEWKB) {
+      return { isGeography: false, matches: false };
+    }
+
+    try {
+      // Parse EWKB to EWKT
+      const responseEWKT = this.parseEWKBPoint(responseValue);
+
+      if (!responseEWKT) {
+        // Could not parse EWKB - only POINT geometries are supported
+        // Fall back to trusting PostgREST for complex geometries
+        return { isGeography: true, matches: true };
+      }
+
+      // Normalize: strip SRID, normalize case and whitespace
+      const stripSRID = (ewkt: string) => ewkt.replace(/^SRID=\d+;/i, '');
+      const normalizedInput = stripSRID(inputValue).toUpperCase().replace(/\s+/g, ' ').trim();
+      const normalizedResponse = stripSRID(responseEWKT).toUpperCase().replace(/\s+/g, ' ').trim();
+
+      const matches = normalizedInput === normalizedResponse;
+
+      return { isGeography: true, matches };
+    } catch (error) {
+      // Error converting EWKB to EWKT - fall back to trusting PostgREST
+      return { isGeography: true, matches: true };
+    }
+  }
+
   private checkEditResult(input: any, representation: any) {
     // If it's already an error response, return it as-is
     if (representation?.success === false) {
@@ -106,7 +211,27 @@ export class DataService {
       identical = false;
     } else {
       identical = (representation !== undefined) && Object.keys(input).every(key => {
-        return input[key] === representation.body[0][key];
+        const inputValue = input[key];
+        const responseValue = representation.body[0][key];
+
+        // Handle FK fields: PostgREST returns embedded objects {id: 1, display_name: "..."}
+        // but we submit primitive IDs
+        let match: boolean;
+        if (responseValue && typeof responseValue === 'object' && 'id' in responseValue) {
+          // FK field returned as embedded object - compare with id property
+          match = inputValue == responseValue.id;  // Use == for type coercion
+        } else {
+          // Check if this is a geography field and compare properly
+          const geoComparison = this.compareGeographyValues(inputValue, responseValue);
+          if (geoComparison.isGeography) {
+            match = geoComparison.matches;
+          } else {
+            // Primitive value - use loose equality to handle string vs number (e.g., "4" vs 4)
+            match = inputValue == responseValue;  // Use == for type coercion
+          }
+        }
+
+        return match;
       });
     }
 

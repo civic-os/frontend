@@ -10,16 +10,20 @@
             </div>
           }
         </h1>
-        @if (editForm) {
-          <form [formGroup]="editForm" (ngSubmit)="submitForm($event)">
+        @if (loading()) {
+          <div class="flex justify-center my-8">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        } @else if (editForm(); as form) {
+          <form [formGroup]="form" (ngSubmit)="submitForm($event)">
             @for (prop of props; track prop) {
               <div>
                 <h3>{{ prop.display_name }} {{ prop.type }}</h3>
-                <app-edit-property [property]="prop" [formGroup]="editForm"></app-edit-property>
+                <app-edit-property [property]="prop" [formGroup]="form"></app-edit-property>
               </div>
             }
             <div class="divider"></div>
-            <button class="btn btn-accent" [disabled]="editForm.invalid">
+            <button class="btn btn-accent" [disabled]="form.invalid">
               <span class="material-symbols-outlined">save</span> Save
             </button>
           </form>

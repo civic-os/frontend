@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild, signal } from '@angular/core';
 import { SchemaService } from '../../services/schema.service';
 import { Observable, map, mergeMap, of, tap } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -33,7 +33,10 @@ export class EditPage {
   public properties$: Observable<SchemaEntityProperty[]>;
   public data$: Observable<any>;
 
-  public editForm?: FormGroup;
+  public editForm = signal<FormGroup | undefined>(undefined);
+  public loading = signal(true);
+  private currentProps: SchemaEntityProperty[] = [];
+
   @ViewChild('successDialog') successDialog!: DialogComponent;
   @ViewChild('errorDialog') errorDialog!: DialogComponent;
 
@@ -49,17 +52,10 @@ export class EditPage {
     }));
     this.properties$ = this.entity$.pipe(mergeMap(e => {
       if(e) {
-        let props = this.schema.getPropsForEdit(e)
+        return this.schema.getPropsForEdit(e)
           .pipe(tap(props => {
-            this.editForm = new FormGroup(
-              Object.fromEntries(
-                props.map(p => [p.column_name, new FormControl(
-                  SchemaService.getDefaultValueForProperty(p), 
-                  SchemaService.getFormValidatorsForProperty(p))])
-              )
-            );
+            this.currentProps = props;
           }));
-        return props;
       } else {
         return of([]);
       }
@@ -67,7 +63,7 @@ export class EditPage {
     this.data$ = this.properties$.pipe(mergeMap(props => {
       if(props && props.length > 0 && this.entityKey) {
         let columns = props
-          .map(x => SchemaService.propertyToSelectString(x));
+          .map(x => SchemaService.propertyToSelectStringForEdit(x));
         return this.data.getData({key: this.entityKey, entityId: this.entityId, fields: columns})
           .pipe(map(x => x[0]));
       } else {
@@ -75,18 +71,32 @@ export class EditPage {
       }
     }),
     tap(data => {
-      if (data) {
-        Object.keys(data)
-          .filter(key => !['id'].includes(key))
-          .forEach(key => this.editForm?.controls[key]?.setValue((<any>data)[key]));
+      if (data && this.currentProps.length > 0) {
+        // Create form with actual data values, not defaults
+        const formConfig = Object.fromEntries(
+          this.currentProps.map(p => {
+            const value = (data as any)[p.column_name];
+            return [
+              p.column_name,
+              new FormControl(
+                value,
+                SchemaService.getFormValidatorsForProperty(p)
+              )
+            ];
+          })
+        );
+
+        this.editForm.set(new FormGroup(formConfig));
       }
+      this.loading.set(false);
     })
     );
   }
 
   submitForm(contents: any) {
-    if(this.entityKey && this.entityId && this.editForm) {
-      this.data.editData(this.entityKey, this.entityId, this.editForm.value)
+    const form = this.editForm();
+    if(this.entityKey && this.entityId && form) {
+      this.data.editData(this.entityKey, this.entityId, form.value)
         .subscribe({
           next: (result) => {
             if(result.success === true) {
