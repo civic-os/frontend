@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Route, RouterModule } from '@angular/router';
 import { Observable, map, mergeMap, of } from 'rxjs';
 import { SchemaService } from '../../services/schema.service';
@@ -12,6 +12,7 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
     selector: 'app-view',
     templateUrl: './list.page.html',
     styleUrl: './list.page.css',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
     CommonModule,
     RouterModule,

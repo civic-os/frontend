@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, signal } from '@angular/core';
+import { Component, inject, ViewChild, signal, ChangeDetectionStrategy } from '@angular/core';
 import { SchemaService } from '../../services/schema.service';
 import { Observable, map, mergeMap, of, tap } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -12,6 +12,7 @@ import { CommonModule } from '@angular/common';
 
 @Component({
     selector: 'app-edit',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
     EditPropertyComponent,
     CommonModule,

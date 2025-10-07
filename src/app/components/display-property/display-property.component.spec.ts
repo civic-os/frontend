@@ -35,7 +35,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render plain text value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
       fixture.componentRef.setInput('datum', 'Test Issue');  // Pass string directly, not wrapped in object
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -45,7 +44,6 @@ describe('DisplayPropertyComponent', () => {
     it('should show "Not Set" for null TextShort values', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
       fixture.componentRef.setInput('datum', null);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -57,7 +55,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render long text value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.textLong);
       fixture.componentRef.setInput('datum', 'This is a long description with many details');
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -69,7 +66,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render checked icon for true value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.boolean);
       fixture.componentRef.setInput('datum', true);  // Boolean value directly, not wrapped in object
-      component.ngOnInit();
       fixture.detectChanges();
 
       const icon = fixture.debugElement.query(By.css('.material-symbols-outlined'));
@@ -81,7 +77,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render unchecked icon for false value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.boolean);
       fixture.componentRef.setInput('datum', false);  // Boolean value directly, not wrapped in object
-      component.ngOnInit();
       fixture.detectChanges();
 
       const icon = fixture.debugElement.query(By.css('.material-symbols-outlined'));
@@ -95,7 +90,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render formatted number', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.integer);
       fixture.componentRef.setInput('datum', 42);  // Number directly, not wrapped in object
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -108,7 +102,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render currency formatted value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.money);
       fixture.componentRef.setInput('datum', 1234.56);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -121,7 +114,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render formatted date', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.date);
       fixture.componentRef.setInput('datum', '2025-12-31');
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -135,7 +127,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render formatted datetime with medium format', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.dateTime);
       fixture.componentRef.setInput('datum', '2025-10-04T12:00:00');
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -148,7 +139,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render formatted datetime with full format', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.dateTimeLocal);
       fixture.componentRef.setInput('datum', '2025-10-04T15:30:00-04:00');
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -162,7 +152,6 @@ describe('DisplayPropertyComponent', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.foreignKey);
       fixture.componentRef.setInput('datum', { id: 1, display_name: 'Open' });  // ForeignKey data directly, not nested
       fixture.componentRef.setInput('linkRelated', true);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const link = fixture.debugElement.query(By.css('a'));
@@ -175,7 +164,6 @@ describe('DisplayPropertyComponent', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.foreignKey);
       fixture.componentRef.setInput('datum', { id: 1, display_name: 'Open' });  // ForeignKey data directly, not nested
       fixture.componentRef.setInput('linkRelated', false);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const link = fixture.debugElement.query(By.css('a'));
@@ -188,7 +176,6 @@ describe('DisplayPropertyComponent', () => {
     it('should handle null foreign key value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.foreignKey);
       fixture.componentRef.setInput('datum', null);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -207,7 +194,6 @@ describe('DisplayPropertyComponent', () => {
           phone: '555-1234'
         }
       });
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -218,7 +204,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render user without private information', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.user);
       fixture.componentRef.setInput('datum', { display_name: 'Jane Smith' });
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -229,7 +214,6 @@ describe('DisplayPropertyComponent', () => {
     it('should handle null user value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.user);
       fixture.componentRef.setInput('datum', null);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -241,7 +225,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render GeoPointMapComponent with WKT value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
       fixture.componentRef.setInput('datum', MOCK_DATA.geoPoint.location);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const mapComponent = fixture.debugElement.query(By.directive(GeoPointMapComponent));
@@ -257,7 +240,6 @@ describe('DisplayPropertyComponent', () => {
     it('should display coordinates when available', async () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
       fixture.componentRef.setInput('datum', MOCK_DATA.geoPoint.location);
-      component.ngOnInit();
       fixture.detectChanges();
 
       // Simulate coordinates emission from map component
@@ -275,7 +257,6 @@ describe('DisplayPropertyComponent', () => {
     it('should show "Not Set" for null GeoPoint', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
       fixture.componentRef.setInput('datum', null);
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -287,7 +268,6 @@ describe('DisplayPropertyComponent', () => {
     it('should render raw datum value for unknown types', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.unknown);
       fixture.componentRef.setInput('datum', 'Unknown value');
-      component.ngOnInit();
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
@@ -307,7 +287,6 @@ describe('DisplayPropertyComponent', () => {
       types.forEach(prop => {
         fixture.componentRef.setInput('property', prop);
         fixture.componentRef.setInput('datum', null);
-        component.ngOnInit();
         fixture.detectChanges();
 
         const textContent = fixture.nativeElement.textContent.trim();
@@ -321,22 +300,21 @@ describe('DisplayPropertyComponent', () => {
       const coords: [number, number] = [-83.5, 43.2];
       component.onCoordinatesChange(coords);
 
-      expect(component.displayCoordinates).toEqual(coords);
+      expect(component.displayCoordinates()).toEqual(coords);
     });
 
     it('should handle null coordinates', () => {
       component.onCoordinatesChange(null);
 
-      expect(component.displayCoordinates).toBeNull();
+      expect(component.displayCoordinates()).toBeNull();
     });
   });
 
   describe('Component Initialization', () => {
     it('should set propType from property type on init', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
-      component.ngOnInit();
 
-      expect(component.propType).toBe(EntityPropertyType.TextShort);
+      expect(component.propType()).toBe(EntityPropertyType.TextShort);
     });
 
     it('should default linkRelated to true', () => {

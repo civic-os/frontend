@@ -1,10 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed, effect, ChangeDetectionStrategy } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PermissionsService, Role, RolePermission } from '../../services/permissions.service';
 import { AuthService } from '../../services/auth.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, switchMap, map, catchError, BehaviorSubject, take } from 'rxjs';
 
 interface PermissionMatrix {
   tableName: string;
@@ -14,8 +15,16 @@ interface PermissionMatrix {
   delete: boolean;
 }
 
+interface PermissionsData {
+  roles: Role[];
+  permissionMatrix: PermissionMatrix[];
+  loading: boolean;
+  error?: string;
+}
+
 @Component({
   selector: 'app-permissions',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
   templateUrl: './permissions.page.html',
   styleUrl: './permissions.page.css'
@@ -24,81 +33,111 @@ export class PermissionsPage {
   private permissionsService = inject(PermissionsService);
   public auth = inject(AuthService);
 
-  // Use signals for reactive state in zoneless mode
-  roles = signal<Role[]>([]);
-  selectedRoleId = signal<number | undefined>(undefined);
-  permissionMatrix = signal<PermissionMatrix[]>([]);
-  loading = signal(true);
-  error = signal<string | undefined>(undefined);
-  isAdmin = signal(false);
   permissionTypes = ['create', 'read', 'update', 'delete'];
 
-  constructor() {
-    this.checkAdminAndLoadData();
-  }
+  // Check if user is admin
+  isAdmin = toSignal(
+    this.permissionsService.isAdmin().pipe(
+      catchError(() => of(false))
+    ),
+    { initialValue: false }
+  );
 
-  private checkAdminAndLoadData() {
-    this.permissionsService.isAdmin().subscribe({
-      next: (isAdmin) => {
-        this.isAdmin.set(isAdmin);
-        if (isAdmin) {
-          this.loadRoles();
-        } else {
-          this.error.set('Admin access required');
-          this.loading.set(false);
+  // Track selected role ID (user input)
+  selectedRoleId = signal<number | undefined>(undefined);
+
+  // Create a subject to trigger permission reloads
+  private selectedRoleIdSubject = new BehaviorSubject<number | undefined>(undefined);
+
+  // Load all data reactively
+  private data = toSignal(
+    this.permissionsService.isAdmin().pipe(
+      switchMap(isAdmin => {
+        if (!isAdmin) {
+          return of({
+            roles: [],
+            permissionMatrix: [],
+            loading: false,
+            error: 'Admin access required'
+          } as PermissionsData);
         }
-      },
-      error: (err) => {
-        this.error.set('Failed to verify admin access');
-        this.loading.set(false);
-      }
-    });
+
+        // Load roles first
+        return this.permissionsService.getRoles().pipe(
+          switchMap(roles => {
+            if (roles.length === 0) {
+              return of({
+                roles: [],
+                permissionMatrix: [],
+                loading: false
+              } as PermissionsData);
+            }
+
+            // Auto-select first role
+            const firstRoleId = roles[0].id;
+            this.selectedRoleId.set(firstRoleId);
+            this.selectedRoleIdSubject.next(firstRoleId);
+
+            // Load permissions for selected role
+            return this.selectedRoleIdSubject.pipe(
+              switchMap(roleId => {
+                if (roleId === undefined) {
+                  return of({ roles, permissionMatrix: [], loading: false } as PermissionsData);
+                }
+
+                return forkJoin({
+                  tables: this.permissionsService.getTables().pipe(take(1)),
+                  permissions: this.permissionsService.getRolePermissions(roleId).pipe(take(1))
+                }).pipe(
+                  map(({ tables, permissions }) => {
+                    const matrix = this.buildPermissionMatrix(tables, permissions);
+                    return {
+                      roles,
+                      permissionMatrix: matrix,
+                      loading: false
+                    } as PermissionsData;
+                  }),
+                  catchError(() => of({
+                    roles,
+                    permissionMatrix: [],
+                    loading: false,
+                    error: 'Failed to load permissions'
+                  } as PermissionsData))
+                );
+              })
+            );
+          }),
+          catchError(() => of({
+            roles: [],
+            permissionMatrix: [],
+            loading: false,
+            error: 'Failed to load roles'
+          } as PermissionsData))
+        );
+      }),
+      catchError(() => of({
+        roles: [],
+        permissionMatrix: [],
+        loading: false,
+        error: 'Failed to verify admin access'
+      } as PermissionsData))
+    ),
+    { initialValue: { roles: [], permissionMatrix: [], loading: true } as PermissionsData }
+  );
+
+  // Expose computed signals for template
+  roles = computed(() => this.data()?.roles || []);
+  permissionMatrix = computed(() => this.data()?.permissionMatrix || []);
+  loading = computed(() => this.data()?.loading ?? true);
+  error = computed(() => this.data()?.error);
+
+  onRoleChange(newRoleId: number) {
+    this.selectedRoleId.set(newRoleId);
+    this.selectedRoleIdSubject.next(newRoleId);
   }
 
-  private loadRoles() {
-    this.permissionsService.getRoles().subscribe({
-      next: (rolesData) => {
-        this.roles.set(rolesData);
-        if (rolesData.length > 0) {
-          this.selectedRoleId.set(rolesData[0].id);
-          this.loadPermissions();
-        } else {
-          this.loading.set(false);
-        }
-      },
-      error: (err) => {
-        this.error.set('Failed to load roles');
-        this.loading.set(false);
-      }
-    });
-  }
-
-  onRoleChange() {
-    this.loadPermissions();
-  }
-
-  private loadPermissions() {
-    const roleId = this.selectedRoleId();
-    if (roleId === undefined) return;
-
-    this.loading.set(true);
-    forkJoin({
-      tables: this.permissionsService.getTables(),
-      permissions: this.permissionsService.getRolePermissions(roleId)
-    }).subscribe({
-      next: ({ tables, permissions }) => {
-        this.buildPermissionMatrix(tables, permissions);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to load permissions');
-        this.loading.set(false);
-      }
-    });
-  }
-
-  private buildPermissionMatrix(tables: string[], permissions: RolePermission[]) {
-    const matrix = tables.map(tableName => {
+  private buildPermissionMatrix(tables: string[], permissions: RolePermission[]): PermissionMatrix[] {
+    return tables.map(tableName => {
       const tablePerms = permissions.filter(p => p.table_name === tableName);
       return {
         tableName,
@@ -108,7 +147,6 @@ export class PermissionsPage {
         delete: tablePerms.find(p => p.permission_type === 'delete')?.has_permission || false
       };
     });
-    this.permissionMatrix.set(matrix);
   }
 
   togglePermission(tableName: string, permission: string, currentValue: boolean) {
@@ -125,21 +163,15 @@ export class PermissionsPage {
     ).subscribe({
       next: (response) => {
         if (response.success) {
-          // Update local matrix using signal update
-          this.permissionMatrix.update(matrix => {
-            const updated = [...matrix];
-            const row = updated.find(r => r.tableName === tableName);
-            if (row) {
-              (row as any)[permission] = newValue;
-            }
-            return updated;
-          });
+          // Reload permissions to get fresh data
+          this.selectedRoleIdSubject.next(roleId);
         } else {
-          this.error.set(response.error?.humanMessage || 'Failed to update permission');
+          // Could use a separate error signal here
+          console.error('Failed to update permission:', response.error);
         }
       },
       error: (err) => {
-        this.error.set('Failed to update permission');
+        console.error('Failed to update permission:', err);
       }
     });
   }

@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { Observable, mergeMap, of, tap } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -14,6 +14,7 @@ import { DialogComponent } from "../../components/dialog/dialog.component";
     selector: 'app-create',
     templateUrl: './create.page.html',
     styleUrl: './create.page.css',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
     EditPropertyComponent,
     CommonModule,

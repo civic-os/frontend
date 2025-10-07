@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Observable, map, mergeMap, of } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { ActivatedRoute, RouterModule } from '@angular/router';
@@ -12,6 +12,7 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
     selector: 'app-detail',
     templateUrl: './detail.page.html',
     styleUrl: './detail.page.css',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
     CommonModule,
     RouterModule,

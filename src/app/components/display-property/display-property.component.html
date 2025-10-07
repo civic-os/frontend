@@ -1,29 +1,29 @@
 @if (datum() != null) {
-  @if (propType == EntityPropertyType.Date) {
+  @if (propType() == EntityPropertyType.Date) {
     {{ datum() | date }}
   }
-  @if (propType == EntityPropertyType.DateTime) {
+  @if (propType() == EntityPropertyType.DateTime) {
     {{ datum() | date: 'medium' }}
   }
-  @if (propType == EntityPropertyType.DateTimeLocal) {
+  @if (propType() == EntityPropertyType.DateTimeLocal) {
     {{ datum() | date: 'full' }}
   }
-  @if (propType == EntityPropertyType.TextShort) {
+  @if (propType() == EntityPropertyType.TextShort) {
     {{ datum() }}
   }
-  @if (propType == EntityPropertyType.TextLong) {
+  @if (propType() == EntityPropertyType.TextLong) {
     {{ datum() }}
     } <!-- Add Synopsis/ellipsis-->
-    @if (propType == EntityPropertyType.Money) {
+    @if (propType() == EntityPropertyType.Money) {
       {{ datum() | currency }}
     }
-    @if (propType == EntityPropertyType.IntegerNumber) {
+    @if (propType() == EntityPropertyType.IntegerNumber) {
       {{ datum() | number }}
     }
-    @if (propType == EntityPropertyType.DecimalNumber) {
+    @if (propType() == EntityPropertyType.DecimalNumber) {
       {{ datum() | number }}
     }
-    @if (propType == EntityPropertyType.Boolean) {
+    @if (propType() == EntityPropertyType.Boolean) {
       @if (datum() == true) {
         <span class="material-symbols-outlined text-primary bg-base-100">check_box</span>
       }
@@ -31,7 +31,7 @@
         <span class="material-symbols-outlined text-error bg-base-100">disabled_by_default</span>
       }
     }
-    @if (propType == EntityPropertyType.ForeignKeyName) {
+    @if (propType() == EntityPropertyType.ForeignKeyName) {
       @if (linkRelated()) {
         <a [routerLink]="['/view', prop().join_table, datum().id]">{{ datum().display_name }}</a>
       }
@@ -39,7 +39,7 @@
         {{ datum().display_name }}
       }
     }
-    @if (propType == EntityPropertyType.User) {
+    @if (propType() == EntityPropertyType.User) {
       @if (datum()?.private) {
         {{ datum().private.display_name }} ({{ datum().private.email }})
       }
@@ -47,7 +47,7 @@
         {{ datum().display_name }}
       }
     }
-    @if (propType == EntityPropertyType.GeoPoint) {
+    @if (propType() == EntityPropertyType.GeoPoint) {
       @if (datum()) {
         <div class="geo-point-display">
           <app-geo-point-map
@@ -57,9 +57,9 @@
             height="200px"
             (coordinatesChange)="onCoordinatesChange($event)">
           </app-geo-point-map>
-          @if (displayCoordinates) {
+          @if (displayCoordinates(); as coords) {
             <div class="text-xs mt-1">
-              {{ displayCoordinates[1] | number:'1.6-6' }}, {{ displayCoordinates[0] | number:'1.6-6' }}
+              {{ coords[1] | number:'1.6-6' }}, {{ coords[0] | number:'1.6-6' }}
             </div>
           }
         </div>
@@ -68,7 +68,7 @@
         <em>No location set</em>
       }
     }
-    @if (propType == EntityPropertyType.Unknown) {
+    @if (propType() == EntityPropertyType.Unknown) {
       {{ datum() }}
     }
   }

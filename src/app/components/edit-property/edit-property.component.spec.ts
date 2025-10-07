@@ -444,7 +444,7 @@ describe('EditPropertyComponent', () => {
       fixture.componentRef.setInput('formGroup', formGroup);
       component.ngOnInit();
 
-      expect(component.propType).toBe(EntityPropertyType.TextShort);
+      expect(component.propType()).toBe(EntityPropertyType.TextShort);
     });
 
     it('should not call getData for non-ForeignKey types', () => {

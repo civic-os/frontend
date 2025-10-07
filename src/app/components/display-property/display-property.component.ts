@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, input, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { RouterModule } from '@angular/router';
 import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
 
 @Component({
     selector: 'app-display-property',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
         CommonModule,
         RouterModule,
@@ -19,16 +20,12 @@ export class DisplayPropertyComponent {
   datum = input<any>();
   linkRelated = input<boolean>(true);
 
-  propType!: EntityPropertyType;
-  displayCoordinates: [number, number] | null = null;
+  propType = computed(() => this.prop().type);
+  displayCoordinates = signal<[number, number] | null>(null);
 
   public EntityPropertyType = EntityPropertyType;
 
-  ngOnInit() {
-    this.propType = this.prop().type;
-  }
-
   onCoordinatesChange(coords: [number, number] | null) {
-    this.displayCoordinates = coords;
+    this.displayCoordinates.set(coords);
   }
 }

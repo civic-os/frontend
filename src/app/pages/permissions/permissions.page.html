@@ -24,7 +24,7 @@
           id="role-selector"
           class="select"
           [ngModel]="selectedRoleId()"
-          (ngModelChange)="selectedRoleId.set($event); onRoleChange()">
+          (ngModelChange)="onRoleChange($event)">
           @for (role of roles(); track role) {
             <option [value]="role.id">
               {{ role.display_name }}

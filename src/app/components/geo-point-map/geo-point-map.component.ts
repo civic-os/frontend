@@ -1,9 +1,10 @@
-import { Component, input, output, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import * as L from 'leaflet';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-geo-point-map',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [],
   templateUrl: './geo-point-map.component.html',
   styleUrl: './geo-point-map.component.css'

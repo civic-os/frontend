@@ -1,19 +1,28 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { SchemaService } from '../../services/schema.service';
 import { EntityManagementService } from '../../services/entity-management.service';
 import { SchemaEntityTable } from '../../interfaces/entity';
-import { debounceTime, Subject } from 'rxjs';
+import { debounceTime, Subject, switchMap, of, map, catchError } from 'rxjs';
 
 interface EntityRow extends SchemaEntityTable {
   customDisplayName: string | null;
   customDescription: string | null;
 }
 
+interface EntityData {
+  entities: EntityRow[];
+  loading: boolean;
+  error?: string;
+  isAdmin: boolean;
+}
+
 @Component({
   selector: 'app-entity-management',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule, DragDropModule],
   templateUrl: './entity-management.page.html',
   styleUrl: './entity-management.page.css'
@@ -22,58 +31,68 @@ export class EntityManagementPage {
   private schemaService = inject(SchemaService);
   private entityManagementService = inject(EntityManagementService);
 
+  // Mutable signals for user interactions
   entities = signal<EntityRow[]>([]);
-  loading = signal(true);
-  error = signal<string | undefined>(undefined);
-  isAdmin = signal(false);
+  error = signal<string | undefined>(undefined); // Mutable for user action errors
   savingStates = signal<Map<string, boolean>>(new Map());
   savedStates = signal<Map<string, boolean>>(new Map()); // Track successful saves
   fadingStates = signal<Map<string, boolean>>(new Map()); // Track fading checkmarks
 
   private saveSubjects = new Map<string, Subject<void>>();
 
-  constructor() {
-    this.checkAdminAndLoadData();
-  }
-
-  private checkAdminAndLoadData() {
-    this.entityManagementService.isAdmin().subscribe({
-      next: (isAdmin) => {
-        this.isAdmin.set(isAdmin);
-        if (isAdmin) {
-          this.loadEntities();
-        } else {
+  // Load all data reactively with toSignal
+  private dataLoad = toSignal(
+    this.entityManagementService.isAdmin().pipe(
+      switchMap(isAdmin => {
+        if (!isAdmin) {
           this.error.set('Admin access required');
-          this.loading.set(false);
+          return of({
+            entities: [],
+            loading: false,
+            isAdmin: false
+          } as EntityData);
         }
-      },
-      error: (err) => {
-        this.error.set('Failed to verify admin access');
-        this.loading.set(false);
-      }
-    });
-  }
 
-  private loadEntities() {
-    this.schemaService.getEntities().subscribe({
-      next: (entities) => {
-        if (entities) {
-          // Map entities to include editable custom fields
-          const entityRows: EntityRow[] = entities.map(e => ({
-            ...e,
-            customDisplayName: e.display_name !== e.table_name ? e.display_name : null,
-            customDescription: e.description
-          }));
-          this.entities.set(entityRows);
-        }
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to load entities');
-        this.loading.set(false);
-      }
-    });
-  }
+        return this.schemaService.getEntities().pipe(
+          map(entities => {
+            const entityRows: EntityRow[] = (entities || []).map(e => ({
+              ...e,
+              customDisplayName: e.display_name !== e.table_name ? e.display_name : null,
+              customDescription: e.description
+            }));
+            // Update entities signal
+            this.entities.set(entityRows);
+            return {
+              entities: entityRows,
+              loading: false,
+              isAdmin: true
+            } as EntityData;
+          }),
+          catchError(() => {
+            this.error.set('Failed to load entities');
+            return of({
+              entities: [],
+              loading: false,
+              isAdmin: true
+            } as EntityData);
+          })
+        );
+      }),
+      catchError(() => {
+        this.error.set('Failed to verify admin access');
+        return of({
+          entities: [],
+          loading: false,
+          isAdmin: false
+        } as EntityData);
+      })
+    ),
+    { initialValue: { entities: [], loading: true, isAdmin: false } as EntityData }
+  );
+
+  // Expose as computed signals for template
+  loading = computed(() => this.dataLoad()?.loading ?? true);
+  isAdmin = computed(() => this.dataLoad()?.isAdmin ?? false);
 
   onDrop(event: CdkDragDrop<EntityRow[]>) {
     const entities = [...this.entities()];
