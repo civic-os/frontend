@@ -15,7 +15,9 @@ export interface SchemaEntityProperty {
     table_name: string,
     column_name: string,
     display_name: string,
+    description?: string,
     sort_order: number,
+    column_width?: number,
     column_default: string,
     is_nullable: boolean,
     data_type: string,
@@ -30,6 +32,10 @@ export interface SchemaEntityProperty {
     join_table: string,
     join_column: string,
     geography_type: string,
+    show_on_list?: boolean,
+    show_on_create?: boolean,
+    show_on_edit?: boolean,
+    show_on_detail?: boolean,
 
     type: EntityPropertyType, // Calculated in Schema Service
 }

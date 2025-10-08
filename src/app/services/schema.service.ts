@@ -76,6 +76,20 @@ export class SchemaService {
       return props.filter(p => p.table_name == table.table_name);
     }));
   }
+  public getPropertiesForEntityFresh(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
+    // Fetch fresh from database, bypass cache
+    return this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_properties')
+      .pipe(
+        map(props => {
+          return props
+            .filter(p => p.table_name == table.table_name)
+            .map(p => {
+              p.type = this.getPropertyType(p);
+              return p;
+            });
+        })
+      );
+  }
   private getPropertyType(val: SchemaEntityProperty): EntityPropertyType {
     return (['int4', 'int8'].includes(val.udt_name) && val.join_column != null) ? EntityPropertyType.ForeignKeyName :
       (['uuid'].includes(val.udt_name) && val.join_table == 'civic_os_users') ? EntityPropertyType.User :

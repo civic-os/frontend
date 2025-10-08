@@ -12,7 +12,14 @@
         <h2>Id: {{data.id}}</h2>
         @for (prop of props; track prop) {
           <div>
-            <h3>{{prop.display_name}}</h3>
+            <h3>
+              {{prop.display_name}}
+              @if (prop.description) {
+                <div class="tooltip tooltip-right inline-block" [attr.data-tip]="prop.description">
+                  <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
+                </div>
+              }
+            </h3>
             <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>
           </div>
         }

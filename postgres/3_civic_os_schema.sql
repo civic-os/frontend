@@ -144,6 +144,10 @@ CREATE TABLE metadata.properties (
   description TEXT,
   sort_order INT,
   column_width INT,
+  show_on_list BOOLEAN DEFAULT true,
+  show_on_create BOOLEAN DEFAULT true,
+  show_on_edit BOOLEAN DEFAULT true,
+  show_on_detail BOOLEAN DEFAULT true,
   PRIMARY KEY (table_name, column_name)
 );
 
@@ -434,6 +438,88 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION public.update_entity_sort_order(NAME, INT) TO authenticated;
+
+-- Upsert property metadata (admin only)
+CREATE OR REPLACE FUNCTION public.upsert_property_metadata(
+  p_table_name NAME,
+  p_column_name NAME,
+  p_display_name TEXT,
+  p_description TEXT,
+  p_sort_order INT,
+  p_column_width INT,
+  p_show_on_list BOOLEAN,
+  p_show_on_create BOOLEAN,
+  p_show_on_edit BOOLEAN,
+  p_show_on_detail BOOLEAN
+)
+RETURNS void AS $$
+BEGIN
+  -- Check if user is admin
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Admin access required';
+  END IF;
+
+  -- Upsert the property metadata
+  INSERT INTO metadata.properties (
+    table_name,
+    column_name,
+    display_name,
+    description,
+    sort_order,
+    column_width,
+    show_on_list,
+    show_on_create,
+    show_on_edit,
+    show_on_detail
+  )
+  VALUES (
+    p_table_name,
+    p_column_name,
+    p_display_name,
+    p_description,
+    p_sort_order,
+    p_column_width,
+    p_show_on_list,
+    p_show_on_create,
+    p_show_on_edit,
+    p_show_on_detail
+  )
+  ON CONFLICT (table_name, column_name) DO UPDATE
+    SET display_name = EXCLUDED.display_name,
+        description = EXCLUDED.description,
+        sort_order = EXCLUDED.sort_order,
+        column_width = EXCLUDED.column_width,
+        show_on_list = EXCLUDED.show_on_list,
+        show_on_create = EXCLUDED.show_on_create,
+        show_on_edit = EXCLUDED.show_on_edit,
+        show_on_detail = EXCLUDED.show_on_detail;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.upsert_property_metadata(NAME, NAME, TEXT, TEXT, INT, INT, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN) TO authenticated;
+
+-- Update property sort order (admin only)
+CREATE OR REPLACE FUNCTION public.update_property_sort_order(
+  p_table_name NAME,
+  p_column_name NAME,
+  p_sort_order INT
+)
+RETURNS void AS $$
+BEGIN
+  -- Check if user is admin
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Admin access required';
+  END IF;
+
+  -- Update or insert with just sort_order
+  INSERT INTO metadata.properties (table_name, column_name, sort_order)
+  VALUES (p_table_name, p_column_name, p_sort_order)
+  ON CONFLICT (table_name, column_name) DO UPDATE
+    SET sort_order = EXCLUDED.sort_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.update_property_sort_order(NAME, NAME, INT) TO authenticated;
 
 -- =====================================================
 -- Grant schema permissions

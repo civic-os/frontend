@@ -1,0 +1,215 @@
+<div class="container mx-auto p-6">
+  <h1 class="text-3xl font-bold mb-6">Property Management</h1>
+
+  @if (error()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (!isAdmin()) {
+    <div class="alert alert-error mb-4">
+      <span>Admin access required</span>
+    </div>
+  }
+
+  @if (isAdmin()) {
+    <!-- Entity Selector -->
+    <div class="mb-6">
+      <label class="label mr-2">
+        <span class="label-text font-semibold">Select Entity</span>
+      </label>
+      <select
+        class="select select-bordered w-full max-w-md"
+        [(ngModel)]="selectedEntity"
+        [compareWith]="compareEntities"
+        (ngModelChange)="onEntityChange()">
+        @for (entity of entities(); track entity.table_name) {
+          <option [ngValue]="entity">{{ entity.display_name }}</option>
+        }
+      </select>
+    </div>
+
+    @if (selectedEntity()) {
+      @if (loading()) {
+        <div class="flex justify-center items-center min-h-[400px]">
+          <span class="loading loading-spinner loading-lg"></span>
+        </div>
+      }
+
+      @if (!loading() && properties().length > 0) {
+        <div class="mb-4">
+          <p class="text-sm text-base-content/70">
+            Drag properties to reorder them. Click a row to expand and edit details. Changes are saved automatically.
+          </p>
+        </div>
+
+        <div
+          class="space-y-2"
+          cdkDropList
+          (cdkDropListDropped)="onDrop($event)">
+          @for (property of properties(); track property.column_name) {
+            <div
+              class="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
+              cdkDrag>
+              <!-- Main Row -->
+              <div class="card-body p-4">
+                <div class="flex items-center gap-4">
+                  <!-- Drag Handle -->
+                  <div class="cursor-move flex-shrink-0" cdkDragHandle>
+                    <span class="material-symbols-outlined text-base-content/50">drag_indicator</span>
+                  </div>
+
+                  <!-- Property Info (condensed) -->
+                  <div class="flex-grow grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+                    <!-- Column Name (read-only) -->
+                    <div>
+                      <label class="label label-text text-xs">Column Name</label>
+                      <div class="font-mono text-sm font-semibold">{{ property.column_name }}</div>
+                    </div>
+
+                    <!-- Type (read-only) -->
+                    <div>
+                      <label class="label label-text text-xs">Type</label>
+                      <div class="text-sm">{{ getPropertyTypeLabel(property) }}</div>
+                    </div>
+
+                    <!-- Default Value (read-only) -->
+                    <div>
+                      <label class="label label-text text-xs">Default</label>
+                      <div class="text-sm text-base-content/60">
+                        {{ property.column_default || '-' }}
+                      </div>
+                    </div>
+
+                    <!-- Display Name (editable) -->
+                    <div>
+                      <label class="label label-text text-xs">Display Name</label>
+                      <input
+                        type="text"
+                        class="input input-sm input-bordered w-full"
+                        [(ngModel)]="property.customDisplayName"
+                        (ngModelChange)="onDisplayNameChange(property)"
+                        (blur)="onFieldBlur(property)"
+                        [placeholder]="getDisplayNamePlaceholder(property)" />
+                    </div>
+
+                    <!-- Column Width (editable) -->
+                    <div>
+                      <label class="label label-text text-xs">Grid Width</label>
+                      <input
+                        type="number"
+                        class="input input-sm input-bordered w-full"
+                        [(ngModel)]="property.customColumnWidth"
+                        (ngModelChange)="onColumnWidthChange(property)"
+                        (blur)="onFieldBlur(property)"
+                        placeholder="Auto" />
+                    </div>
+
+                    <!-- Expand Button -->
+                    <div class="flex items-center gap-2 justify-end">
+                      <button
+                        class="btn btn-sm btn-ghost"
+                        (click)="toggleExpanded(property)">
+                        <span class="material-symbols-outlined">
+                          {{ property.expanded ? 'expand_less' : 'expand_more' }}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Status Indicator -->
+                  <div class="flex-shrink-0 w-6 flex items-center justify-center">
+                    @if (isSaving(property)) {
+                      <span class="loading loading-spinner loading-sm"></span>
+                    } @else if (isSaved(property)) {
+                      <span class="material-symbols-outlined text-success text-lg transition-opacity duration-1000"
+                            [class.opacity-0]="isFading(property)"
+                            [class.opacity-100]="!isFading(property)">check_circle</span>
+                    }
+                  </div>
+                </div>
+
+                <!-- Expanded Details -->
+                @if (property.expanded) {
+                  <div class="mt-4 pt-4 border-t border-base-300">
+                    <div class="grid grid-cols-1 gap-4">
+                      <!-- Description -->
+                      <div>
+                        <label class="label label-text text-xs">Description</label>
+                        <textarea
+                          class="textarea textarea-bordered w-full"
+                          rows="3"
+                          [(ngModel)]="property.customDescription"
+                          (ngModelChange)="onDescriptionChange(property)"
+                          (blur)="onFieldBlur(property)"
+                          placeholder="Optional description for tooltips"></textarea>
+                      </div>
+
+                      <!-- Visibility Toggles (Coming Soon) -->
+                      <div>
+                        <label class="label label-text text-xs font-semibold">Visibility (Coming Soon)</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div class="form-control">
+                            <label class="label cursor-pointer justify-start gap-2">
+                              <input
+                                type="checkbox"
+                                class="checkbox checkbox-sm"
+                                [(ngModel)]="property.show_on_list"
+                                (ngModelChange)="onVisibilityChange(property)"
+                                disabled />
+                              <span class="label-text text-xs">Show on List</span>
+                            </label>
+                          </div>
+                          <div class="form-control">
+                            <label class="label cursor-pointer justify-start gap-2">
+                              <input
+                                type="checkbox"
+                                class="checkbox checkbox-sm"
+                                [(ngModel)]="property.show_on_create"
+                                (ngModelChange)="onVisibilityChange(property)"
+                                disabled />
+                              <span class="label-text text-xs">Show on Create</span>
+                            </label>
+                          </div>
+                          <div class="form-control">
+                            <label class="label cursor-pointer justify-start gap-2">
+                              <input
+                                type="checkbox"
+                                class="checkbox checkbox-sm"
+                                [(ngModel)]="property.show_on_edit"
+                                (ngModelChange)="onVisibilityChange(property)"
+                                disabled />
+                              <span class="label-text text-xs">Show on Edit</span>
+                            </label>
+                          </div>
+                          <div class="form-control">
+                            <label class="label cursor-pointer justify-start gap-2">
+                              <input
+                                type="checkbox"
+                                class="checkbox checkbox-sm"
+                                [(ngModel)]="property.show_on_detail"
+                                (ngModelChange)="onVisibilityChange(property)"
+                                disabled />
+                              <span class="label-text text-xs">Show on Detail</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (!loading() && properties().length === 0) {
+        <div class="alert">
+          <span>No properties found for this entity.</span>
+        </div>
+      }
+    }
+  }
+</div>

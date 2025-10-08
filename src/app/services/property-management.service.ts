@@ -1,0 +1,112 @@
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { ApiResponse } from '../interfaces/api';
+
+export interface PropertyMetadata {
+  table_name: string;
+  column_name: string;
+  display_name: string | null;
+  description: string | null;
+  sort_order: number | null;
+  column_width: number | null;
+  show_on_list: boolean;
+  show_on_create: boolean;
+  show_on_edit: boolean;
+  show_on_detail: boolean;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class PropertyManagementService {
+  private http = inject(HttpClient);
+
+  /**
+   * Upsert property metadata (insert or update)
+   * Uses RPC function in public schema
+   */
+  upsertPropertyMetadata(
+    tableName: string,
+    columnName: string,
+    displayName: string | null,
+    description: string | null,
+    sortOrder: number | null,
+    columnWidth: number | null,
+    showOnList: boolean,
+    showOnCreate: boolean,
+    showOnEdit: boolean,
+    showOnDetail: boolean
+  ): Observable<ApiResponse> {
+    return this.http.post(
+      environment.postgrestUrl + 'rpc/upsert_property_metadata',
+      {
+        p_table_name: tableName,
+        p_column_name: columnName,
+        p_display_name: displayName,
+        p_description: description,
+        p_sort_order: sortOrder,
+        p_column_width: columnWidth,
+        p_show_on_list: showOnList,
+        p_show_on_create: showOnCreate,
+        p_show_on_edit: showOnEdit,
+        p_show_on_detail: showOnDetail
+      }
+    ).pipe(
+      map((response: any) => <ApiResponse>{ success: true, body: response }),
+      catchError((error) => {
+        console.error('Error upserting property metadata:', error);
+        return of(<ApiResponse>{
+          success: false,
+          error: { message: error.message, humanMessage: 'Failed to save property metadata' }
+        });
+      })
+    );
+  }
+
+  /**
+   * Batch update properties order after drag-drop
+   * Updates sort_order for multiple properties using RPC
+   */
+  updatePropertiesOrder(properties: { table_name: string, column_name: string, sort_order: number }[]): Observable<ApiResponse> {
+    // Call RPC function for each property and use forkJoin to wait for all
+    const updates = properties.map(property =>
+      this.http.post(
+        environment.postgrestUrl + 'rpc/update_property_sort_order',
+        {
+          p_table_name: property.table_name,
+          p_column_name: property.column_name,
+          p_sort_order: property.sort_order
+        }
+      )
+    );
+
+    if (updates.length === 0) {
+      return of(<ApiResponse>{ success: true });
+    }
+
+    return forkJoin(updates).pipe(
+      map(() => <ApiResponse>{ success: true }),
+      catchError((error) => {
+        console.error('Error updating properties order:', error);
+        return of(<ApiResponse>{
+          success: false,
+          error: { message: error.message, humanMessage: 'Failed to update properties order' }
+        });
+      })
+    );
+  }
+
+  /**
+   * Check if current user is admin (reuse from EntityManagementService pattern)
+   */
+  isAdmin(): Observable<boolean> {
+    return this.http.post<boolean>(
+      environment.postgrestUrl + 'rpc/is_admin',
+      {}
+    ).pipe(
+      catchError(() => of(false))
+    );
+  }
+}

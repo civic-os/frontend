@@ -47,6 +47,11 @@ export class AppComponent {
     this.drawerOpen = false;
   }
 
+  public navigateToPropertyManagement() {
+    this.router.navigate(['property-management']);
+    this.drawerOpen = false;
+  }
+
   public getMenuKeys(menuItems: OpenAPIV2.DefinitionsObject | undefined) : string[] {
     if(menuItems) {
       return Object.keys(menuItems).sort();

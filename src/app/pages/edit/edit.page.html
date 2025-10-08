@@ -6,7 +6,7 @@
           {{ entity.display_name }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub>
           @if (entity.description) {
             <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
-              <span class="material-symbols-outlined text-info cursor-help ml-2 text-2xl align-middle">help_outline</span>
+              <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
             </div>
           }
         </h1>
@@ -18,7 +18,14 @@
           <form [formGroup]="form" (ngSubmit)="submitForm($event)">
             @for (prop of props; track prop) {
               <div>
-                <h3>{{ prop.display_name }} {{ prop.type }}</h3>
+                <h3>
+                  {{ prop.display_name }} {{ prop.type }}
+                  @if (prop.description) {
+                    <div class="tooltip tooltip-right inline-block" [attr.data-tip]="prop.description">
+                      <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
+                    </div>
+                  }
+                </h3>
                 <app-edit-property [property]="prop" [formGroup]="form"></app-edit-property>
               </div>
             }

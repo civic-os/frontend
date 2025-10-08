@@ -399,6 +399,94 @@ describe('SchemaService', () => {
     });
   });
 
+  describe('getPropertiesForEntityFresh()', () => {
+    it('should fetch fresh properties from PostgREST, bypassing cache', (done) => {
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'title', udt_name: 'varchar' }),
+        createMockProperty({ table_name: 'Issue', column_name: 'description', udt_name: 'text' })
+      ];
+
+      service.getPropertiesForEntityFresh(MOCK_ENTITIES.issue).subscribe(props => {
+        expect(props.length).toBe(2);
+        expect(props[0].column_name).toBe('title');
+        expect(props[0].type).toBe(EntityPropertyType.TextShort);
+        expect(props[1].type).toBe(EntityPropertyType.TextLong);
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
+
+    it('should filter properties by table name', (done) => {
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'title', udt_name: 'varchar' }),
+        createMockProperty({ table_name: 'Status', column_name: 'name', udt_name: 'varchar' })
+      ];
+
+      service.getPropertiesForEntityFresh(MOCK_ENTITIES.issue).subscribe(props => {
+        expect(props.length).toBe(1);
+        expect(props[0].table_name).toBe('Issue');
+        expect(props[0].column_name).toBe('title');
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
+
+    it('should make HTTP request every time (not use cache)', (done) => {
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'title', udt_name: 'varchar' })
+      ];
+
+      // First call
+      service.getPropertiesForEntityFresh(MOCK_ENTITIES.issue).subscribe(props => {
+        expect(props.length).toBe(1);
+
+        // Second call - should make another HTTP request
+        service.getPropertiesForEntityFresh(MOCK_ENTITIES.issue).subscribe(props2 => {
+          expect(props2.length).toBe(1);
+          done();
+        });
+
+        // Expect second HTTP request
+        expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+      });
+
+      // Expect first HTTP request
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
+
+    it('should return empty array for entity with no properties', (done) => {
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'OtherTable', column_name: 'name', udt_name: 'varchar' })
+      ];
+
+      service.getPropertiesForEntityFresh(MOCK_ENTITIES.issue).subscribe(props => {
+        expect(props.length).toBe(0);
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
+
+    it('should calculate property types for all properties', (done) => {
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'name', udt_name: 'varchar' }),
+        createMockProperty({ table_name: 'Issue', column_name: 'count', udt_name: 'int4', join_column: null as any }),
+        createMockProperty({ table_name: 'Issue', column_name: 'active', udt_name: 'bool' })
+      ];
+
+      service.getPropertiesForEntityFresh(MOCK_ENTITIES.issue).subscribe(props => {
+        expect(props[0].type).toBe(EntityPropertyType.TextShort);
+        expect(props[1].type).toBe(EntityPropertyType.IntegerNumber);
+        expect(props[2].type).toBe(EntityPropertyType.Boolean);
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
+  });
+
   describe('refreshCache()', () => {
     it('should trigger background refresh of schema and properties', () => {
       service.refreshCache();
