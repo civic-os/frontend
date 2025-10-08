@@ -1,0 +1,667 @@
+#!/usr/bin/env ts-node
+
+import { faker } from '@faker-js/faker';
+import { Client } from 'pg';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Interfaces matching the Angular types
+interface SchemaEntityTable {
+  display_name: string;
+  sort_order: number;
+  description: string | null;
+  table_name: string;
+  insert: boolean;
+  select: boolean;
+  update: boolean;
+  delete: boolean;
+}
+
+interface SchemaEntityProperty {
+  table_catalog: string;
+  table_schema: string;
+  table_name: string;
+  column_name: string;
+  display_name: string;
+  description?: string;
+  sort_order: number;
+  column_width?: number;
+  column_default: string;
+  is_nullable: boolean;
+  data_type: string;
+  character_maximum_length: number;
+  udt_schema: string;
+  udt_name: string;
+  is_self_referencing: boolean;
+  is_identity: boolean;
+  is_generated: boolean;
+  is_updatable: boolean;
+  join_schema: string;
+  join_table: string;
+  join_column: string;
+  geography_type: string;
+  show_on_list?: boolean;
+  show_on_create?: boolean;
+  show_on_edit?: boolean;
+  show_on_detail?: boolean;
+}
+
+const EntityPropertyType = {
+  Unknown: 0,
+  TextShort: 1,
+  TextLong: 2,
+  Boolean: 3,
+  Date: 4,
+  DateTime: 5,
+  DateTimeLocal: 6,
+  Money: 7,
+  IntegerNumber: 8,
+  DecimalNumber: 9,
+  ForeignKeyName: 10,
+  User: 11,
+  GeoPoint: 12,
+} as const;
+
+type EntityPropertyType = typeof EntityPropertyType[keyof typeof EntityPropertyType];
+
+interface MockDataConfig {
+  recordsPerEntity: { [tableName: string]: number };
+  geographyBounds?: {
+    minLat: number;
+    maxLat: number;
+    minLng: number;
+    maxLng: number;
+  };
+  excludeTables?: string[];
+  outputFormat: 'sql' | 'insert';
+  outputPath?: string;
+  generateUsers?: boolean;
+  userCount?: number;
+}
+
+// Default configuration
+const DEFAULT_CONFIG: MockDataConfig = {
+  recordsPerEntity: {},
+  geographyBounds: {
+    minLat: 42.25, // Detroit area
+    maxLat: 42.45,
+    minLng: -83.30,
+    maxLng: -82.90,
+  },
+  excludeTables: ['civic_os_users', 'civic_os_users_private', 'IssueStatus', 'WorkPackageStatus'],
+  outputFormat: 'sql',
+  outputPath: './example/init-scripts/03_mock_data.sql',
+  generateUsers: false,
+  userCount: 10,
+};
+
+class MockDataGenerator {
+  private config: MockDataConfig;
+  private client?: Client;
+  private entities: SchemaEntityTable[] = [];
+  private properties: SchemaEntityProperty[] = [];
+  private generatedData: Map<string, any[]> = new Map();
+  private sqlStatements: string[] = [];
+
+  constructor(config: Partial<MockDataConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  async connect() {
+    this.client = new Client({
+      host: process.env['POSTGRES_HOST'] || 'localhost',
+      port: parseInt(process.env['POSTGRES_PORT'] || '15432'),
+      database: process.env['POSTGRES_DB'] || 'civic_os_db',
+      user: process.env['POSTGRES_USER'] || 'postgres',
+      password: process.env['POSTGRES_PASSWORD'] || 'postgres',
+    });
+    await this.client.connect();
+  }
+
+  async disconnect() {
+    if (this.client) {
+      await this.client.end();
+    }
+  }
+
+  async fetchSchema() {
+    if (!this.client) throw new Error('Database not connected');
+
+    // Fetch entities
+    const entitiesResult = await this.client.query<SchemaEntityTable>(
+      'SELECT * FROM public.schema_entities ORDER BY sort_order'
+    );
+    this.entities = entitiesResult.rows;
+
+    // Fetch properties
+    const propertiesResult = await this.client.query<SchemaEntityProperty>(
+      'SELECT * FROM public.schema_properties ORDER BY table_name, sort_order'
+    );
+    this.properties = propertiesResult.rows;
+
+    console.log(`Fetched ${this.entities.length} entities and ${this.properties.length} properties`);
+  }
+
+  private getPropertyType(prop: SchemaEntityProperty): EntityPropertyType {
+    if (['int4', 'int8'].includes(prop.udt_name) && prop.join_column != null) {
+      return EntityPropertyType.ForeignKeyName;
+    }
+    if (['uuid'].includes(prop.udt_name) && prop.join_table === 'civic_os_users') {
+      return EntityPropertyType.User;
+    }
+    if (['geography'].includes(prop.udt_name) && prop.geography_type === 'Point') {
+      return EntityPropertyType.GeoPoint;
+    }
+    if (['timestamp'].includes(prop.udt_name)) {
+      return EntityPropertyType.DateTime;
+    }
+    if (['timestamptz'].includes(prop.udt_name)) {
+      return EntityPropertyType.DateTimeLocal;
+    }
+    if (['date'].includes(prop.udt_name)) {
+      return EntityPropertyType.Date;
+    }
+    if (['bool'].includes(prop.udt_name)) {
+      return EntityPropertyType.Boolean;
+    }
+    if (['int4', 'int8'].includes(prop.udt_name)) {
+      return EntityPropertyType.IntegerNumber;
+    }
+    if (['money'].includes(prop.udt_name)) {
+      return EntityPropertyType.Money;
+    }
+    if (['varchar'].includes(prop.udt_name)) {
+      return EntityPropertyType.TextShort;
+    }
+    if (['text'].includes(prop.udt_name)) {
+      return EntityPropertyType.TextLong;
+    }
+    return EntityPropertyType.Unknown;
+  }
+
+  private async getExistingRecords(tableName: string): Promise<any[]> {
+    if (!this.client) throw new Error('Database not connected');
+
+    const result = await this.client.query(`SELECT * FROM public."${tableName}"`);
+    return result.rows;
+  }
+
+  private async getUserIds(): Promise<string[]> {
+    if (!this.client) throw new Error('Database not connected');
+
+    const result = await this.client.query('SELECT id FROM public.civic_os_users');
+    return result.rows.map(row => row.id);
+  }
+
+  /**
+   * Generate mock users for civic_os_users table
+   * Returns array of user records with UUIDs
+   */
+  private generateUsers(): any[] {
+    const userCount = this.config.userCount || 10;
+    const users: any[] = [];
+    const usedNames = new Set<string>();
+
+    console.log(`Generating ${userCount} mock users...`);
+
+    for (let i = 0; i < userCount; i++) {
+      let displayName: string;
+      let attempts = 0;
+
+      // Ensure unique display names
+      do {
+        displayName = faker.person.fullName();
+        attempts++;
+        if (attempts > 100) {
+          // Fallback: append number to guarantee uniqueness
+          displayName = `${faker.person.fullName()} ${i}`;
+          break;
+        }
+      } while (usedNames.has(displayName));
+
+      usedNames.add(displayName);
+
+      const user = {
+        id: faker.string.uuid(),
+        display_name: displayName,
+      };
+
+      users.push(user);
+    }
+
+    return users;
+  }
+
+  /**
+   * Generate mock private user data matching civic_os_users records
+   * Uses same UUIDs and display names from civic_os_users
+   */
+  private generateUsersPrivate(publicUsers: any[]): any[] {
+    console.log(`Generating ${publicUsers.length} private user records...`);
+
+    return publicUsers.map(user => {
+      // Generate email from display name
+      const nameParts = user.display_name.toLowerCase().split(' ');
+      const emailUsername = nameParts.join('.');
+      const email = faker.internet.email({ firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] });
+
+      // Generate phone number in format ###-###-####
+      const phone = `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
+
+      return {
+        id: user.id, // Same UUID as civic_os_users
+        display_name: user.display_name, // Same display name
+        email: email,
+        phone: phone,
+      };
+    });
+  }
+
+  /**
+   * Generate domain-specific display names based on table context
+   */
+  private generateDisplayName(tableName: string): string {
+    switch (tableName) {
+      case 'Issue': {
+        // Road issue descriptions: "Large pothole on Main Street"
+        const sizes = ['Small', 'Medium', 'Large', 'Severe'];
+        const issueTypes = ['pothole', 'crack', 'road damage', 'pavement damage', 'broken asphalt'];
+        const size = faker.helpers.arrayElement(sizes);
+        const issueType = faker.helpers.arrayElement(issueTypes);
+        const street = faker.location.street();
+        return `${size} ${issueType} on ${street}`;
+      }
+
+      case 'WorkPackage': {
+        // Project scope descriptions: "Q2 2024 road repairs - Downtown"
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        const seasons = ['Spring', 'Summer', 'Fall', 'Winter'];
+        const useQuarter = faker.datatype.boolean();
+        const period = useQuarter
+          ? faker.helpers.arrayElement(quarters)
+          : faker.helpers.arrayElement(seasons);
+        const year = faker.date.recent({ days: 365 }).getFullYear();
+        const area = faker.location.city();
+        return `${period} ${year} road repairs - ${area}`;
+      }
+
+      case 'Bid': {
+        // Contractor bid descriptions: "ABC Construction proposal"
+        const company = faker.company.name();
+        return `${company} proposal`;
+      }
+
+      case 'WorkDetail': {
+        // Work notes/inspection findings: descriptive sentences
+        const actions = ['Inspected', 'Measured', 'Documented', 'Assessed', 'Reviewed'];
+        const findings = [
+          'damage extent and recommended materials',
+          'repair area and estimated labor hours',
+          'surface condition and preparation needs',
+          'structural integrity and safety concerns',
+          'material requirements and cost estimate'
+        ];
+        const action = faker.helpers.arrayElement(actions);
+        const finding = faker.helpers.arrayElement(findings);
+        return `${action} ${finding}`;
+      }
+
+      default:
+        // Fallback to generic product names for extensibility
+        return faker.commerce.productName();
+    }
+  }
+
+  private generateFakeValue(prop: SchemaEntityProperty, relatedIds?: any[]): any {
+    const type = this.getPropertyType(prop);
+
+    // Skip auto-generated fields
+    if (prop.is_identity || prop.is_generated || prop.column_name === 'id') {
+      return null;
+    }
+
+    // Handle nullable fields (30% chance of null for optional fields)
+    // Exception for demo purposes: Issue.location should always have a value
+    const isIssueLocation = prop.table_name === 'Issue' && prop.column_name === 'location';
+    if (prop.is_nullable && prop.column_name !== 'display_name' && !isIssueLocation && faker.datatype.boolean({ probability: 0.3 })) {
+      return null;
+    }
+
+    switch (type) {
+      case EntityPropertyType.TextShort:
+        if (prop.column_name === 'display_name') {
+          return this.generateDisplayName(prop.table_name);
+        }
+        return faker.lorem.words(3);
+
+      case EntityPropertyType.TextLong:
+        if (prop.column_name === 'display_name') {
+          return this.generateDisplayName(prop.table_name);
+        }
+        return faker.lorem.paragraph();
+
+      case EntityPropertyType.Boolean:
+        return faker.datatype.boolean();
+
+      case EntityPropertyType.Date:
+        return faker.date.recent({ days: 30 }).toISOString().split('T')[0];
+
+      case EntityPropertyType.DateTime:
+      case EntityPropertyType.DateTimeLocal:
+        if (prop.column_name === 'created_at') {
+          return faker.date.recent({ days: 30 }).toISOString();
+        }
+        if (prop.column_name === 'updated_at') {
+          return faker.date.recent({ days: 7 }).toISOString();
+        }
+        return faker.date.recent({ days: 30 }).toISOString();
+
+      case EntityPropertyType.Money:
+        return faker.commerce.price({ min: 10, max: 10000, dec: 2 });
+
+      case EntityPropertyType.IntegerNumber:
+        return faker.number.int({ min: 1, max: 1000 });
+
+      case EntityPropertyType.ForeignKeyName:
+        if (relatedIds && relatedIds.length > 0) {
+          return faker.helpers.arrayElement(relatedIds);
+        }
+        return null;
+
+      case EntityPropertyType.User:
+        if (relatedIds && relatedIds.length > 0) {
+          return faker.helpers.arrayElement(relatedIds);
+        }
+        return null;
+
+      case EntityPropertyType.GeoPoint:
+        const bounds = this.config.geographyBounds!;
+        const lat = faker.number.float({ min: bounds.minLat, max: bounds.maxLat, fractionDigits: 6 });
+        const lng = faker.number.float({ min: bounds.minLng, max: bounds.maxLng, fractionDigits: 6 });
+        return `SRID=4326;POINT(${lng} ${lat})`;
+
+      default:
+        return null;
+    }
+  }
+
+  private getDependencies(tableName: string): string[] {
+    const props = this.properties.filter(p => p.table_name === tableName);
+    const dependencies: string[] = [];
+
+    for (const prop of props) {
+      if (prop.join_table && prop.join_table !== tableName) {
+        if (!dependencies.includes(prop.join_table)) {
+          dependencies.push(prop.join_table);
+        }
+      }
+    }
+
+    return dependencies;
+  }
+
+  private sortEntitiesByDependency(): SchemaEntityTable[] {
+    const sorted: SchemaEntityTable[] = [];
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+
+    const visit = (tableName: string) => {
+      if (visited.has(tableName)) return;
+      if (visiting.has(tableName)) {
+        // Circular dependency - just continue
+        return;
+      }
+
+      visiting.add(tableName);
+      const deps = this.getDependencies(tableName);
+
+      for (const dep of deps) {
+        if (dep !== tableName) {
+          visit(dep);
+        }
+      }
+
+      visiting.delete(tableName);
+      visited.add(tableName);
+
+      const entity = this.entities.find(e => e.table_name === tableName);
+      if (entity && !sorted.find(e => e.table_name === tableName)) {
+        sorted.push(entity);
+      }
+    };
+
+    for (const entity of this.entities) {
+      visit(entity.table_name);
+    }
+
+    return sorted;
+  }
+
+  async generate() {
+    console.log('Starting mock data generation...\n');
+
+    // Generate mock users if enabled
+    let userIds: string[] = [];
+    if (this.config.generateUsers) {
+      console.log('Generating mock users...\n');
+
+      // Generate civic_os_users
+      const publicUsers = this.generateUsers();
+      this.generatedData.set('civic_os_users', publicUsers);
+      this.generateInsertSQL('civic_os_users', publicUsers);
+
+      // Generate civic_os_users_private with matching UUIDs
+      const privateUsers = this.generateUsersPrivate(publicUsers);
+      this.generatedData.set('civic_os_users_private', privateUsers);
+      this.generateInsertSQL('civic_os_users_private', privateUsers);
+
+      // Extract user IDs for foreign key references
+      userIds = publicUsers.map(u => u.id);
+      console.log(`Generated ${userIds.length} mock users\n`);
+    } else {
+      // Get existing user IDs for foreign key references
+      userIds = await this.getUserIds();
+      if (userIds.length === 0) {
+        console.warn('Warning: No users found in civic_os_users table. User references will be null.');
+      }
+    }
+
+    // Sort entities by dependencies
+    const sortedEntities = this.sortEntitiesByDependency();
+
+    // Log generation order for debugging
+    console.log('Entity generation order (respecting dependencies):');
+    sortedEntities.forEach((entity, index) => {
+      const deps = this.getDependencies(entity.table_name);
+      const depsStr = deps.length > 0 ? ` (depends on: ${deps.join(', ')})` : '';
+      console.log(`  ${index + 1}. ${entity.table_name}${depsStr}`);
+    });
+    console.log('');
+
+    for (const entity of sortedEntities) {
+      const tableName = entity.table_name;
+
+      // Skip excluded tables
+      if (this.config.excludeTables?.includes(tableName)) {
+        console.log(`Skipping ${tableName} (excluded in config)`);
+        continue;
+      }
+
+      // Get number of records to generate
+      const recordCount = this.config.recordsPerEntity[tableName] || 10;
+
+      console.log(`Generating ${recordCount} records for ${tableName}...`);
+
+      const props = this.properties.filter(p =>
+        p.table_name === tableName &&
+        !['id', 'created_at', 'updated_at'].includes(p.column_name)
+      );
+
+      const records: any[] = [];
+
+      for (let i = 0; i < recordCount; i++) {
+        const record: any = {
+          id: i + 1  // Generate sequential IDs for foreign key references
+        };
+
+        for (const prop of props) {
+          let relatedIds: any[] | undefined;
+
+          // Get related IDs for foreign keys
+          if (this.getPropertyType(prop) === EntityPropertyType.ForeignKeyName && prop.join_table) {
+            const relatedRecords = this.generatedData.get(prop.join_table) || await this.getExistingRecords(prop.join_table);
+            relatedIds = relatedRecords.map(r => r.id);
+
+            // Ensure we have IDs to reference
+            if (!relatedIds || relatedIds.length === 0) {
+              console.warn(`Warning: No records found for foreign key ${prop.column_name} -> ${prop.join_table}`);
+            }
+          } else if (this.getPropertyType(prop) === EntityPropertyType.User) {
+            relatedIds = userIds;
+          }
+
+          const value = this.generateFakeValue(prop, relatedIds);
+          if (value !== null) {
+            record[prop.column_name] = value;
+          }
+        }
+
+        records.push(record);
+      }
+
+      this.generatedData.set(tableName, records);
+
+      // Generate SQL INSERT statements
+      if (records.length > 0) {
+        this.generateInsertSQL(tableName, records);
+      }
+    }
+
+    console.log('\nMock data generation completed!');
+  }
+
+  private generateInsertSQL(tableName: string, records: any[]) {
+    if (records.length === 0) return;
+
+    // Check if this table has an auto-generated integer ID (exclude from SQL)
+    // or a UUID ID (include in SQL)
+    const idProperty = this.properties.find(p => p.table_name === tableName && p.column_name === 'id');
+    const hasAutoGeneratedId = idProperty?.is_identity === true;
+
+    // Exclude 'id' from SQL only if it's auto-generated
+    const columns = Object.keys(records[0]).filter(col =>
+      hasAutoGeneratedId ? col !== 'id' : true
+    );
+    const columnList = columns.map(c => `"${c}"`).join(', ');
+
+    const values = records.map(record => {
+      const valueList = columns.map(col => {
+        const val = record[col];
+        if (val === null || val === undefined) {
+          return 'NULL';
+        }
+        if (typeof val === 'boolean') {
+          return val ? 'TRUE' : 'FALSE';
+        }
+        if (typeof val === 'number') {
+          return val.toString();
+        }
+        if (typeof val === 'string') {
+          // Geography points don't need quotes
+          if (val.startsWith('SRID=')) {
+            return `'${val}'`;
+          }
+          // Escape single quotes
+          return `'${val.replace(/'/g, "''")}'`;
+        }
+        return `'${val}'`;
+      });
+      return `  (${valueList.join(', ')})`;
+    });
+
+    const sql = `-- Insert mock data for ${tableName}\nINSERT INTO "public"."${tableName}" (${columnList}) VALUES\n${values.join(',\n')};\n`;
+    this.sqlStatements.push(sql);
+  }
+
+  async saveSQLFile() {
+    if (this.sqlStatements.length === 0) {
+      console.log('No SQL statements to save');
+      return;
+    }
+
+    const outputPath = this.config.outputPath || './mock_data.sql';
+    const header = `-- =====================================================
+-- Mock Data Generated by Civic OS Mock Data Generator
+-- Generated at: ${new Date().toISOString()}
+-- =====================================================\n\n`;
+
+    const footer = `\n-- Notify PostgREST to reload schema cache\nNOTIFY pgrst, 'reload schema';\n`;
+
+    const content = header + this.sqlStatements.join('\n') + footer;
+
+    // Ensure directory exists
+    const dir = path.dirname(outputPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    fs.writeFileSync(outputPath, content);
+    console.log(`\nSQL file saved to: ${outputPath}`);
+  }
+
+  async insertDirectly() {
+    if (!this.client) throw new Error('Database not connected');
+
+    console.log('\nInserting data directly into database...');
+
+    for (const sql of this.sqlStatements) {
+      await this.client.query(sql);
+    }
+
+    console.log('Data inserted successfully!');
+  }
+}
+
+// Main execution
+async function main() {
+  const args = process.argv.slice(2);
+  const outputFormat = args.includes('--insert') ? 'insert' : 'sql';
+
+  // Load config if exists
+  let userConfig: Partial<MockDataConfig> = {};
+  const configPath = './scripts/mock-data-config.json';
+
+  if (fs.existsSync(configPath)) {
+    console.log('Loading configuration from mock-data-config.json...\n');
+    userConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } else {
+    console.log('No config file found. Using defaults...\n');
+  }
+
+  const config: Partial<MockDataConfig> = {
+    ...userConfig,
+    outputFormat,
+  };
+
+  const generator = new MockDataGenerator(config);
+
+  try {
+    await generator.connect();
+    await generator.fetchSchema();
+    await generator.generate();
+
+    if (outputFormat === 'sql') {
+      await generator.saveSQLFile();
+    } else {
+      await generator.insertDirectly();
+    }
+  } catch (error) {
+    console.error('Error generating mock data:', error);
+    process.exit(1);
+  } finally {
+    await generator.disconnect();
+  }
+}
+
+// Run the generator
+main();

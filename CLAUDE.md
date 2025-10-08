@@ -145,6 +145,88 @@ ng generate service services/service-name
 ng generate component pages/page-name --type=page
 ```
 
+### Mock Data Generation
+
+The project includes a TypeScript-based mock data generator that creates realistic test data for demonstration and testing purposes.
+
+**Features:**
+- Reads schema metadata from PostgREST to auto-generate appropriate fake data
+- Handles all property types (text, numbers, dates, foreign keys, users, geography points)
+- Generates mock users (civic_os_users and civic_os_users_private) with matching UUIDs
+- Respects foreign key dependencies and generates data in correct order
+- Configurable number of records per entity
+- Outputs SQL files or inserts directly into database
+
+**Configuration:**
+
+Edit `scripts/mock-data-config.json` to customize:
+```json
+{
+  "recordsPerEntity": {
+    "Issue": 25,
+    "WorkPackage": 5,
+    "Bid": 15
+  },
+  "geographyBounds": {
+    "minLat": 42.25,
+    "maxLat": 42.45,
+    "minLng": -83.30,
+    "maxLng": -82.90
+  },
+  "excludeTables": ["IssueStatus", "WorkPackageStatus"],
+  "outputPath": "./example/init-scripts/03_mock_data.sql",
+  "generateUsers": true,
+  "userCount": 15
+}
+```
+
+**Usage:**
+
+```bash
+# Load and export environment variables from Docker setup, then run generator
+set -a && source example/.env && set +a && npm run generate:mock
+
+# Or manually specify environment variables
+POSTGRES_PASSWORD=your_password npm run generate:mock
+
+# Insert data directly into running database
+set -a && source example/.env && set +a && npm run generate:seed
+```
+
+**Important Notes:**
+- Use `set -a` (allexport) before sourcing to export variables to npm's child process
+- Plain `source` loads variables but doesn't export them to child processes
+- Works reliably on both bash and zsh (macOS default shell since Catalina)
+- Safely handles values with spaces, quotes, and special characters
+
+**Data Generation by Property Type:**
+- `display_name` → Domain-specific descriptions based on entity type:
+  - **Issue**: "Large pothole on Main Street" (size + issue type + location)
+  - **WorkPackage**: "Q2 2024 road repairs - Detroit" (period + year + area)
+  - **Bid**: "ABC Construction proposal" (company name + "proposal")
+  - **WorkDetail**: "Inspected damage extent and recommended materials" (action + finding)
+- `TextShort` → Lorem ipsum words (3 words)
+- `TextLong` → Paragraphs of lorem ipsum
+- `IntegerNumber` → Random integers (1-1000)
+- `Money` → Currency values ($10-$10,000)
+- `Boolean` → Random true/false
+- `Date`/`DateTime` → Recent dates (last 30 days)
+- `ForeignKeyName` → Random selection from related table
+- `User` → Random selection from civic_os_users
+- `GeoPoint` → Random coordinates within configured bounds (EWKT format)
+
+**Note**: The `display_name` generator can be customized by editing the `generateDisplayName()` method in `scripts/generate-mock-data.ts`. See `scripts/README.md` for Faker API reference and examples.
+
+**Integration with Docker:**
+
+The generated SQL file (`03_mock_data.sql`) can be placed in `example/init-scripts/` to automatically populate the database when Docker Compose creates the PostgreSQL container. Remember to recreate the database volume to apply changes:
+
+```bash
+cd example
+docker-compose down -v
+docker-compose up -d
+```
+
 ## Database Setup
 
 ### Local Development with Docker Compose

@@ -1,0 +1,22 @@
+{
+  "recordsPerEntity": {
+    "Issue": 25,
+    "WorkPackage": 2,
+    "Bid": 10,
+    "WorkDetail": 50
+  },
+  "geographyBounds": {
+    "minLat": 42.9745,
+    "maxLat": 43.097,
+    "minLng": -83.767,
+    "maxLng": -83.653
+  },
+  "excludeTables": [
+    "IssueStatus",
+    "WorkPackageStatus"
+  ],
+  "outputFormat": "sql",
+  "outputPath": "./example/init-scripts/03_mock_data.sql",
+  "generateUsers": true,
+  "userCount": 15
+}
