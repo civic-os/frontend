@@ -1,6 +1,6 @@
 import { Component, inject, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { Observable, mergeMap, of, tap } from 'rxjs';
-import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
+import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 
@@ -27,6 +27,10 @@ export class CreatePage {
   private schema = inject(SchemaService);
   private data = inject(DataService);
   private router = inject(Router);
+
+  // Expose Math and SchemaService to template
+  protected readonly Math = Math;
+  protected readonly SchemaService = SchemaService;
 
   public entityKey?: string;
   public entity$: Observable<SchemaEntityTable | undefined> = this.route.params.pipe(mergeMap(p => {

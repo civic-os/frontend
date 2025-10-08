@@ -8,6 +8,7 @@ import { DataService } from '../../services/data.service';
 import { BehaviorSubject, of } from 'rxjs';
 import { MOCK_ENTITIES, MOCK_PROPERTIES, createMockProperty } from '../../testing';
 import { FormControl, Validators } from '@angular/forms';
+import { EntityPropertyType } from '../../interfaces/entity';
 
 describe('CreatePage', () => {
   let component: CreatePage;

@@ -1,6 +1,6 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Observable, map, mergeMap, of } from 'rxjs';
-import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
+import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
@@ -23,6 +23,10 @@ export class DetailPage {
   private route = inject(ActivatedRoute);
   private schema = inject(SchemaService);
   private data = inject(DataService);
+
+  // Expose Math and SchemaService to template
+  protected readonly Math = Math;
+  protected readonly SchemaService = SchemaService;
 
   public entityKey?: string;
   public entityId?: string;
@@ -53,5 +57,4 @@ export class DetailPage {
       return of(undefined);
     }
   }));
-
 }

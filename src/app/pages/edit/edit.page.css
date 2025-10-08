@@ -1,0 +1,67 @@
+/* Grid column span utilities for dynamic column widths */
+.col-span-full {
+  grid-column: 1 / -1;
+}
+
+/* Small screen (sm:) - 3 column grid */
+@media (min-width: 640px) {
+  .sm\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+  .sm\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+  .sm\:col-span-3 {
+    grid-column: span 3 / span 3;
+  }
+}
+
+/* Large screen (lg:) - 6 column grid */
+@media (min-width: 1024px) {
+  .lg\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+  .lg\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+  .lg\:col-span-3 {
+    grid-column: span 3 / span 3;
+  }
+  .lg\:col-span-4 {
+    grid-column: span 4 / span 4;
+  }
+  .lg\:col-span-5 {
+    grid-column: span 5 / span 5;
+  }
+  .lg\:col-span-6 {
+    grid-column: span 6 / span 6;
+  }
+}
+
+/* Extra large screen (2xl:) - 8 column grid */
+@media (min-width: 1536px) {
+  .\32xl\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+  .\32xl\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+  .\32xl\:col-span-3 {
+    grid-column: span 3 / span 3;
+  }
+  .\32xl\:col-span-4 {
+    grid-column: span 4 / span 4;
+  }
+  .\32xl\:col-span-5 {
+    grid-column: span 5 / span 5;
+  }
+  .\32xl\:col-span-6 {
+    grid-column: span 6 / span 6;
+  }
+  .\32xl\:col-span-7 {
+    grid-column: span 7 / span 7;
+  }
+  .\32xl\:col-span-8 {
+    grid-column: span 8 / span 8;
+  }
+}

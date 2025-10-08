@@ -1,35 +1,42 @@
-<div class="mb-4 w-full max-w-xs" [formGroup]="form()">
+<div class="mb-4 w-full" [formGroup]="form()">
   <label class="label" [for]="prop().column_name">
-    <span class="font-medium">{{ prop().display_name }}{{ prop().is_nullable ? '' : '*'}}</span>
+    <span class="font-semibold">
+      {{ prop().display_name }}{{ prop().is_nullable ? '' : '*'}}
+      @if (prop().description) {
+        <div class="tooltip tooltip-right inline-block" [attr.data-tip]="prop().description">
+          <span class="material-symbols-outlined text-info cursor-help ml-1 text-base align-middle">help_outline</span>
+        </div>
+      }
+    </span>
   </label>
 
   @if (propType() == EntityPropertyType.Date) {
-    <input type="date" placeholder="Type here" class="input w-full max-w-xs" [id]="prop().column_name" [formControlName]="prop().column_name" />
+    <input type="date" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.DateTime) {
-    <input type="datetime" placeholder="Type here" class="input w-full max-w-xs" [id]="prop().column_name" [formControlName]="prop().column_name" />
+    <input type="datetime" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.DateTimeLocal) {
-    <input type="datetime-local" placeholder="Type here" class="input w-full max-w-xs" [id]="prop().column_name" [formControlName]="prop().column_name" />
+    <input type="datetime-local" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.TextShort) {
-    <input type="text" placeholder="Type here" class="input w-full max-w-xs" [id]="prop().column_name" [formControlName]="prop().column_name" />
+    <input type="text" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.TextLong) {
-    <textarea class="textarea h-24" placeholder="Type here" [id]="prop().column_name" [formControlName]="prop().column_name"></textarea>
+    <textarea class="textarea h-24 w-full" placeholder="Type here" [id]="prop().column_name" [formControlName]="prop().column_name"></textarea>
   }
   @if (propType() == EntityPropertyType.Money) {
-    <input type="text" currencyMask placeholder="Type here" class="input w-full max-w-xs" [id]="prop().column_name" [formControlName]="prop().column_name" />
+    <input type="text" currencyMask placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.IntegerNumber) {
-    <input type="number" placeholder="Type here" step=1 mask="0*" [allowNegativeNumbers]="true" class="input w-full max-w-xs" [id]="prop().column_name" [formControlName]="prop().column_name" />
+    <input type="number" placeholder="Type here" step=1 mask="0*" [allowNegativeNumbers]="true" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.Boolean) {
     <input type="checkbox" class="toggle" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.ForeignKeyName) {
     @if (selectOptions$ | async; as selectOptions) {
-      <select class="select w-full max-w-xs" [id]="prop().column_name" [formControlName]="prop().column_name">
+      <select class="select w-full" [id]="prop().column_name" [formControlName]="prop().column_name">
         @if (prop().is_nullable) {
           <option [value]="null">Select an Option</option>
         }
@@ -45,8 +52,7 @@
       mode="edit"
       [initialValue]="form().get(prop().column_name)?.value"
       width="100%"
-      height="300px"
-      maxWidth="400px"
+      height="250px"
       (valueChange)="onMapValueChange($event)">
     </app-geo-point-map>
   }

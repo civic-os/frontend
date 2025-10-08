@@ -368,6 +368,81 @@ describe('SchemaService', () => {
     });
   });
 
+  describe('Property Sorting', () => {
+    describe('getPropsForList()', () => {
+      it('should return properties sorted by sort_order', (done) => {
+        const mockProps: SchemaEntityProperty[] = [
+          createMockProperty({ table_name: 'Issue', column_name: 'name', sort_order: 2 }),
+          createMockProperty({ table_name: 'Issue', column_name: 'status', sort_order: 0 }),
+          createMockProperty({ table_name: 'Issue', column_name: 'count', sort_order: 1 })
+        ];
+
+        service.getPropsForList(MOCK_ENTITIES.issue).subscribe(props => {
+          expect(props.length).toBe(3);
+          expect(props[0].column_name).toBe('status');  // sort_order: 0
+          expect(props[1].column_name).toBe('count');   // sort_order: 1
+          expect(props[2].column_name).toBe('name');    // sort_order: 2
+          done();
+        });
+
+        expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+      });
+    });
+
+    describe('getPropsForDetail()', () => {
+      it('should return properties sorted by sort_order', (done) => {
+        const mockProps: SchemaEntityProperty[] = [
+          createMockProperty({ table_name: 'Issue', column_name: 'description', sort_order: 5 }),
+          createMockProperty({ table_name: 'Issue', column_name: 'title', sort_order: 3 })
+        ];
+
+        service.getPropsForDetail(MOCK_ENTITIES.issue).subscribe(props => {
+          expect(props[0].column_name).toBe('title');       // sort_order: 3
+          expect(props[1].column_name).toBe('description'); // sort_order: 5
+          done();
+        });
+
+        expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+      });
+    });
+
+    describe('getPropsForCreate()', () => {
+      it('should return properties sorted by sort_order', (done) => {
+        const mockProps: SchemaEntityProperty[] = [
+          createMockProperty({ table_name: 'Issue', column_name: 'field_a', sort_order: 10, is_updatable: true }),
+          createMockProperty({ table_name: 'Issue', column_name: 'field_b', sort_order: 5, is_updatable: true }),
+          createMockProperty({ table_name: 'Issue', column_name: 'field_c', sort_order: 7, is_updatable: true })
+        ];
+
+        service.getPropsForCreate(MOCK_ENTITIES.issue).subscribe(props => {
+          expect(props[0].column_name).toBe('field_b');  // sort_order: 5
+          expect(props[1].column_name).toBe('field_c');  // sort_order: 7
+          expect(props[2].column_name).toBe('field_a');  // sort_order: 10
+          done();
+        });
+
+        expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+      });
+    });
+
+    describe('getPropsForEdit()', () => {
+      it('should return properties sorted by sort_order (inherits from getPropsForCreate)', (done) => {
+        const mockProps: SchemaEntityProperty[] = [
+          createMockProperty({ table_name: 'Issue', column_name: 'last', sort_order: 99, is_updatable: true }),
+          createMockProperty({ table_name: 'Issue', column_name: 'first', sort_order: 1, is_updatable: true })
+        ];
+
+        service.getPropsForEdit(MOCK_ENTITIES.issue).subscribe(props => {
+          expect(props[0].column_name).toBe('first');  // sort_order: 1
+          expect(props[1].column_name).toBe('last');   // sort_order: 99
+          done();
+        });
+
+        expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+      });
+    });
+  });
+
   describe('getFormValidatorsForProperty()', () => {
     it('should add required validator for non-nullable columns', () => {
       const prop = createMockProperty({ is_nullable: false });
@@ -396,6 +471,45 @@ describe('SchemaService', () => {
       expect(SchemaService.getDefaultValueForProperty(MOCK_PROPERTIES.integer)).toBeNull();
       expect(SchemaService.getDefaultValueForProperty(MOCK_PROPERTIES.foreignKey)).toBeNull();
       expect(SchemaService.getDefaultValueForProperty(MOCK_PROPERTIES.geoPoint)).toBeNull();
+    });
+  });
+
+  describe('getColumnSpan()', () => {
+    it('should return custom column_width when set', () => {
+      const property = createMockProperty({ column_width: 4 });
+      expect(SchemaService.getColumnSpan(property)).toBe(4);
+    });
+
+    it('should return 2 for TextLong type', () => {
+      const property = createMockProperty({
+        type: EntityPropertyType.TextLong,
+        column_width: undefined
+      });
+      expect(SchemaService.getColumnSpan(property)).toBe(2);
+    });
+
+    it('should return 2 for GeoPoint type', () => {
+      const property = createMockProperty({
+        type: EntityPropertyType.GeoPoint,
+        column_width: undefined
+      });
+      expect(SchemaService.getColumnSpan(property)).toBe(2);
+    });
+
+    it('should return 1 for other types by default', () => {
+      const property = createMockProperty({
+        type: EntityPropertyType.TextShort,
+        column_width: undefined
+      });
+      expect(SchemaService.getColumnSpan(property)).toBe(1);
+    });
+
+    it('should prefer custom column_width over type defaults', () => {
+      const property = createMockProperty({
+        type: EntityPropertyType.TextLong,
+        column_width: 3
+      });
+      expect(SchemaService.getColumnSpan(property)).toBe(3);
     });
   });
 

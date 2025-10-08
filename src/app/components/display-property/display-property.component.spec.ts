@@ -233,7 +233,7 @@ describe('DisplayPropertyComponent', () => {
       const mapInstance = mapComponent.componentInstance as GeoPointMapComponent;
       expect(mapInstance.mode()).toBe('display');
       expect(mapInstance.initialValue()).toBe('POINT(-83.6875 43.0125)');
-      expect(mapInstance.width()).toBe('300px');
+      expect(mapInstance.width()).toBe('100%');
       expect(mapInstance.height()).toBe('200px');
     });
 
@@ -319,6 +319,48 @@ describe('DisplayPropertyComponent', () => {
 
     it('should default linkRelated to true', () => {
       expect(component.linkRelated()).toBe(true);
+    });
+  });
+
+  describe('Label and Tooltip Display', () => {
+    it('should display property label', () => {
+      const mockProperty = createMockProperty({
+        display_name: 'Field Name'
+      });
+
+      fixture.componentRef.setInput('property', mockProperty);
+      fixture.componentRef.setInput('datum', 'test value');
+      fixture.detectChanges();
+
+      const label = fixture.nativeElement.querySelector('label span');
+      expect(label.textContent).toContain('Field Name');
+    });
+
+    it('should display tooltip when description exists', () => {
+      const mockProperty = createMockProperty({
+        description: 'Detailed information about this field'
+      });
+
+      fixture.componentRef.setInput('property', mockProperty);
+      fixture.componentRef.setInput('datum', 'value');
+      fixture.detectChanges();
+
+      const tooltip = fixture.nativeElement.querySelector('.tooltip');
+      expect(tooltip).toBeTruthy();
+      expect(tooltip.getAttribute('data-tip')).toBe('Detailed information about this field');
+    });
+
+    it('should not display tooltip when description is null', () => {
+      const mockProperty = createMockProperty({
+        description: undefined
+      });
+
+      fixture.componentRef.setInput('property', mockProperty);
+      fixture.componentRef.setInput('datum', 'value');
+      fixture.detectChanges();
+
+      const tooltip = fixture.nativeElement.querySelector('.tooltip');
+      expect(tooltip).toBeFalsy();
     });
   });
 });

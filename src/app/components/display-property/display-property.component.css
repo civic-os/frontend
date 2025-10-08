@@ -1,3 +1,4 @@
 .geo-point-display {
-  display: inline-block;
+  display: block;
+  width: 100%;
 }

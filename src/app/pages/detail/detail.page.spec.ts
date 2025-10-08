@@ -6,7 +6,8 @@ import { DetailPage } from './detail.page';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
 import { BehaviorSubject, of } from 'rxjs';
-import { MOCK_ENTITIES, MOCK_PROPERTIES } from '../../testing';
+import { MOCK_ENTITIES, MOCK_PROPERTIES, createMockProperty } from '../../testing';
+import { EntityPropertyType } from '../../interfaces/entity';
 
 describe('DetailPage', () => {
   let component: DetailPage;

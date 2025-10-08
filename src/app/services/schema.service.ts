@@ -138,28 +138,34 @@ export class SchemaService {
   public getPropsForList(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropertiesForEntity(table)
       .pipe(map(props => {
-        return props.filter(p =>{
-          return !SchemaService.hideFields.includes(p.column_name);
-        });
+        return props
+          .filter(p =>{
+            return !SchemaService.hideFields.includes(p.column_name);
+          })
+          .sort((a, b) => a.sort_order - b.sort_order);
       }));
   }
   public getPropsForDetail(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropertiesForEntity(table)
       .pipe(map(props => {
-        return props.filter(p =>{
-          return !SchemaService.hideFields.includes(p.column_name);
-        });
+        return props
+          .filter(p =>{
+            return !SchemaService.hideFields.includes(p.column_name);
+          })
+          .sort((a, b) => a.sort_order - b.sort_order);
       }));
   }
   public getPropsForCreate(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropertiesForEntity(table)
       .pipe(map(props => {
-        return props.filter(p =>{
-          return !(p.is_generated || p.is_identity) && 
-            p.is_updatable &&
-            !SchemaService.hideFields.includes(p.column_name);
-        });
-      }));    
+        return props
+          .filter(p =>{
+            return !(p.is_generated || p.is_identity) &&
+              p.is_updatable &&
+              !SchemaService.hideFields.includes(p.column_name);
+          })
+          .sort((a, b) => a.sort_order - b.sort_order);
+      }));
   }
   public getPropsForEdit(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropsForCreate(table);
@@ -177,5 +183,24 @@ export class SchemaService {
       return false;
     }
     return null;
+  }
+
+  /**
+   * Get the column span for a property based on custom width or type-based defaults
+   */
+  public static getColumnSpan(property: SchemaEntityProperty): number {
+    // Use custom width if set, otherwise use type-based defaults
+    if (property.column_width) {
+      return property.column_width;
+    }
+
+    // Default widths based on property type
+    switch (property.type) {
+      case EntityPropertyType.TextLong:
+      case EntityPropertyType.GeoPoint:
+        return 2;
+      default:
+        return 1;
+    }
   }
 }

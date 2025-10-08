@@ -7,6 +7,7 @@ import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
 import { BehaviorSubject, of } from 'rxjs';
 import { MOCK_ENTITIES, MOCK_PROPERTIES, createMockProperty } from '../../testing';
+import { EntityPropertyType } from '../../interfaces/entity';
 
 describe('EditPage', () => {
   let component: EditPage;

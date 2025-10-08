@@ -5,7 +5,15 @@ module.exports = {
     container: {
       center: true,
     },
-    extend: {},
+    extend: {
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+          },
+        },
+      },
+    },
   },
   plugins: [
     require('@tailwindcss/typography'),

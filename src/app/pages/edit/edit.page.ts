@@ -4,7 +4,7 @@ import { Observable, map, mergeMap, of, tap } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DataService } from '../../services/data.service';
-import { SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
+import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
 import { DialogComponent } from '../../components/dialog/dialog.component';
 
 import { EditPropertyComponent } from '../../components/edit-property/edit-property.component';
@@ -27,6 +27,10 @@ export class EditPage {
   private schema = inject(SchemaService);
   private data = inject(DataService);
   private router = inject(Router);
+
+  // Expose Math and SchemaService to template
+  protected readonly Math = Math;
+  protected readonly SchemaService = SchemaService;
 
   public entityKey?: string;
   public entityId?: string;

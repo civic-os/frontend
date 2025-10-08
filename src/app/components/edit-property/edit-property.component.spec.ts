@@ -275,7 +275,7 @@ describe('EditPropertyComponent', () => {
       const mapInstance = mapComponent.componentInstance as GeoPointMapComponent;
       expect(mapInstance.mode()).toBe('edit');
       expect(mapInstance.width()).toBe('100%');
-      expect(mapInstance.height()).toBe('300px');
+      expect(mapInstance.height()).toBe('250px');
     });
 
     it('should update form control when map value changes', async () => {
@@ -490,6 +490,66 @@ describe('EditPropertyComponent', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(formControl.value).toBe('');
+    });
+  });
+
+  describe('Label and Tooltip Display', () => {
+    it('should display property label', () => {
+      const mockProperty = createMockProperty({
+        column_name: 'test_field',
+        display_name: 'Test Field'
+      });
+
+      const formGroup = new FormGroup({ test_field: new FormControl('') });
+      fixture.componentRef.setInput('property', mockProperty);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      fixture.detectChanges();
+
+      const label = fixture.nativeElement.querySelector('label span');
+      expect(label.textContent).toContain('Test Field');
+    });
+
+    it('should display tooltip when description exists', () => {
+      const mockProperty = createMockProperty({
+        column_name: 'test',
+        description: 'This is a helpful description'
+      });
+
+      const formGroup = new FormGroup({ test: new FormControl('') });
+      fixture.componentRef.setInput('property', mockProperty);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      fixture.detectChanges();
+
+      const tooltip = fixture.nativeElement.querySelector('.tooltip');
+      expect(tooltip).toBeTruthy();
+      expect(tooltip.getAttribute('data-tip')).toBe('This is a helpful description');
+    });
+
+    it('should not display tooltip when description is null', () => {
+      const mockProperty = createMockProperty({
+        column_name: 'test',
+        description: undefined
+      });
+
+      const formGroup = new FormGroup({ test: new FormControl('') });
+      fixture.componentRef.setInput('property', mockProperty);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      fixture.detectChanges();
+
+      const tooltip = fixture.nativeElement.querySelector('.tooltip');
+      expect(tooltip).toBeFalsy();
+    });
+
+    it('should use font-semibold for label', () => {
+      const mockProperty = createMockProperty({ column_name: 'test' });
+
+      const formGroup = new FormGroup({ test: new FormControl('') });
+      fixture.componentRef.setInput('property', mockProperty);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      fixture.detectChanges();
+
+      const labelSpan = fixture.nativeElement.querySelector('label span');
+      expect(labelSpan.classList.contains('font-semibold')).toBe(true);
     });
   });
 });

@@ -10,19 +10,13 @@
           }
         </h1>
         <h2>Id: {{data.id}}</h2>
-        @for (prop of props; track prop) {
-          <div>
-            <h3>
-              {{prop.display_name}}
-              @if (prop.description) {
-                <div class="tooltip tooltip-right inline-block" [attr.data-tip]="prop.description">
-                  <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
-                </div>
-              }
-            </h3>
-            <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>
-          </div>
-        }
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 2xl:grid-cols-8 gap-6">
+          @for (prop of props; track prop) {
+            <div [class]="'col-span-full sm:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 3) + ' lg:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 6) + ' 2xl:col-span-' + SchemaService.getColumnSpan(prop)">
+              <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>
+            </div>
+          }
+        </div>
       }
     }
   }
