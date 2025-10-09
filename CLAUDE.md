@@ -8,6 +8,8 @@ Civic OS is a meta-application framework that automatically generates CRUD (Crea
 
 **Key Concept**: Instead of manually building UI for each table, Civic OS reads database schema metadata from `schema_entities` and `schema_properties` views to automatically generate forms, tables, and validation.
 
+**License**: This project is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). Copyright (C) 2023-2025 Civic OS, L3C. See the LICENSE file for full terms.
+
 ## Architecture
 
 ### Core Data Flow

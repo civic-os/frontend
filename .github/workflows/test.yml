@@ -28,10 +28,8 @@ jobs:
         run: npm run test:headless -- --code-coverage
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v3
         if: always()
         with:
           files: ./coverage/civic-os/lcov.info
           fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
