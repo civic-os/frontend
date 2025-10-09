@@ -182,7 +182,7 @@ Edit `scripts/mock-data-config.json` to customize:
     "maxLng": -82.90
   },
   "excludeTables": ["IssueStatus", "WorkPackageStatus"],
-  "outputPath": "./example/init-scripts/03_mock_data.sql",
+  "outputPath": "./example/init-scripts/04_mock_data.sql",
   "generateUsers": true,
   "userCount": 15
 }
@@ -227,7 +227,7 @@ set -a && source example/.env && set +a && npm run generate:seed
 
 **Integration with Docker:**
 
-The generated SQL file (`03_mock_data.sql`) can be placed in `example/init-scripts/` to automatically populate the database when Docker Compose creates the PostgreSQL container. Remember to recreate the database volume to apply changes:
+The generated SQL file (`04_mock_data.sql`) can be placed in `example/init-scripts/` to automatically populate the database when Docker Compose creates the PostgreSQL container. Remember to recreate the database volume to apply changes:
 
 ```bash
 cd example
@@ -270,10 +270,10 @@ The database initialization script (`example/init-scripts/00_init.sh`) runs all 
 - Civic OS user tables (`civic_os_users`, `civic_os_users_private`) - `postgres/3_civic_os_schema.sql`
 - Metadata schema (`metadata.entities`, `metadata.properties`, `metadata.roles`, `metadata.permissions`, etc.) - `postgres/3_civic_os_schema.sql`
 - Dynamic views (`schema_entities`, `schema_properties`) - `postgres/3_civic_os_schema.sql`
-- Default roles and sample permissions - `postgres/4_rbac_sample_data.sql`
-- Example application (Pot Hole Observation System) - `example/init-scripts/01_pot_hole_schema.sql` and `02_pot_hole_data.sql`
+- Core RBAC roles and system table permissions - `postgres/4_rbac_sample_data.sql`
+- Example application (Pot Hole Observation System) - `example/init-scripts/01_pot_hole_schema.sql`, `02_pot_hole_data.sql`, `03_pot_hole_permissions.sql`, and `04_mock_data.sql` (optional)
 
-The Pot Hole Observation System serves as a reference implementation, demonstrating tables for issue tracking, work packages, bids, and status management.
+The Pot Hole Observation System serves as a reference implementation, demonstrating tables for issue tracking, work packages, bids, and status management. The separation of core RBAC (`postgres/4_rbac_sample_data.sql`) from example permissions (`example/init-scripts/03_pot_hole_permissions.sql`) allows developers to easily replace the example with their own application tables and permissions.
 
 #### PostGIS Schema Separation
 

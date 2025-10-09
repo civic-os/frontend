@@ -16,7 +16,7 @@
     "WorkPackageStatus"
   ],
   "outputFormat": "sql",
-  "outputPath": "./example/init-scripts/03_mock_data.sql",
+  "outputPath": "./example/init-scripts/04_mock_data.sql",
   "generateUsers": true,
   "userCount": 15
 }

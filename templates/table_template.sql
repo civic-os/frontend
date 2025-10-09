@@ -67,39 +67,128 @@ CREATE TRIGGER set_updated_at_trigger
   EXECUTE FUNCTION public.set_updated_at();
 
 -- =====================================================
--- Metadata and Permissions Setup
+-- Metadata Auto-Seeding
 -- =====================================================
--- Add this section to your sample data script or run separately
+-- Automatically populate metadata from database schema views
+-- This reads from schema_entities and schema_properties views and
+-- calls the upsert RPC functions to seed the metadata tables.
 
--- Optional: Add custom display name and description to metadata
--- INSERT INTO metadata.entities (table_name, display_name, description, sort_order) VALUES
---   ('TABLE_NAME', 'Display Name', 'Description of this entity', 100)
--- ON CONFLICT (table_name) DO NOTHING;
+-- Auto-seed entity metadata from schema_entities view
+DO $$
+DECLARE
+  entity_rec RECORD;
+  entity_cursor CURSOR FOR
+    SELECT table_name, display_name
+    FROM public.schema_entities
+    WHERE table_name = 'TABLE_NAME';
+BEGIN
+  OPEN entity_cursor;
+  LOOP
+    FETCH entity_cursor INTO entity_rec;
+    EXIT WHEN NOT FOUND;
 
--- Optional: Customize column labels and ordering
--- INSERT INTO metadata.properties (table_name, column_name, display_name, description, sort_order) VALUES
---   ('TABLE_NAME', 'display_name', 'Name', 'The name of this item', 1)
--- ON CONFLICT (table_name, column_name) DO NOTHING;
+    -- Call upsert function with defaults
+    -- Customize display_name, description, and sort_order as needed
+    PERFORM public.upsert_entity_metadata(
+      p_table_name := entity_rec.table_name,
+      p_display_name := entity_rec.display_name,  -- Default from view
+      p_description := NULL,  -- Add custom description here if desired
+      p_sort_order := 100  -- Customize sort order as needed
+    );
+  END LOOP;
+  CLOSE entity_cursor;
+END $$;
+
+-- Auto-seed property metadata from schema_properties view
+DO $$
+DECLARE
+  prop_rec RECORD;
+  prop_cursor CURSOR FOR
+    SELECT table_name, column_name, display_name, sort_order
+    FROM public.schema_properties
+    WHERE table_name = 'TABLE_NAME'
+      AND column_name NOT IN ('id', 'created_at', 'updated_at');  -- Skip system fields
+BEGIN
+  OPEN prop_cursor;
+  LOOP
+    FETCH prop_cursor INTO prop_rec;
+    EXIT WHEN NOT FOUND;
+
+    -- Call upsert function with defaults
+    -- Customize display_name, description, sort_order, and visibility as needed
+    PERFORM public.upsert_property_metadata(
+      p_table_name := prop_rec.table_name,
+      p_column_name := prop_rec.column_name,
+      p_display_name := prop_rec.display_name,  -- Default from view (auto-generated from column name)
+      p_description := NULL,  -- Add custom description here if desired
+      p_sort_order := prop_rec.sort_order,  -- Default from view (ordinal position)
+      p_column_width := NULL,  -- Not yet implemented in UI
+      p_show_on_list := true,  -- Show in list view
+      p_show_on_create := true,  -- Show in create form
+      p_show_on_edit := true,  -- Show in edit form
+      p_show_on_detail := true  -- Show in detail view
+    );
+  END LOOP;
+  CLOSE prop_cursor;
+END $$;
+
+-- Manual override examples (optional - uncomment and customize):
+-- Override entity display name and add description
+-- SELECT public.upsert_entity_metadata(
+--   p_table_name := 'TABLE_NAME',
+--   p_display_name := 'Custom Display Name',
+--   p_description := 'Detailed description of this entity',
+--   p_sort_order := 50
+-- );
+
+-- Override specific property settings
+-- SELECT public.upsert_property_metadata(
+--   p_table_name := 'TABLE_NAME',
+--   p_column_name := 'display_name',
+--   p_display_name := 'Name',
+--   p_description := 'The name of this item',
+--   p_sort_order := 1,
+--   p_column_width := NULL,
+--   p_show_on_list := true,
+--   p_show_on_create := true,
+--   p_show_on_edit := true,
+--   p_show_on_detail := true
+-- );
+
+-- =====================================================
+-- Permissions Setup
+-- =====================================================
+-- Create RBAC permissions for this table
+-- Add this section to your permissions script
 
 -- Create permissions for this table
--- INSERT INTO metadata.permissions (table_name, permission) VALUES
---   ('TABLE_NAME', 'read'),
---   ('TABLE_NAME', 'create'),
---   ('TABLE_NAME', 'update'),
---   ('TABLE_NAME', 'delete')
--- ON CONFLICT (table_name, permission) DO NOTHING;
+INSERT INTO metadata.permissions (table_name, permission) VALUES
+  ('TABLE_NAME', 'read'),
+  ('TABLE_NAME', 'create'),
+  ('TABLE_NAME', 'update'),
+  ('TABLE_NAME', 'delete')
+ON CONFLICT (table_name, permission) DO NOTHING;
 
--- Grant read permission to anonymous users
+-- Grant all permissions to admin role
+INSERT INTO metadata.permission_roles (permission_id, role_id)
+SELECT p.id, r.id
+FROM metadata.permissions p
+CROSS JOIN metadata.roles r
+WHERE p.table_name = 'TABLE_NAME'
+  AND r.display_name = 'admin'
+ON CONFLICT DO NOTHING;
+
+-- Example: Grant read permission to all users (including anonymous)
 -- INSERT INTO metadata.permission_roles (permission_id, role_id)
 -- SELECT p.id, r.id
 -- FROM metadata.permissions p
 -- CROSS JOIN metadata.roles r
 -- WHERE p.table_name = 'TABLE_NAME'
 --   AND p.permission = 'read'
---   AND r.display_name = 'anonymous'
+--   AND r.display_name IN ('anonymous', 'user', 'editor', 'admin')
 -- ON CONFLICT DO NOTHING;
 
--- Grant create/update to authenticated users
+-- Example: Grant create/update to authenticated users
 -- INSERT INTO metadata.permission_roles (permission_id, role_id)
 -- SELECT p.id, r.id
 -- FROM metadata.permissions p
@@ -109,7 +198,7 @@ CREATE TRIGGER set_updated_at_trigger
 --   AND r.display_name IN ('user', 'editor', 'admin')
 -- ON CONFLICT DO NOTHING;
 
--- Grant delete to editors and admins only
+-- Example: Grant delete to editors only
 -- INSERT INTO metadata.permission_roles (permission_id, role_id)
 -- SELECT p.id, r.id
 -- FROM metadata.permissions p
