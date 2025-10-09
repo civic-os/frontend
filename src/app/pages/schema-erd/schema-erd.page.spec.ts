@@ -350,12 +350,19 @@ describe('SchemaErdPage', () => {
     });
 
     it('should not access document on server in detectTheme', () => {
+      // Mock document.documentElement with no theme attribute to ensure clean state
+      const mockHtmlElement = document.createElement('html');
+      Object.defineProperty(document, 'documentElement', {
+        configurable: true,
+        get: () => mockHtmlElement
+      });
+
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
-      // detectTheme returns 'default' when window is undefined (SSR)
+      // detectTheme returns 'default' when no theme is set
       const theme = component['detectTheme']();
       expect(theme).toBe('default');
     });

@@ -32,6 +32,8 @@ describe('AppComponent', () => {
 
   afterEach(() => {
     httpMock.verify();
+    // Clean up data-theme attribute to prevent test pollution
+    document.documentElement.removeAttribute('data-theme');
   });
 
   it('should create the app', () => {
