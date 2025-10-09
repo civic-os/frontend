@@ -5,8 +5,27 @@ This folder contains a Docker Compose setup for running Civic OS with PostgreSQL
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- Keycloak server running at `https://auth.civic-os.org` (or update `.env` with your Keycloak URL)
-- Keycloak realm configured with a client for this application
+- Keycloak authentication configured (see Authentication Setup below)
+
+## Authentication Setup
+
+You have **two options** for authentication:
+
+**Option A: Use Shared Keycloak Instance (Quick Start)**
+- ✅ No setup required - uses `auth.civic-os.org`
+- ✅ Good for learning and basic testing
+- ⚠️ **Limitation**: Cannot create/manage roles or test RBAC features
+- Use this if you just want to see how Civic OS works
+
+**Option B: Run Your Own Keycloak (Recommended for RBAC Testing)**
+- ✅ Full control over roles and users
+- ✅ Test all RBAC features (permissions, role-based UI)
+- ✅ Required for testing admin features
+- 📖 See **[AUTHENTICATION.md](../AUTHENTICATION.md)** for complete setup instructions
+
+**Which should you choose?**
+- Just exploring? → Use Option A (skip to Step 1 below)
+- Testing RBAC, developing features, need admin access? → Use Option B (complete [AUTHENTICATION.md](../AUTHENTICATION.md) first, then return here)
 
 ## Architecture
 
@@ -22,21 +41,7 @@ Frontend (Angular) → PostgREST (Port 3000) → PostgreSQL
 
 ## Setup Instructions
 
-### 1. Configure Keycloak
-
-In your Keycloak admin console:
-
-1. Create or use existing realm (e.g., `civic-os-dev`)
-2. Create a client (e.g., `myclient`)
-3. Configure client settings:
-   - Access Type: `public` (for frontend)
-   - Valid Redirect URIs: `http://localhost:4200/*`
-   - Web Origins: `http://localhost:4200`
-4. Get the realm's public key:
-   - Go to: **Realm Settings → Keys → RS256 → Public key**
-   - Copy the public key value
-
-### 2. Configure Environment Variables
+### 1. Configure Environment Variables
 
 Copy the example environment file and edit it:
 
@@ -58,7 +63,7 @@ KEYCLOAK_REALM=civic-os-dev
 KEYCLOAK_CLIENT_ID=myclient
 ```
 
-### 3. Fetch Keycloak Public Key (JWKS)
+### 2. Fetch Keycloak Public Key (JWKS)
 
 Run the provided script to automatically fetch the public key from Keycloak:
 
@@ -78,7 +83,7 @@ curl -s "https://auth.civic-os.org/realms/civic-os-dev/protocol/openid-connect/c
   jq '{keys: [.keys[] | select(.alg=="RS256") | {kid, kty, alg, use, n, e}]}' > jwt-secret.jwks
 ```
 
-### 4. Start the Services
+### 3. Start the Services
 
 ```bash
 docker-compose up -d
@@ -89,7 +94,7 @@ This will start:
 - PostgREST on port `3000`
 - Swagger UI on port `8080` (optional, for API docs)
 
-### 5. Verify Setup
+### 4. Verify Setup
 
 Check that all services are running:
 
@@ -103,13 +108,13 @@ Test PostgREST API:
 curl http://localhost:3000/schema_entities
 ```
 
-### 6. Configure Frontend
+### 5. Configure Frontend
 
 The frontend is already configured to use this setup:
 - `src/environments/environment.development.ts` points to `http://localhost:3000/`
 - `src/app/app.config.ts` includes Keycloak configuration
 
-### 7. Run the Frontend
+### 6. Run the Frontend
 
 ```bash
 cd ..  # Back to project root
@@ -158,7 +163,9 @@ The database includes helper functions to access JWT claims:
 - `public.current_user_email()` - Returns email from `email` claim
 - `public.current_user_name()` - Returns name from `name` or `preferred_username` claim
 
-Use these in RLS policies and queries:
+**How they work**: These functions automatically extract data from JWT tokens when requests come through PostgREST. They're designed to be used in RLS policies, triggers, and application queries - PostgreSQL evaluates them automatically when processing authenticated requests.
+
+**Usage in RLS policies:**
 
 ```sql
 -- Example: Filter records to current user
@@ -168,6 +175,8 @@ CREATE POLICY "Users see own records"
   TO authenticated
   USING (user_id = public.current_user_id());
 ```
+
+**Note**: These functions return NULL when called directly in psql (no JWT context). To test them with actual JWT tokens, see [AUTHENTICATION.md](../AUTHENTICATION.md) for curl examples through PostgREST.
 
 ## Adding New Entities
 

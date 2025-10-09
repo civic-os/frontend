@@ -58,6 +58,26 @@ services:
     networks:
       - postgrest-network
 
+  # Optional: Local Keycloak instance for RBAC testing
+  # Uncomment this section to run Keycloak locally (recommended for testing roles/permissions)
+  # See AUTHENTICATION.md for complete setup instructions
+  # keycloak:
+  #   image: quay.io/keycloak/keycloak:24.0
+  #   container_name: keycloak_server
+  #   environment:
+  #     KEYCLOAK_ADMIN: admin
+  #     KEYCLOAK_ADMIN_PASSWORD: admin
+  #     KC_HEALTH_ENABLED: true
+  #     KC_METRICS_ENABLED: true
+  #   ports:
+  #     - "8081:8080"  # Mapped to 8081 to avoid conflict with swagger-ui
+  #   command: start-dev
+  #   networks:
+  #     - postgrest-network
+  #   # Note: After starting Keycloak, access admin console at http://localhost:8081
+  #   #       Login: admin / admin
+  #   #       Follow AUTHENTICATION.md to configure realm, client, and roles
+
 volumes:
   postgres_data:
   init-scripts:

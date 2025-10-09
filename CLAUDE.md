@@ -333,12 +333,18 @@ The `SchemaService.propertyToSelectString()` method builds PostgREST-compatible 
 
 ## Authentication
 
-- Uses **Keycloak** via `keycloak-angular` library
-- Configuration in `src/app/app.config.ts`:
-  - Keycloak URL: `https://auth.civic-os.org`
-  - Realm: `civic-os-dev`
-  - Client ID: `myclient`
+**For complete authentication setup, including running your own Keycloak instance for RBAC testing, see [AUTHENTICATION.md](./AUTHENTICATION.md).**
+
+Civic OS uses **Keycloak** for authentication via the `keycloak-angular` library.
+
+**Quick Reference** (default shared instance):
+- Keycloak URL: `https://auth.civic-os.org`
+- Realm: `civic-os-dev`
+- Client ID: `myclient`
+- Configuration location: `src/app/app.config.ts` (lines 36-39)
 - Bearer token automatically included for requests to `localhost:3000` via `includeBearerTokenInterceptor`
+
+**Testing RBAC Features**: To test role-based features (admin UI, permissions page), you must run your own Keycloak instance where you can create and assign roles. See [AUTHENTICATION.md](./AUTHENTICATION.md) for step-by-step setup instructions.
 
 ## Role-Based Access Control (RBAC)
 
@@ -360,37 +366,16 @@ The system comes with four predefined roles (defined in `postgres/3_rbac_sample_
 
 ### Configuring Keycloak Roles
 
-For roles to work, you must configure Keycloak to include role claims in JWT tokens:
+**Note**: To configure roles, you need admin access to a Keycloak instance. The default shared instance (`auth.civic-os.org`) does not allow developer access. See [AUTHENTICATION.md](./AUTHENTICATION.md) for instructions on setting up your own Keycloak instance.
 
-1. **Access Keycloak Admin Console**
-   - Navigate to `https://auth.civic-os.org` (or your Keycloak URL)
-   - Login with admin credentials
-   - Select the `civic-os-dev` realm
+**Quick role setup overview** (detailed steps in AUTHENTICATION.md):
 
-2. **Create Realm Roles**
-   - Go to **Realm Roles** → **Create Role**
-   - Create roles matching database roles: `user`, `editor`, `admin`
-   - The `anonymous` role is automatically assigned by the backend for unauthenticated requests
+1. **Create Realm Roles**: `user`, `editor`, `admin`
+2. **Configure Role Mapper**: Ensure roles appear in JWT tokens at `realm_access.roles`
+3. **Assign Roles to Users**: Use Keycloak admin console to assign roles
+4. **Verify Roles in JWT**: Use jwt.io to decode tokens and check for roles
 
-3. **Assign Roles to Users**
-   - Go to **Users** → Select your user
-   - Click **Role Mapping** tab
-   - Click **Assign Role**
-   - Select roles (e.g., `admin`) and click **Assign**
-
-4. **Configure Client Scopes** (if roles aren't appearing in JWT)
-   - Go to **Client Scopes** → **roles** → **Mappers** tab
-   - Ensure there's a mapper with:
-     - Mapper Type: `User Realm Role`
-     - Token Claim Name: `realm_access.roles` or `roles`
-     - Add to ID token: ON
-     - Add to access token: ON
-     - Add to userinfo: ON
-
-5. **Verify JWT Token Contents**
-   - After logging in, check browser console for JWT token
-   - Or use `jwt.io` to decode your access token
-   - Ensure roles appear in token payload under `realm_access.roles` or `roles`
+The `anonymous` role is automatically assigned by the backend for unauthenticated requests - do not create this role in Keycloak.
 
 ### How Roles Work in Civic OS
 
