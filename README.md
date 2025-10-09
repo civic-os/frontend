@@ -23,7 +23,7 @@ This application automatically generates views for listing, detailing, creating,
 - [ ] Add text search as an indexed column and toggle-able search box
 - [ ] Add Map view for List pages
 - [ ] Add Sortable columns and default sort
-- [ ] Add filter-able columns (mostly FK fields)
+- [ ] Add filter-able columns (mostly FK fields, but also expand to other indexed fields like datetime)
 ### Roles
 - [x] Build Roles/Permissions schema
 - [ ] Give Roles display name, description
