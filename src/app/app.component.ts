@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild, AfterViewInit } from '@angular/core';
 
 import { Router, RouterOutlet } from '@angular/router';
 import { SchemaService } from './services/schema.service';
@@ -19,7 +19,7 @@ import { AuthService } from './services/auth.service';
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
   private schema = inject(SchemaService);
   private router = inject(Router);
   public auth = inject(AuthService);
@@ -52,11 +52,37 @@ export class AppComponent {
     this.drawerOpen = false;
   }
 
+  public navigateToSchemaErd() {
+    this.router.navigate(['schema-erd']);
+    this.drawerOpen = false;
+  }
+
   public getMenuKeys(menuItems: OpenAPIV2.DefinitionsObject | undefined) : string[] {
     if(menuItems) {
       return Object.keys(menuItems).sort();
     } else {
       return [];
     }
+  }
+
+  ngAfterViewInit(): void {
+    // Listen for theme changes from DaisyUI theme-controller inputs
+    // DaisyUI's theme-controller is CSS-only and doesn't update data-theme attribute
+    // We need to manually update it so other components can react to theme changes
+    const themeInputs = document.querySelectorAll<HTMLInputElement>('input.theme-controller');
+
+    console.log('[AppComponent] Found theme-controller inputs:', themeInputs.length);
+
+    themeInputs.forEach((input, index) => {
+      console.log(`[AppComponent] Theme input ${index}: value="${input.value}", checked=${input.checked}`);
+
+      input.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.checked) {
+          console.log('[AppComponent] Theme changed to:', target.value);
+          document.documentElement.setAttribute('data-theme', target.value);
+        }
+      });
+    });
   }
 }

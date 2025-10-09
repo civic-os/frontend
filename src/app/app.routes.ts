@@ -6,8 +6,13 @@ import { EditPage } from './pages/edit/edit.page';
 import { PermissionsPage } from './pages/permissions/permissions.page';
 import { EntityManagementPage } from './pages/entity-management/entity-management.page';
 import { PropertyManagementPage } from './pages/property-management/property-management.page';
+import { SchemaErdPage } from './pages/schema-erd/schema-erd.page';
 
 export const routes: Routes = [
+    {
+        path: 'schema-erd',
+        component: SchemaErdPage
+    },
     {
         path: 'permissions',
         component: PermissionsPage

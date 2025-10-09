@@ -11,9 +11,10 @@ describe('AppComponent', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
-    mockAuthService = jasmine.createSpyObj('AuthService', ['isAdmin', 'hasRole'], {
+    mockAuthService = jasmine.createSpyObj('AuthService', ['isAdmin', 'hasRole', 'authenticated'], {
       userRoles: []
     });
+    mockAuthService.authenticated.and.returnValue(false);
 
     await TestBed.configureTestingModule({
       imports: [AppComponent],
@@ -53,5 +54,34 @@ describe('AppComponent', () => {
     schemaEntitiesReqs.forEach(req => req.flush([]));
 
     expect(app.title).toEqual('frontend');
+  });
+
+  it('should update data-theme attribute when theme-controller input changes', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const app = fixture.componentInstance;
+
+    // Create mock theme-controller inputs in the DOM
+    const themeInput = document.createElement('input');
+    themeInput.type = 'radio';
+    themeInput.className = 'theme-controller';
+    themeInput.value = 'dark';
+    document.body.appendChild(themeInput);
+
+    // Handle HTTP requests
+    const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+    schemaEntitiesReqs.forEach(req => req.flush([]));
+
+    // Trigger change detection to run ngAfterViewInit
+    fixture.detectChanges();
+
+    // Simulate theme change
+    themeInput.checked = true;
+    themeInput.dispatchEvent(new Event('change'));
+
+    // Verify data-theme attribute was updated
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+
+    // Cleanup
+    document.body.removeChild(themeInput);
   });
 });

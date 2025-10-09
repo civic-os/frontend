@@ -9,16 +9,24 @@ This application automatically generates views for listing, detailing, creating,
 - [x] Build Property metadata table
 - [x] Build out User table with public and private fields
 - [ ] Allow one-to-many and many-to-many Properties
-- [ ] Build scheme for editable Properties, default values, etc.
+- [x] Build scheme for editable Properties, default values, etc.
 - [ ] Add Form Validation Messages
-- [ ] Allow sorting/layout of Property Views/Lists
+- [x] Allow sorting/layout of Property Views/Lists
 - [ ] Add User Profile and management
 - [x] Add Login/Logout Screens (uses Keycloak Auth)
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
 - [ ] Expand Form Validation by use of `CHECK` statements
+#### List Pages
+- [ ] Add List page configuration on top of Properties Management page
+- [ ] Add pagination
+- [ ] Add text search as an indexed column and toggle-able search box
+- [ ] Add Map view for List pages
+- [ ] Add Sortable columns and default sort
+- [ ] Add filter-able columns (mostly FK fields)
 ### Roles
 - [x] Build Roles/Permissions schema
-- [ ] Allow creation of Roles on the Permissions screen (or a role-specific screen). Include display name, description
+- [ ] Give Roles display name, description
+- [ ] Allow creation of Roles on the Permissions screen (or a role-specific screen)
 ### Workflow
 - [ ] Build table structure for attaching workflow to Entity (Use Properties table)
 - [ ] Build Trigger rules to restrict transitions
@@ -34,12 +42,20 @@ This application automatically generates views for listing, detailing, creating,
 
 ## To Do [(Phase 2)](https://github.com/civic-os/vision#phase-2-introspection-tools)
 ### Schema
-- [ ] Build automatic generation of Entity Relationship Diagrams showing how schema works
+- [x] Build automatic generation of Entity Relationship Diagrams showing how schema works
+- [ ] Permit other relationship types (one-to-one, many-to-many)
 ### Workflow
 - [ ] Build automatic generation of Workflow diagrams showing how workflows operate
 ### Logic
 - [ ] Build automatic generation of Block Diagrams showing how Logic works
 
+## To Do [(Phase 3)](https://github.com/civic-os/vision#phase-3-graphical-editing-tools)
+### Schema
+- [ ] Build GUI editor for Entity Relationship Diagrams
+### Workflow
+- [ ] Build GUI editor for Workflow diagrams showing how workflows operate
+### Logic
+- [ ] Build GUI editor for Block Diagrams showing how Logic works
 
 ## Documentation
 For detailed setup and usage instructions, see:

@@ -1,0 +1,28 @@
+.erd-container {
+  min-height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem;
+}
+
+/* Style the Mermaid SVG */
+.erd-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure text is readable in both themes */
+.erd-container text {
+  font-family: inherit !important;
+}
+
+/* Add subtle shadow to entity boxes */
+.erd-container .er.entityBox {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Make relationship lines slightly thicker */
+.erd-container .er.relationshipLine {
+  stroke-width: 2;
+}

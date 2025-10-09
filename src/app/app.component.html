@@ -59,6 +59,11 @@
           @for (entity of menuItems; track entity) {
             <li (click)="navigate(entity.table_name)"><a>{{ entity.display_name }}</a></li>
           }
+          <!-- About section -->
+          <li class="menu-title mt-4">
+            <span>About</span>
+          </li>
+          <li (click)="navigateToSchemaErd()"><a>Database Schema</a></li>
           <!-- Admin section (admin-only) -->
           @if (auth.isAdmin()) {
             <li class="menu-title mt-4">

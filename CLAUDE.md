@@ -113,13 +113,19 @@ npm run watch
 
 ### Testing
 ```bash
-# Run all unit tests
+# Run all unit tests (watch mode - stays open)
 npm test
 # or
 ng test
 
+# Run tests once and exit (for CI/scripts)
+npm test -- --no-watch --browsers=ChromeHeadless
+
 # Run specific test file
 ng test --include='**/schema.service.spec.ts'
+
+# Run specific test file once and exit
+ng test --include='**/schema.service.spec.ts' --no-watch --browsers=ChromeHeadless
 ```
 
 ### Build
@@ -542,6 +548,155 @@ public error?: ApiError;
 - `DialogComponent` (src/app/components/dialog/dialog.component.ts) - Uses Signal for error state
 - `PermissionsPage` (src/app/pages/permissions/permissions.page.ts) - Uses Signals throughout
 - `EntityManagementPage` (src/app/pages/entity-management/entity-management.page.ts) - Signal-based reactive state
+
+### Angular 20 Best Practices: OnPush + Async Pipe
+
+**CRITICAL**: All components should use `OnPush` change detection with the `async` pipe for observables. Do NOT manually subscribe to observables in components with `OnPush` - this will cause change detection issues.
+
+**Required pattern for all pages**:
+```typescript
+import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Observable } from 'rxjs';
+
+@Component({
+  selector: 'app-my-page',
+  changeDetection: ChangeDetectionStrategy.OnPush,  // ✅ Required
+  imports: [CommonModule],
+  templateUrl: './my-page.component.html'
+})
+export class MyPageComponent {
+  // ✅ Expose Observable with $ suffix
+  data$: Observable<MyData> = this.dataService.getData();
+
+  // ❌ WRONG - manual subscription with OnPush won't trigger change detection
+  constructor() {
+    this.dataService.getData().subscribe(data => {
+      this.someProperty = data;  // Won't update template reliably
+    });
+  }
+}
+```
+
+**Template pattern with async pipe**:
+```html
+<!-- ✅ Correct: Use async pipe to subscribe -->
+@if (data$ | async; as data) {
+  <div>{{ data.name }}</div>
+  <div>{{ data.value }}</div>
+} @else {
+  <span class="loading loading-spinner"></span>
+}
+```
+
+**Why this matters**:
+- `OnPush` change detection only runs when:
+  1. Input properties change
+  2. Events fire from the template
+  3. The `async` pipe receives new values
+- Manual subscriptions don't trigger `OnPush` change detection
+- The `async` pipe handles subscription/unsubscription automatically
+- Loading states are handled by the `@else` block (shown while Observable hasn't emitted)
+
+**Reference implementations**:
+- `SchemaErdPage` (src/app/pages/schema-erd/schema-erd.page.ts) - Uses OnPush + async pipe
+- `ListPage`, `DetailPage`, `CreatePage`, `EditPage` - Check these for async pipe usage
+
+### Coordinating ViewChild with Async Data (effect() Pattern)
+
+**Problem**: When a DOM element is conditionally rendered based on async data (e.g., `@if (data$ | async)`), the `viewChild()` signal won't have a value until AFTER the data loads and the element renders.
+
+**Solution**: Use Angular's `effect()` to react when BOTH the data and the DOM element are available.
+
+**Pattern**:
+```typescript
+import { Component, effect, viewChild, signal, ElementRef } from '@angular/core';
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  // ...
+})
+export class MyComponent {
+  // Observable for template
+  data$: Observable<MyData> = this.dataService.getData();
+
+  // Signal to store loaded data
+  private dataLoaded = signal<MyData | null>(null);
+
+  // ViewChild signal (undefined until element renders)
+  containerElement = viewChild<ElementRef<HTMLDivElement>>('container');
+
+  constructor() {
+    // Store data when observable emits
+    this.data$.subscribe(data => this.dataLoaded.set(data));
+
+    // Effect runs when EITHER signal changes
+    effect(() => {
+      const data = this.dataLoaded();
+      const container = this.containerElement()?.nativeElement;
+
+      // Both available? Do the work!
+      if (data && container) {
+        this.processData(data, container);
+      }
+    });
+  }
+}
+```
+
+**Template**:
+```html
+@if (data$ | async; as data) {
+  <div #container>
+    <!-- Container appears AFTER data loads -->
+  </div>
+}
+```
+
+**Why this works**:
+- `effect()` automatically tracks signal dependencies
+- Runs when `dataLoaded` signal changes (when data arrives)
+- Runs when `containerElement` signal changes (when DOM renders)
+- Both conditions met = your code executes
+
+**Reference implementation**:
+- `SchemaErdPage` (src/app/pages/schema-erd/schema-erd.page.ts) - Uses effect() to coordinate Mermaid rendering with DOM availability
+
+## Database Schema Visualization (ERD)
+
+The application includes an Entity Relationship Diagram feature that automatically generates ERDs from the database schema metadata.
+
+**Components**:
+- **SchemaErdService** (`src/app/services/schema-erd.service.ts`) - Converts schema metadata to Mermaid erDiagram syntax
+- **SchemaErdPage** (`src/app/pages/schema-erd/schema-erd.page.ts`) - Renders ERD using Mermaid.js library
+
+**How it works**:
+1. Fetches entities and properties from `SchemaService` (using `take(1)` to complete observables for `forkJoin`)
+2. Generates Mermaid syntax for entities with their attributes (PK, FK, types)
+3. Generates relationship lines based on foreign key metadata (`join_table`, `join_column`)
+4. Renders diagram using Mermaid.js with automatic theme mapping
+
+**Theme Mapping**:
+The ERD automatically selects an appropriate Mermaid theme based on the active DaisyUI theme:
+- `light` → Mermaid `default` (standard light theme)
+- `dark` → Mermaid `dark` (dark mode)
+- `corporate` → Mermaid `neutral` (professional B&W aesthetic)
+- `nord` → Mermaid `dark` (dark theme)
+- `emerald` → Mermaid `forest` (green color scheme)
+
+**Relationship Detection**:
+Currently supports **many-to-one** relationships only:
+- Detects foreign keys via `join_table` and `join_column` in schema metadata
+- Syntax: `FROM }o--|| TO` (many FROM records reference one TO record)
+- Example: `Issue }o--|| IssueStatus : "status"` (many issues have one status)
+
+**Not currently supported**:
+- One-to-one relationships (would require unique constraint detection)
+- Many-to-many relationships (would require junction table pattern detection)
+
+**Accessing the ERD**:
+- Menu → About → Database Schema
+- Route: `/schema-erd`
+- Available to all users (no authentication required)
 
 ## Git Commit Guidelines
 
