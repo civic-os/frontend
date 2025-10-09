@@ -154,7 +154,7 @@ export class SchemaErdPage implements OnDestroy {
       case 'dark':
         return 'dark';
       case 'nord':
-        return 'dark';
+        return 'neutral';
       case 'corporate':
         return 'neutral';
       case 'emerald':

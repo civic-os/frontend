@@ -1,14 +1,16 @@
 <div class="mb-4 w-full">
-  <label class="label">
-    <span class="font-semibold">
-      {{ prop().display_name }}
-      @if (prop().description) {
-        <div class="tooltip tooltip-right inline-block" [attr.data-tip]="prop().description">
-          <span class="material-symbols-outlined text-info cursor-help ml-1 text-base align-middle">help_outline</span>
-        </div>
-      }
-    </span>
-  </label>
+  @if (showLabel()) {
+    <label class="label">
+      <span class="font-semibold">
+        {{ prop().display_name }}
+        @if (prop().description) {
+          <div class="tooltip tooltip-right inline-block" [attr.data-tip]="prop().description">
+            <span class="material-symbols-outlined text-info cursor-help ml-1 text-base align-middle">help_outline</span>
+          </div>
+        }
+      </span>
+    </label>
+  }
   <div>
 @if (datum() != null) {
   @if (propType() == EntityPropertyType.Date) {

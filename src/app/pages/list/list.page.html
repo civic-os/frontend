@@ -31,7 +31,7 @@
                   <tr [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
                     @for (prop of props; track prop) {
                       <td>
-                        <app-display-property [datum]="row[prop.column_name]" [property]="prop" [linkRelated]="false"></app-display-property>
+                        <app-display-property [datum]="row[prop.column_name]" [property]="prop" [linkRelated]="false" [showLabel]="false"></app-display-property>
                       </td>
                     }
                   </tr>

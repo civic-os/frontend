@@ -145,10 +145,9 @@ describe('SchemaErdPage', () => {
   });
 
   describe('Theme Detection', () => {
-    beforeEach(() => {
-      // Create a mock HTML element
-      const mockHtmlElement = document.createElement('html');
-      spyOn(document, 'documentElement' as any).and.returnValue(mockHtmlElement);
+    afterEach(() => {
+      // Clean up by deleting the property, allowing it to fall back to the native implementation
+      delete (document as any).documentElement;
     });
 
     it('should map dark theme to Mermaid dark', () => {
@@ -168,7 +167,7 @@ describe('SchemaErdPage', () => {
       expect(theme).toBe('dark');
     });
 
-    it('should map nord theme to Mermaid dark', () => {
+    it('should map nord theme to Mermaid neutral', () => {
       const mockHtmlElement = document.createElement('html');
       mockHtmlElement.setAttribute('data-theme', 'nord');
       Object.defineProperty(document, 'documentElement', {
@@ -182,7 +181,7 @@ describe('SchemaErdPage', () => {
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(theme).toBe('dark');
+      expect(theme).toBe('neutral');
     });
 
     it('should map corporate theme to Mermaid neutral', () => {
@@ -318,6 +317,11 @@ describe('SchemaErdPage', () => {
   describe('SSR Safety', () => {
     beforeEach(() => {
       TestBed.overrideProvider(PLATFORM_ID, { useValue: 'server' });
+    });
+
+    afterEach(() => {
+      // Clean up by deleting the property, allowing it to fall back to the native implementation
+      delete (document as any).documentElement;
     });
 
     it('should not call Mermaid on server', () => {

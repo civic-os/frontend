@@ -16,6 +16,7 @@ This application automatically generates views for listing, detailing, creating,
 - [x] Add Login/Logout Screens (uses Keycloak Auth)
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
 - [ ] Expand Form Validation by use of `CHECK` statements
+- [ ] Add File/Image data types
 #### List Pages
 - [ ] Add List page configuration on top of Properties Management page
 - [ ] Add pagination

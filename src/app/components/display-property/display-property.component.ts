@@ -19,6 +19,7 @@ export class DisplayPropertyComponent {
   prop = input.required<SchemaEntityProperty>({ alias: 'property' });
   datum = input<any>();
   linkRelated = input<boolean>(true);
+  showLabel = input<boolean>(true);
 
   propType = computed(() => this.prop().type);
   displayCoordinates = signal<[number, number] | null>(null);
