@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   postgres:
     image: postgis/postgis:17-3.5-alpine
@@ -18,7 +17,7 @@ services:
       - postgrest-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
 

@@ -37,7 +37,7 @@
     }
   } <!-- Add Synopsis/ellipsis-->
     @if (propType() == EntityPropertyType.Money) {
-      {{ datum() | currency }}
+      {{ datum() }}
     }
     @if (propType() == EntityPropertyType.IntegerNumber) {
       {{ datum() | number }}

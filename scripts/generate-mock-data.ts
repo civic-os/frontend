@@ -357,7 +357,7 @@ class MockDataGenerator {
         return faker.date.recent({ days: 30 }).toISOString();
 
       case EntityPropertyType.Money:
-        return faker.commerce.price({ min: 10, max: 10000, dec: 2 });
+        return faker.commerce.price({ min: 10000, max: 100000, dec: 2 });
 
       case EntityPropertyType.IntegerNumber:
         return faker.number.int({ min: 1, max: 1000 });

@@ -116,14 +116,14 @@ describe('DisplayPropertyComponent', () => {
   });
 
   describe('Money Type', () => {
-    it('should render currency formatted value', () => {
+    it('should render PostgREST formatted money value', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.money);
-      fixture.componentRef.setInput('datum', 1234.56);
+      fixture.componentRef.setInput('datum', '$1,234.56');
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
-      // Angular currency pipe formats as "$1,234.56"
-      expect(textContent).toMatch(/\$.*1.*234.*56/);
+      // PostgREST already formats money with dollar sign
+      expect(textContent).toContain('$1,234.56');
     });
   });
 

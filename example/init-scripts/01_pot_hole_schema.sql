@@ -13,7 +13,8 @@ CREATE TABLE "public"."Bid" (
 	"owner" UUID NOT NULL,
 	"work_start_date" DATE NOT NULL,
 	"work_end_date" DATE NOT NULL,
-	"work_package" BIGINT NOT NULL
+	"work_package" BIGINT NOT NULL,
+	"total_cost" MONEY NOT NULL
 );
 
 -- Issue table
