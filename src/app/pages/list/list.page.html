@@ -8,13 +8,40 @@
         </div>
       }
     </h1>
+
+    <!-- Search bar (only show if search_fields configured) -->
+    @if (entity.search_fields && entity.search_fields.length > 0) {
+      <div class="form-control mb-4 not-prose">
+        <label class="input input-bordered flex items-center gap-2">
+          <span class="material-symbols-outlined text-base-content/50">search</span>
+          <input
+            type="text"
+            [formControl]="searchControl"
+            placeholder="Search {{ entity.display_name }}..."
+            class="grow" />
+          @if (searchControl.value && isLoading()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          } @else if (searchControl.value && !isLoading()) {
+            <button class="btn btn-ghost btn-xs btn-circle" (click)="clearSearch()" type="button">
+              <span class="material-symbols-outlined text-base">close</span>
+            </button>
+          }
+        </label>
+        @if (searchControl.value && !isLoading()) {
+          <div class="text-sm text-base-content/70 mt-2">
+            Found {{ resultCount() }} {{ resultCount() === 1 ? 'result' : 'results' }}
+          </div>
+        }
+      </div>
+    }
+
     <div class="overflow-x-auto">
       @if (entity.insert) {
         <button class="btn btn-primary" [routerLink]="'/create/' + entityKey">
           <span class="material-symbols-outlined">add_circle</span> Add {{ entity.display_name }}
         </button>
       }
-      <table class="table">
+      <table class="table table-zebra table-pin-rows">
         @if (properties$ | async; as props) {
           <!-- head -->
           <thead>
@@ -31,7 +58,12 @@
                   <tr [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
                     @for (prop of props; track prop) {
                       <td>
-                        <app-display-property [datum]="row[prop.column_name]" [property]="prop" [linkRelated]="false" [showLabel]="false"></app-display-property>
+                        <app-display-property
+                          [datum]="row[prop.column_name]"
+                          [property]="prop"
+                          [linkRelated]="false"
+                          [showLabel]="false"
+                          [highlightTerms]="searchTerms()"></app-display-property>
                       </td>
                     }
                   </tr>

@@ -32,8 +32,8 @@ describe('PropertyManagementPage', () => {
   let mockPropertyManagementService: jasmine.SpyObj<PropertyManagementService>;
 
   const mockEntities = [
-    { table_name: 'Issue', display_name: 'Issues', description: 'Track issues', sort_order: 0, insert: true, select: true, update: true, delete: true },
-    { table_name: 'WorkPackage', display_name: 'Work Packages', description: null, sort_order: 1, insert: true, select: true, update: true, delete: true }
+    { table_name: 'Issue', display_name: 'Issues', description: 'Track issues', search_fields: null, sort_order: 0, insert: true, select: true, update: true, delete: true },
+    { table_name: 'WorkPackage', display_name: 'Work Packages', description: null, search_fields: null, sort_order: 1, insert: true, select: true, update: true, delete: true }
   ];
 
   const mockProperties: SchemaEntityProperty[] = [

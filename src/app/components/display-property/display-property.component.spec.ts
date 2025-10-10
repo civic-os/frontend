@@ -380,4 +380,93 @@ describe('DisplayPropertyComponent', () => {
       expect(tooltip).toBeFalsy();
     });
   });
+
+  describe('Search Term Highlighting', () => {
+    it('should highlight search terms in TextShort fields', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('datum', 'pothole on main street');
+      fixture.componentRef.setInput('highlightTerms', ['pothole', 'main']);
+      fixture.detectChanges();
+
+      const innerHTML = fixture.nativeElement.innerHTML;
+      expect(innerHTML).toContain('<mark');
+      expect(innerHTML).toContain('pothole');
+      expect(innerHTML).toContain('main');
+    });
+
+    it('should highlight search terms in TextLong fields', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textLong);
+      fixture.componentRef.setInput('datum', 'Large pothole discovered on Main Street causing traffic issues');
+      fixture.componentRef.setInput('highlightTerms', ['pothole', 'traffic']);
+      fixture.detectChanges();
+
+      const innerHTML = fixture.nativeElement.innerHTML;
+      expect(innerHTML).toContain('<mark');
+      expect(innerHTML).toContain('pothole');
+      expect(innerHTML).toContain('traffic');
+    });
+
+    it('should not highlight when highlightTerms is empty array', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('datum', 'test value');
+      fixture.componentRef.setInput('highlightTerms', []);
+      fixture.detectChanges();
+
+      const innerHTML = fixture.nativeElement.innerHTML;
+      expect(innerHTML).not.toContain('<mark');
+      const textContent = fixture.nativeElement.textContent.trim();
+      expect(textContent).toContain('test value');
+    });
+
+    it('should not highlight non-text fields', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.integer);
+      fixture.componentRef.setInput('datum', 42);
+      fixture.componentRef.setInput('highlightTerms', ['42']);
+      fixture.detectChanges();
+
+      const innerHTML = fixture.nativeElement.innerHTML;
+      // Number fields should not use highlighting
+      expect(innerHTML).not.toContain('<mark');
+    });
+
+    it('should handle highlighting with special characters safely', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('datum', 'Cost is $100');
+      fixture.componentRef.setInput('highlightTerms', ['$100']);
+      fixture.detectChanges();
+
+      const innerHTML = fixture.nativeElement.innerHTML;
+      expect(innerHTML).toContain('<mark');
+      expect(innerHTML).toContain('$100');
+    });
+
+    it('should escape HTML in datum to prevent XSS when highlighting', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('datum', '<script>alert("xss")</script>');
+      fixture.componentRef.setInput('highlightTerms', ['script']);
+      fixture.detectChanges();
+
+      const innerHTML = fixture.nativeElement.innerHTML;
+      // Should not contain unescaped script tags
+      expect(innerHTML).not.toContain('<script>alert');
+      // Should contain escaped HTML entities
+      expect(innerHTML).toContain('&lt;');
+      expect(innerHTML).toContain('&gt;');
+      // Should still highlight the word "script" within escaped HTML
+      expect(innerHTML).toContain('<mark');
+    });
+
+    it('should highlight case-insensitively', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.textShort);
+      fixture.componentRef.setInput('datum', 'Pothole on Main Street');
+      fixture.componentRef.setInput('highlightTerms', ['pothole', 'main']);
+      fixture.detectChanges();
+
+      const innerHTML = fixture.nativeElement.innerHTML;
+      expect(innerHTML).toContain('<mark');
+      // Should highlight despite case difference
+      expect(innerHTML).toContain('Pothole');
+      expect(innerHTML).toContain('Main');
+    });
+  });
 });

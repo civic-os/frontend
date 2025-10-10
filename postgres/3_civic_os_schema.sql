@@ -123,18 +123,40 @@ CREATE TABLE metadata.entities (
   table_name NAME PRIMARY KEY,
   display_name TEXT,
   description TEXT,
-  sort_order INT
+  sort_order INT,
+  search_fields TEXT[]
 );
 
 ALTER TABLE metadata.entities ENABLE ROW LEVEL SECURITY;
 
--- Admins can manage entity metadata
-CREATE POLICY "Admins can manage entities"
+-- Everyone can read entity metadata
+CREATE POLICY "Everyone can read entities"
   ON metadata.entities
-  FOR ALL
+  FOR SELECT
+  TO PUBLIC
+  USING (true);
+
+-- Admins can insert entity metadata
+CREATE POLICY "Admins can insert entities"
+  ON metadata.entities
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (public.is_admin());
+
+-- Admins can update entity metadata
+CREATE POLICY "Admins can update entities"
+  ON metadata.entities
+  FOR UPDATE
   TO authenticated
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
+
+-- Admins can delete entity metadata
+CREATE POLICY "Admins can delete entities"
+  ON metadata.entities
+  FOR DELETE
+  TO authenticated
+  USING (public.is_admin());
 
 -- Property metadata table
 CREATE TABLE metadata.properties (
@@ -235,6 +257,7 @@ SELECT
   COALESCE(entities.display_name, tables.table_name::text) AS display_name,
   COALESCE(entities.sort_order, 0) AS sort_order,
   entities.description,
+  entities.search_fields,
   tables.table_name,
   public.has_permission(tables.table_name::text, 'create') AS insert,
   public.has_permission(tables.table_name::text, 'read') AS "select",
@@ -396,7 +419,8 @@ CREATE OR REPLACE FUNCTION public.upsert_entity_metadata(
   p_table_name NAME,
   p_display_name TEXT,
   p_description TEXT,
-  p_sort_order INT
+  p_sort_order INT,
+  p_search_fields TEXT[] DEFAULT NULL
 )
 RETURNS void AS $$
 BEGIN
@@ -406,16 +430,17 @@ BEGIN
   END IF;
 
   -- Upsert the entity metadata
-  INSERT INTO metadata.entities (table_name, display_name, description, sort_order)
-  VALUES (p_table_name, p_display_name, p_description, p_sort_order)
+  INSERT INTO metadata.entities (table_name, display_name, description, sort_order, search_fields)
+  VALUES (p_table_name, p_display_name, p_description, p_sort_order, p_search_fields)
   ON CONFLICT (table_name) DO UPDATE
     SET display_name = EXCLUDED.display_name,
         description = EXCLUDED.description,
-        sort_order = EXCLUDED.sort_order;
+        sort_order = EXCLUDED.sort_order,
+        search_fields = EXCLUDED.search_fields;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION public.upsert_entity_metadata(NAME, TEXT, TEXT, INT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_entity_metadata(NAME, TEXT, TEXT, INT, TEXT[]) TO authenticated;
 
 -- Update entity sort order (admin only)
 CREATE OR REPLACE FUNCTION public.update_entity_sort_order(

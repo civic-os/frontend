@@ -52,7 +52,7 @@ describe('SchemaService', () => {
     });
 
     it('should have hideFields defined', () => {
-      expect(SchemaService.hideFields).toEqual(['id', 'created_at', 'updated_at']);
+      expect(SchemaService.hideFields).toEqual(['id', 'created_at', 'updated_at', 'civic_os_text_search']);
     });
   });
 

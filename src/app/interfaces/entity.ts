@@ -19,6 +19,7 @@ export interface SchemaEntityTable {
     display_name: string,
     sort_order: number,
     description: string | null,
+    search_fields: string[] | null,
     table_name: string,
     insert: boolean,
     select: boolean,

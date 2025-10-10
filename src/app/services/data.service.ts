@@ -42,7 +42,11 @@ export class DataService {
       }
       args.push('select=' + query.fields.join(','));
     }
-    if(query.orderField) {
+    if(query.searchQuery && query.searchQuery.trim()) {
+      // Use wfts (websearch full-text search) for natural query syntax
+      args.push('civic_os_text_search=wfts.' + encodeURIComponent(query.searchQuery.trim()));
+      // When searching, order by relevance (no explicit order needed, PostgREST defaults to relevance)
+    } else if(query.orderField) {
       args.push('order='+query.orderField+'.'+(query.orderDirection ?? 'asc'))
     }
     if(query.entityId) {

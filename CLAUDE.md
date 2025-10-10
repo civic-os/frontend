@@ -100,6 +100,62 @@ GRANT EXECUTE ON FUNCTION public.location_text("Issue") TO web_anon, authenticat
 - **Insert/Update**: Send EWKT string `"SRID=4326;POINT(lng lat)"`
 - **Read**: Receive WKT string `"POINT(lng lat)"` (aliased to column name)
 
+### Full-Text Search
+
+Civic OS supports PostgreSQL full-text search on entities via a reserved column name pattern. When configured, a search field appears on List pages, allowing users to filter results with natural language queries.
+
+**How it works**:
+1. Add a `civic_os_text_search` tsvector column to your table (generated, indexed)
+2. Configure `metadata.entities.search_fields` array to indicate which fields are searchable
+3. The frontend automatically displays a search input on the List page
+4. Search queries are debounced (300ms) and update the URL with `?q=search+terms`
+5. Results are filtered using PostgREST's `wfts` (websearch full-text search) operator
+
+**Implementation pattern**:
+
+```sql
+-- Add the generated tsvector column
+ALTER TABLE "public"."YourTable"
+  ADD COLUMN civic_os_text_search tsvector
+  GENERATED ALWAYS AS (
+    to_tsvector('english', coalesce(display_name, ''))
+    -- Add more fields for richer search:
+    || to_tsvector('english', coalesce(description, ''))
+  ) STORED;
+
+-- Create GIN index for fast search
+CREATE INDEX "YourTable_text_search_idx"
+  ON "public"."YourTable"
+  USING GIN (civic_os_text_search);
+
+-- Configure searchable fields in metadata (for UI display)
+UPDATE metadata.entities
+  SET search_fields = ARRAY['display_name', 'description']
+  WHERE table_name = 'YourTable';
+```
+
+**Search features**:
+- **Natural queries**: Supports phrases, AND/OR logic, quoted strings (via PostgreSQL's `websearch_to_tsquery`)
+- **URL sharing**: Search state persists in URL query parameters (`/view/Issue?q=pothole`)
+- **Auto-hide**: Search field only appears when `search_fields` is configured
+- **Debouncing**: Search input waits 300ms after typing stops before querying
+- **Visual feedback**:
+  - Search icon when idle
+  - Loading spinner during search
+  - Clear button (×) when search results are loaded
+  - Result count display (e.g., "Found 5 results")
+- **Search term highlighting**: Matching terms are highlighted in yellow within text fields using XSS-safe HTML escaping
+- **Field visibility**: The `civic_os_text_search` column is automatically hidden from all UI views
+
+**Search query examples**:
+- `pothole` - Single word
+- `pothole main street` - Multiple words (AND)
+- `"main street"` - Exact phrase
+- `pothole OR sinkhole` - OR logic
+- `pothole -resolved` - Exclude term
+
+**Note**: The `search_fields` array is for documentation/UI purposes only. The actual searchable content is determined by which fields are included in the `to_tsvector()` expression in the generated column definition.
+
 ## Development Commands
 
 ### Daily Development
@@ -120,15 +176,26 @@ npm test
 # or
 ng test
 
-# Run tests once and exit (for CI/scripts)
-npm test -- --no-watch --browsers=ChromeHeadless
+# Run tests once and exit (headless, for development)
+npm run test:headless
 
-# Run specific test file
-ng test --include='**/schema.service.spec.ts'
+# Run tests with code coverage (for CI)
+npm run test:ci
+
+# Run specific test file (faster feedback during development)
+npm test -- --include='**/schema.service.spec.ts'
 
 # Run specific test file once and exit
-ng test --include='**/schema.service.spec.ts' --no-watch --browsers=ChromeHeadless
+npm test -- --include='**/schema.service.spec.ts' --no-watch --browsers=ChromeHeadless
 ```
+
+**Testing Best Practices**:
+- **Use `--include` during development**: Run only the test file you're working on for fast feedback
+- **Watch mode for TDD**: Use `npm test` (no flags) for test-driven development with auto-reload
+- **Headless for quick checks**: Use `npm run test:headless` before committing to verify all tests pass
+- **CI testing**: The `test:ci` script includes code coverage for continuous integration pipelines
+- **Angular 20 requirements**: All test suites must include `provideZonelessChangeDetection()` in `TestBed.configureTestingModule`
+- **OnPush + async pattern**: Test observables using the `async` pipe pattern rather than manual subscriptions
 
 ### Build
 ```bash

@@ -67,6 +67,31 @@ CREATE TRIGGER set_updated_at_trigger
   EXECUTE FUNCTION public.set_updated_at();
 
 -- =====================================================
+-- Full-Text Search (Optional)
+-- =====================================================
+-- Enable full-text search by adding a civic_os_text_search column
+-- This column automatically concatenates specified fields for searching
+-- Uncomment and customize the following section to enable search:
+
+-- ALTER TABLE "public"."TABLE_NAME"
+--   ADD COLUMN civic_os_text_search tsvector
+--   GENERATED ALWAYS AS (
+--     to_tsvector('english', coalesce(display_name, ''))
+--     -- Add more fields for richer search results:
+--     -- || to_tsvector('english', coalesce(description, ''))
+--   ) STORED;
+
+-- Create GIN index for fast text search
+-- CREATE INDEX "TABLE_NAME_text_search_idx"
+--   ON "public"."TABLE_NAME"
+--   USING GIN (civic_os_text_search);
+
+-- Configure which fields are searchable (displayed in UI)
+-- UPDATE metadata.entities
+--   SET search_fields = ARRAY['display_name']
+--   WHERE table_name = 'TABLE_NAME';
+
+-- =====================================================
 -- Metadata Auto-Seeding
 -- =====================================================
 -- Automatically populate metadata from database schema views

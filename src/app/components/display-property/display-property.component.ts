@@ -20,6 +20,7 @@ import { Component, input, signal, computed, ChangeDetectionStrategy } from '@an
 import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { RouterModule } from '@angular/router';
 import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
+import { HighlightPipe } from '../../pipes/highlight.pipe';
 
 @Component({
     selector: 'app-display-property',
@@ -28,6 +29,7 @@ import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
         CommonModule,
         RouterModule,
         GeoPointMapComponent,
+        HighlightPipe,
     ],
     templateUrl: './display-property.component.html',
     styleUrl: './display-property.component.css'
@@ -37,6 +39,7 @@ export class DisplayPropertyComponent {
   datum = input<any>();
   linkRelated = input<boolean>(true);
   showLabel = input<boolean>(true);
+  highlightTerms = input<string[]>([]);
 
   propType = computed(() => this.prop().type);
   displayCoordinates = signal<[number, number] | null>(null);

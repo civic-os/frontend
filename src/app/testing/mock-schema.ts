@@ -26,6 +26,7 @@ export function createMockEntity(overrides?: Partial<SchemaEntityTable>): Schema
     display_name: 'Test Entity',
     sort_order: 1,
     description: null,
+    search_fields: null,
     table_name: 'test_entity',
     insert: true,
     select: true,

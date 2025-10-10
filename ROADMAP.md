@@ -8,6 +8,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Build Entity metadata table
 - [x] Build Property metadata table
 - [x] Build out User table with public and private fields
+- [ ] Show related Entities (inverse relationships)
 - [ ] Allow one-to-many and many-to-many Properties
 - [x] Build scheme for editable Properties, default values, etc.
 - [ ] Add Form Validation Messages
@@ -21,7 +22,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 #### List Pages
 - [ ] Add List page configuration on top of Properties Management page
 - [ ] Add pagination
-- [ ] Add text search as an indexed column and toggle-able search box
+- [x] Add text search as an indexed column and toggle-able search box
 - [ ] Add Map view for List pages
 - [ ] Add Sortable columns and default sort
 - [ ] Add filter-able columns (mostly FK fields, but also expand to other indexed fields like datetime)
@@ -62,6 +63,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 
 ### Schema
 - [ ] Build GUI editor for Entity Relationship Diagrams
+- [ ] Allow creating new columns on an existing entity
 
 ### Workflow
 - [ ] Build GUI editor for Workflow diagrams showing how workflows operate

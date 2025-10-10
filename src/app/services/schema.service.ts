@@ -40,7 +40,7 @@ export class SchemaService {
     }
   });
 
-  public static hideFields: string[] = ['id', 'created_at', 'updated_at'];
+  public static hideFields: string[] = ['id', 'created_at', 'updated_at', 'civic_os_text_search'];
 
   private getSchema() {
     return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_entities')

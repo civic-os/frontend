@@ -21,4 +21,5 @@ export interface DataQuery {
     entityId?: string;
     orderField?: string;
     orderDirection?: string;
+    searchQuery?: string;
 }

@@ -23,11 +23,19 @@
     {{ datum() | date: 'full' }}
   }
   @if (propType() == EntityPropertyType.TextShort) {
-    {{ datum() }}
+    @if (highlightTerms().length > 0) {
+      <span [innerHTML]="datum() | highlight: highlightTerms()"></span>
+    } @else {
+      {{ datum() }}
+    }
   }
   @if (propType() == EntityPropertyType.TextLong) {
-    {{ datum() }}
-    } <!-- Add Synopsis/ellipsis-->
+    @if (highlightTerms().length > 0) {
+      <span [innerHTML]="datum() | highlight: highlightTerms()"></span>
+    } @else {
+      {{ datum() }}
+    }
+  } <!-- Add Synopsis/ellipsis-->
     @if (propType() == EntityPropertyType.Money) {
       {{ datum() | currency }}
     }
