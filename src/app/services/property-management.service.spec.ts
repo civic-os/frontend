@@ -61,6 +61,7 @@ describe('PropertyManagementService', () => {
         true,
         true,
         true,
+        true,
         true
       ).subscribe(response => {
         expect(response.success).toBe(true);
@@ -76,6 +77,7 @@ describe('PropertyManagementService', () => {
         p_description: 'The title of the issue',
         p_sort_order: 1,
         p_column_width: 200,
+        p_sortable: true,
         p_show_on_list: true,
         p_show_on_create: true,
         p_show_on_edit: true,
@@ -95,6 +97,7 @@ describe('PropertyManagementService', () => {
         false,
         false,
         false,
+        false,
         false
       ).subscribe(response => {
         expect(response.success).toBe(true);
@@ -109,6 +112,7 @@ describe('PropertyManagementService', () => {
         p_description: null,
         p_sort_order: null,
         p_column_width: null,
+        p_sortable: false,
         p_show_on_list: false,
         p_show_on_create: false,
         p_show_on_edit: false,
@@ -125,6 +129,7 @@ describe('PropertyManagementService', () => {
         null,
         1,
         null,
+        true,
         true,
         true,
         true,

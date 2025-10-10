@@ -166,6 +166,7 @@ CREATE TABLE metadata.properties (
   description TEXT,
   sort_order INT,
   column_width INT,
+  sortable BOOLEAN DEFAULT true,
   show_on_list BOOLEAN DEFAULT true,
   show_on_create BOOLEAN DEFAULT true,
   show_on_edit BOOLEAN DEFAULT true,
@@ -294,6 +295,7 @@ SELECT
     columns.ordinal_position::integer
   ) AS sort_order,
   properties.column_width,
+  COALESCE(properties.sortable, true) AS sortable,
   columns.column_default,
   columns.is_nullable::text = 'YES'::text AS is_nullable,
   columns.data_type,
@@ -472,6 +474,7 @@ CREATE OR REPLACE FUNCTION public.upsert_property_metadata(
   p_description TEXT,
   p_sort_order INT,
   p_column_width INT,
+  p_sortable BOOLEAN,
   p_show_on_list BOOLEAN,
   p_show_on_create BOOLEAN,
   p_show_on_edit BOOLEAN,
@@ -492,6 +495,7 @@ BEGIN
     description,
     sort_order,
     column_width,
+    sortable,
     show_on_list,
     show_on_create,
     show_on_edit,
@@ -504,6 +508,7 @@ BEGIN
     p_description,
     p_sort_order,
     p_column_width,
+    p_sortable,
     p_show_on_list,
     p_show_on_create,
     p_show_on_edit,
@@ -514,6 +519,7 @@ BEGIN
         description = EXCLUDED.description,
         sort_order = EXCLUDED.sort_order,
         column_width = EXCLUDED.column_width,
+        sortable = EXCLUDED.sortable,
         show_on_list = EXCLUDED.show_on_list,
         show_on_create = EXCLUDED.show_on_create,
         show_on_edit = EXCLUDED.show_on_edit,
@@ -521,7 +527,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION public.upsert_property_metadata(NAME, NAME, TEXT, TEXT, INT, INT, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_property_metadata(NAME, NAME, TEXT, TEXT, INT, INT, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN) TO authenticated;
 
 -- Update property sort order (admin only)
 CREATE OR REPLACE FUNCTION public.update_property_sort_order(

@@ -47,7 +47,18 @@
           <thead>
             <tr>
               @for (prop of props; track prop) {
-                <th>{{ prop.display_name }}</th>
+                <th
+                  [class.sortable]="prop.sortable !== false"
+                  (click)="onHeaderClick(prop)">
+                  <span class="header-content">
+                    {{ prop.display_name }}
+                    @if (sortState().column === prop.column_name && sortState().direction === 'asc') {
+                      <span class="material-symbols-outlined sort-icon sort-icon-flipped">sort</span>
+                    } @else if (sortState().column === prop.column_name && sortState().direction === 'desc') {
+                      <span class="material-symbols-outlined sort-icon">sort</span>
+                    }
+                  </span>
+                </th>
               }
             </tr>
           </thead>

@@ -94,16 +94,16 @@
                         [placeholder]="getDisplayNamePlaceholder(property)" />
                     </div>
 
-                    <!-- Column Width (editable) -->
+                    <!-- Sortable (editable) -->
                     <div>
-                      <label class="label label-text text-xs">Grid Width</label>
-                      <input
-                        type="number"
-                        class="input input-sm input-bordered w-full"
-                        [(ngModel)]="property.customColumnWidth"
-                        (ngModelChange)="onColumnWidthChange(property)"
-                        (blur)="onFieldBlur(property)"
-                        placeholder="Auto" />
+                      <label class="label cursor-pointer justify-start gap-2">
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-sm"
+                          [(ngModel)]="property.sortable"
+                          (ngModelChange)="onVisibilityChange(property)" />
+                        <span class="label-text text-xs">Sortable</span>
+                      </label>
                     </div>
 
                     <!-- Expand Button -->
@@ -144,6 +144,23 @@
                           (ngModelChange)="onDescriptionChange(property)"
                           (blur)="onFieldBlur(property)"
                           placeholder="Optional description for tooltips"></textarea>
+                      </div>
+
+                      <!-- Column Width -->
+                      <div>
+                        <label class="label label-text text-xs">Grid Width (columns)</label>
+                        <input
+                          type="number"
+                          class="input input-sm input-bordered w-full max-w-xs"
+                          [(ngModel)]="property.customColumnWidth"
+                          (ngModelChange)="onColumnWidthChange(property)"
+                          (blur)="onFieldBlur(property)"
+                          placeholder="Auto (1 or 2 based on type)"
+                          min="1"
+                          max="2" />
+                        <label class="label">
+                          <span class="label-text-alt text-xs text-base-content/60">Controls width in create/edit forms (1 or 2 columns)</span>
+                        </label>
                       </div>
 
                       <!-- Visibility Toggles (Coming Soon) -->

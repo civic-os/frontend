@@ -496,6 +496,61 @@ Admins can customize how entities appear in the application via the **Entities**
 - **EntityManagementPage** (`src/app/pages/entity-management/`): Admin UI with drag-drop powered by Angular CDK
 - **Tooltips**: Description tooltips use DaisyUI's tooltip component with `help_outline` icon
 
+### Managing Property Configuration (Admin Only)
+
+Admins can configure individual property (column) behavior via the **Properties** page (`/property-management`):
+
+**Features**:
+- **Display Names**: Override default column labels (e.g., "status_id" → "Status")
+- **Descriptions**: Add tooltips for properties that appear in forms
+- **Sortable**: Enable/disable column sorting on List pages
+- **Column Width**: Control form field width (1 or 2 columns) in Create/Edit forms
+- **Drag-to-Reorder**: Change property display order across all views
+- **Auto-save**: Changes save automatically with visual feedback
+
+**Access**:
+1. Login as a user with the `admin` role
+2. Open the left menu and click **Properties** under the Admin section
+3. Select an entity from the dropdown
+4. Configure properties in the main row or expand for additional options
+5. Changes automatically refresh forms and lists
+
+**Main Row Configuration**:
+- **Column Name**: Database column name (read-only)
+- **Type**: Property data type (read-only)
+- **Default**: Column default value (read-only)
+- **Display Name**: Custom label for forms and lists
+- **Sortable**: Checkbox to enable/disable sorting on List pages
+
+**Expanded Configuration** (click arrow to expand):
+- **Description**: Tooltip text for help icons in forms
+- **Grid Width**: Number of columns (1-2) the field spans in Create/Edit forms
+- **Visibility Toggles**: (Coming Soon) Show/hide in specific views
+
+**List Page Sorting**:
+
+When `sortable` is enabled for a property, users can click the column header on List pages to sort:
+- **First click**: Sort ascending (smallest to largest)
+- **Second click**: Sort descending (largest to smallest)
+- **Third click**: Remove sorting (return to default order)
+
+**Sort behavior**:
+- **Regular columns**: Sort by the column value directly
+- **Foreign Key columns**: Sort by the related entity's `display_name`
+- **User columns**: Sort by the user's `display_name` (public or private)
+- **URL persistence**: Sort state persists in URL (`?sort=column_name&dir=asc`)
+- **Visual indicator**: Sort icon shows current sort direction
+
+**Database Schema**:
+- Property metadata stored in `metadata.properties` table
+- Protected by RLS policies requiring admin role
+- Updates via RPC functions: `upsert_property_metadata()`, `update_property_sort_order()`
+
+**UI Components**:
+- **PropertyManagementService** (`src/app/services/property-management.service.ts`): Handles property metadata CRUD operations
+- **PropertyManagementPage** (`src/app/pages/property-management/`): Admin UI with drag-drop powered by Angular CDK
+- **ListPage** (`src/app/pages/list/`): Implements sorting with clickable headers and state management
+
 **Troubleshooting**: If you encounter issues with RBAC, such as JWT roles not being recognized or permissions not working correctly, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed debugging steps and common solutions.
 
 ## Styling

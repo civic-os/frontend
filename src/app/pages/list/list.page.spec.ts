@@ -146,7 +146,9 @@ describe('ListPage', () => {
         expect(mockDataService.getData).toHaveBeenCalledWith({
           key: 'Issue',
           fields: ['name', 'status_id:Status(id,display_name)'],
-          searchQuery: undefined
+          searchQuery: undefined,
+          orderField: undefined,
+          orderDirection: undefined
         });
         expect(data).toEqual(mockData);
         done();
@@ -166,7 +168,9 @@ describe('ListPage', () => {
         expect(mockDataService.getData).toHaveBeenCalledWith({
           key: 'Issue',
           fields: ['location:location_text'],
-          searchQuery: undefined
+          searchQuery: undefined,
+          orderField: undefined,
+          orderDirection: undefined
         });
         done();
       });

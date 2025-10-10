@@ -225,6 +225,7 @@ export class PropertyManagementPage {
       property.customDescription || null,
       property.sort_order,
       property.customColumnWidth,
+      property.sortable ?? true,
       property.show_on_list ?? true,
       property.show_on_create ?? true,
       property.show_on_edit ?? true,

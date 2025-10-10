@@ -1,3 +1,29 @@
 tr.pointer {
     cursor: pointer;
 }
+
+/* Sortable header styles */
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+th.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+th.sortable .header-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+th.sortable .sort-icon {
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+/* Flip the sort icon upside down */
+th.sortable .sort-icon-flipped {
+    transform: scaleY(-1);
+}

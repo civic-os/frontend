@@ -28,6 +28,7 @@ export interface PropertyMetadata {
   description: string | null;
   sort_order: number | null;
   column_width: number | null;
+  sortable: boolean;
   show_on_list: boolean;
   show_on_create: boolean;
   show_on_edit: boolean;
@@ -51,6 +52,7 @@ export class PropertyManagementService {
     description: string | null,
     sortOrder: number | null,
     columnWidth: number | null,
+    sortable: boolean,
     showOnList: boolean,
     showOnCreate: boolean,
     showOnEdit: boolean,
@@ -65,6 +67,7 @@ export class PropertyManagementService {
         p_description: description,
         p_sort_order: sortOrder,
         p_column_width: columnWidth,
+        p_sortable: sortable,
         p_show_on_list: showOnList,
         p_show_on_create: showOnCreate,
         p_show_on_edit: showOnEdit,

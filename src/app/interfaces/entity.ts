@@ -36,6 +36,7 @@ export interface SchemaEntityProperty {
     description?: string,
     sort_order: number,
     column_width?: number,
+    sortable?: boolean,
     column_default: string,
     is_nullable: boolean,
     data_type: string,
