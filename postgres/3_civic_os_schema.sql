@@ -296,6 +296,31 @@ SELECT
   ) AS sort_order,
   properties.column_width,
   COALESCE(properties.sortable, true) AS sortable,
+  -- Smart defaults: system fields hidden by default, but can be overridden via metadata
+  COALESCE(properties.show_on_list,
+    CASE WHEN columns.column_name::text IN ('id', 'civic_os_text_search', 'created_at', 'updated_at')
+      THEN false
+      ELSE true
+    END
+  ) AS show_on_list,
+  COALESCE(properties.show_on_create,
+    CASE WHEN columns.column_name::text IN ('id', 'civic_os_text_search', 'created_at', 'updated_at')
+      THEN false
+      ELSE true
+    END
+  ) AS show_on_create,
+  COALESCE(properties.show_on_edit,
+    CASE WHEN columns.column_name::text IN ('id', 'civic_os_text_search', 'created_at', 'updated_at')
+      THEN false
+      ELSE true
+    END
+  ) AS show_on_edit,
+  COALESCE(properties.show_on_detail,
+    CASE WHEN columns.column_name::text IN ('id', 'civic_os_text_search') THEN false
+         WHEN columns.column_name::text IN ('created_at', 'updated_at') THEN true
+         ELSE true
+    END
+  ) AS show_on_detail,
   columns.column_default,
   columns.is_nullable::text = 'YES'::text AS is_nullable,
   columns.data_type,
@@ -542,11 +567,32 @@ BEGIN
     RAISE EXCEPTION 'Admin access required';
   END IF;
 
-  -- Update or insert with just sort_order
-  INSERT INTO metadata.properties (table_name, column_name, sort_order)
-  VALUES (p_table_name, p_column_name, p_sort_order)
+  -- Update or insert with smart defaults for system fields
+  -- This prevents drag-and-drop reordering from overriding smart defaults with table defaults
+  INSERT INTO metadata.properties (
+    table_name,
+    column_name,
+    sort_order,
+    show_on_list,
+    show_on_create,
+    show_on_edit,
+    show_on_detail
+  )
+  VALUES (
+    p_table_name,
+    p_column_name,
+    p_sort_order,
+    -- Smart defaults: same logic as schema_properties view
+    CASE WHEN p_column_name IN ('id', 'civic_os_text_search', 'created_at', 'updated_at') THEN false ELSE true END,
+    CASE WHEN p_column_name IN ('id', 'civic_os_text_search', 'created_at', 'updated_at') THEN false ELSE true END,
+    CASE WHEN p_column_name IN ('id', 'civic_os_text_search', 'created_at', 'updated_at') THEN false ELSE true END,
+    CASE WHEN p_column_name IN ('id', 'civic_os_text_search') THEN false
+         WHEN p_column_name IN ('created_at', 'updated_at') THEN true
+         ELSE true END
+  )
   ON CONFLICT (table_name, column_name) DO UPDATE
     SET sort_order = EXCLUDED.sort_order;
+    -- Note: Don't update show_on_* flags to preserve user customizations
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

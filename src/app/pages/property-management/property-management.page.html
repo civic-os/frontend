@@ -163,9 +163,9 @@
                         </label>
                       </div>
 
-                      <!-- Visibility Toggles (Coming Soon) -->
+                      <!-- Visibility Toggles -->
                       <div>
-                        <label class="label label-text text-xs font-semibold">Visibility (Coming Soon)</label>
+                        <label class="label label-text text-xs font-semibold">Visibility</label>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div class="form-control">
                             <label class="label cursor-pointer justify-start gap-2">
@@ -173,8 +173,7 @@
                                 type="checkbox"
                                 class="checkbox checkbox-sm"
                                 [(ngModel)]="property.show_on_list"
-                                (ngModelChange)="onVisibilityChange(property)"
-                                disabled />
+                                (ngModelChange)="onVisibilityChange(property)" />
                               <span class="label-text text-xs">Show on List</span>
                             </label>
                           </div>
@@ -184,8 +183,7 @@
                                 type="checkbox"
                                 class="checkbox checkbox-sm"
                                 [(ngModel)]="property.show_on_create"
-                                (ngModelChange)="onVisibilityChange(property)"
-                                disabled />
+                                (ngModelChange)="onVisibilityChange(property)" />
                               <span class="label-text text-xs">Show on Create</span>
                             </label>
                           </div>
@@ -195,8 +193,7 @@
                                 type="checkbox"
                                 class="checkbox checkbox-sm"
                                 [(ngModel)]="property.show_on_edit"
-                                (ngModelChange)="onVisibilityChange(property)"
-                                disabled />
+                                (ngModelChange)="onVisibilityChange(property)" />
                               <span class="label-text text-xs">Show on Edit</span>
                             </label>
                           </div>
@@ -206,8 +203,7 @@
                                 type="checkbox"
                                 class="checkbox checkbox-sm"
                                 [(ngModel)]="property.show_on_detail"
-                                (ngModelChange)="onVisibilityChange(property)"
-                                disabled />
+                                (ngModelChange)="onVisibilityChange(property)" />
                               <span class="label-text text-xs">Show on Detail</span>
                             </label>
                           </div>

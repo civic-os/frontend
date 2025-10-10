@@ -20,7 +20,7 @@
     {{ datum() | date: 'medium' }}
   }
   @if (propType() == EntityPropertyType.DateTimeLocal) {
-    {{ datum() | date: 'full' }}
+    {{ datum() | date: 'MMM d, y, h:mm:ss a z' }}
   }
   @if (propType() == EntityPropertyType.TextShort) {
     @if (highlightTerms().length > 0) {

@@ -146,6 +146,22 @@ describe('PropertyManagementService', () => {
   });
 
   describe('updatePropertiesOrder()', () => {
+    /**
+     * REGRESSION TEST CONTEXT:
+     * This tests the drag-and-drop reordering functionality. A critical bug was fixed where
+     * the database function was creating metadata rows with table defaults (show_on_list=true)
+     * instead of smart defaults (show_on_list=false for system fields like 'id').
+     *
+     * Bug scenario:
+     * 1. User drags to reorder properties (even non-system fields)
+     * 2. Frontend calls update_property_sort_order for ALL properties including 'id', 'created_at', etc.
+     * 3. If 'id' has no metadata row, function creates one
+     * 4. OLD BUG: PostgreSQL filled missing columns with table defaults (show_on_list=true)
+     * 5. Result: System fields appeared everywhere despite smart defaults in view
+     *
+     * Fix: The database function now explicitly sets visibility flags with smart defaults
+     * matching the view logic, preventing table defaults from overriding intended behavior.
+     */
     it('should call RPC function for each property', (done) => {
       const properties = [
         { table_name: 'Issue', column_name: 'title', sort_order: 0 },
@@ -166,6 +182,34 @@ describe('PropertyManagementService', () => {
       expect(requests[1].request.body).toEqual({ p_table_name: 'Issue', p_column_name: 'description', p_sort_order: 1 });
       expect(requests[2].request.body).toEqual({ p_table_name: 'Issue', p_column_name: 'status', p_sort_order: 2 });
 
+      requests.forEach(req => req.flush({}));
+    });
+
+    it('should handle reordering system fields without breaking visibility (regression test)', (done) => {
+      // This test documents the expected behavior when system fields are included in reordering.
+      // The database function must use smart defaults, not table defaults.
+      const properties = [
+        { table_name: 'Issue', column_name: 'id', sort_order: 0 },  // System field
+        { table_name: 'Issue', column_name: 'title', sort_order: 1 },
+        { table_name: 'Issue', column_name: 'created_at', sort_order: 2 }  // System field
+      ];
+
+      service.updatePropertiesOrder(properties).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const requests = httpMock.match(environment.postgrestUrl + 'rpc/update_property_sort_order');
+      expect(requests.length).toBe(3);
+
+      // Verify all properties are sent for reordering, including system fields
+      expect(requests[0].request.body).toEqual({ p_table_name: 'Issue', p_column_name: 'id', p_sort_order: 0 });
+      expect(requests[1].request.body).toEqual({ p_table_name: 'Issue', p_column_name: 'title', p_sort_order: 1 });
+      expect(requests[2].request.body).toEqual({ p_table_name: 'Issue', p_column_name: 'created_at', p_sort_order: 2 });
+
+      // Note: The actual smart defaults are enforced by the database function, not the frontend.
+      // This test serves as documentation that system fields SHOULD be included in reordering
+      // operations, and the database must handle them correctly with smart defaults.
       requests.forEach(req => req.flush({}));
     });
 

@@ -50,10 +50,6 @@ describe('SchemaService', () => {
     it('should be created', () => {
       expect(service).toBeTruthy();
     });
-
-    it('should have hideFields defined', () => {
-      expect(SchemaService.hideFields).toEqual(['id', 'created_at', 'updated_at', 'civic_os_text_search']);
-    });
   });
 
   describe('getEntities()', () => {
@@ -282,13 +278,39 @@ describe('SchemaService', () => {
     });
   });
 
+  describe('propertyToSelectStringForEdit() - Edit Form Query Building', () => {
+    it('should return column_name for ForeignKeyName types', () => {
+      const result = SchemaService.propertyToSelectStringForEdit(MOCK_PROPERTIES.foreignKey);
+      expect(result).toBe('status_id');
+    });
+
+    it('should return column_name for User types', () => {
+      const result = SchemaService.propertyToSelectStringForEdit(MOCK_PROPERTIES.user);
+      expect(result).toBe('assigned_to');
+    });
+
+    it('should return computed field select for GeoPoint', () => {
+      const result = SchemaService.propertyToSelectStringForEdit(MOCK_PROPERTIES.geoPoint);
+      expect(result).toBe('location:location_text');
+    });
+
+    it('should return column_name for simple types', () => {
+      expect(SchemaService.propertyToSelectStringForEdit(MOCK_PROPERTIES.textShort))
+        .toBe('name');
+      expect(SchemaService.propertyToSelectStringForEdit(MOCK_PROPERTIES.integer))
+        .toBe('count');
+      expect(SchemaService.propertyToSelectStringForEdit(MOCK_PROPERTIES.boolean))
+        .toBe('is_active');
+    });
+  });
+
   describe('getPropsForList()', () => {
-    it('should filter out hidden fields', (done) => {
+    it('should filter out hidden fields based on show_on_list flag', (done) => {
       const mockProps: SchemaEntityProperty[] = [
-        createMockProperty({ table_name: 'Issue', column_name: 'id', udt_name: 'int4' }),
-        createMockProperty({ table_name: 'Issue', column_name: 'name', udt_name: 'varchar' }),
-        createMockProperty({ table_name: 'Issue', column_name: 'created_at', udt_name: 'timestamp' }),
-        createMockProperty({ table_name: 'Issue', column_name: 'updated_at', udt_name: 'timestamp' })
+        createMockProperty({ table_name: 'Issue', column_name: 'id', udt_name: 'int4', show_on_list: false }),
+        createMockProperty({ table_name: 'Issue', column_name: 'name', udt_name: 'varchar', show_on_list: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'created_at', udt_name: 'timestamp', show_on_list: false }),
+        createMockProperty({ table_name: 'Issue', column_name: 'updated_at', udt_name: 'timestamp', show_on_list: false })
       ];
 
       service.getPropsForList(MOCK_ENTITIES.issue).subscribe(props => {
@@ -366,6 +388,24 @@ describe('SchemaService', () => {
 
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
+
+    it('should filter based on show_on_create flag', (done) => {
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'name', udt_name: 'varchar', is_updatable: true, show_on_create: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'internal_notes', udt_name: 'text', is_updatable: true, show_on_create: false }),
+        createMockProperty({ table_name: 'Issue', column_name: 'status', udt_name: 'varchar', is_updatable: true, show_on_create: true })
+      ];
+
+      service.getPropsForCreate(MOCK_ENTITIES.issue).subscribe(props => {
+        expect(props.length).toBe(2);
+        expect(props[0].column_name).toBe('name');
+        expect(props[1].column_name).toBe('status');
+        expect(props.find(p => p.column_name === 'internal_notes')).toBeUndefined();
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
   });
 
   describe('getPropsForEdit()', () => {
@@ -378,6 +418,24 @@ describe('SchemaService', () => {
       service.getPropsForEdit(MOCK_ENTITIES.issue).subscribe(props => {
         expect(props.length).toBe(1);
         expect(props[0].column_name).toBe('name');
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
+
+    it('should filter based on show_on_edit flag', (done) => {
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'title', udt_name: 'varchar', is_updatable: true, show_on_edit: true }),
+        createMockProperty({ table_name: 'Issue', column_name: 'calculated_field', udt_name: 'varchar', is_updatable: true, show_on_edit: false }),
+        createMockProperty({ table_name: 'Issue', column_name: 'description', udt_name: 'text', is_updatable: true, show_on_edit: true })
+      ];
+
+      service.getPropsForEdit(MOCK_ENTITIES.issue).subscribe(props => {
+        expect(props.length).toBe(2);
+        expect(props[0].column_name).toBe('title');
+        expect(props[1].column_name).toBe('description');
+        expect(props.find(p => p.column_name === 'calculated_field')).toBeUndefined();
         done();
       });
 
@@ -416,6 +474,26 @@ describe('SchemaService', () => {
         service.getPropsForDetail(MOCK_ENTITIES.issue).subscribe(props => {
           expect(props[0].column_name).toBe('title');       // sort_order: 3
           expect(props[1].column_name).toBe('description'); // sort_order: 5
+          done();
+        });
+
+        expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+      });
+
+      it('should filter based on show_on_detail flag', (done) => {
+        const mockProps: SchemaEntityProperty[] = [
+          createMockProperty({ table_name: 'Issue', column_name: 'title', udt_name: 'varchar', show_on_detail: true }),
+          createMockProperty({ table_name: 'Issue', column_name: 'internal_id', udt_name: 'int4', show_on_detail: false }),
+          createMockProperty({ table_name: 'Issue', column_name: 'created_at', udt_name: 'timestamptz', show_on_detail: true }),
+          createMockProperty({ table_name: 'Issue', column_name: 'updated_at', udt_name: 'timestamptz', show_on_detail: true })
+        ];
+
+        service.getPropsForDetail(MOCK_ENTITIES.issue).subscribe(props => {
+          expect(props.length).toBe(3);
+          expect(props.find(p => p.column_name === 'title')).toBeDefined();
+          expect(props.find(p => p.column_name === 'created_at')).toBeDefined();
+          expect(props.find(p => p.column_name === 'updated_at')).toBeDefined();
+          expect(props.find(p => p.column_name === 'internal_id')).toBeUndefined();
           done();
         });
 

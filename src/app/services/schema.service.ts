@@ -40,8 +40,6 @@ export class SchemaService {
     }
   });
 
-  public static hideFields: string[] = ['id', 'created_at', 'updated_at', 'civic_os_text_search'];
-
   private getSchema() {
     return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_entities')
     .pipe(tap(tables => {
@@ -156,9 +154,7 @@ export class SchemaService {
     return this.getPropertiesForEntity(table)
       .pipe(map(props => {
         return props
-          .filter(p =>{
-            return !SchemaService.hideFields.includes(p.column_name);
-          })
+          .filter(p => p.show_on_list !== false)
           .sort((a, b) => a.sort_order - b.sort_order);
       }));
   }
@@ -166,9 +162,7 @@ export class SchemaService {
     return this.getPropertiesForEntity(table)
       .pipe(map(props => {
         return props
-          .filter(p =>{
-            return !SchemaService.hideFields.includes(p.column_name);
-          })
+          .filter(p => p.show_on_detail !== false)
           .sort((a, b) => a.sort_order - b.sort_order);
       }));
   }
@@ -179,13 +173,22 @@ export class SchemaService {
           .filter(p =>{
             return !(p.is_generated || p.is_identity) &&
               p.is_updatable &&
-              !SchemaService.hideFields.includes(p.column_name);
+              p.show_on_create !== false;
           })
           .sort((a, b) => a.sort_order - b.sort_order);
       }));
   }
   public getPropsForEdit(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
-    return this.getPropsForCreate(table);
+    return this.getPropertiesForEntity(table)
+      .pipe(map(props => {
+        return props
+          .filter(p =>{
+            return !(p.is_generated || p.is_identity) &&
+              p.is_updatable &&
+              p.show_on_edit !== false;
+          })
+          .sort((a, b) => a.sort_order - b.sort_order);
+      }));
   }
   public static getFormValidatorsForProperty(prop: SchemaEntityProperty): ValidatorFn[] {
     let validators:ValidatorFn[] = [];

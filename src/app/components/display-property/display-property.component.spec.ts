@@ -162,6 +162,18 @@ describe('DisplayPropertyComponent', () => {
       expect(textContent.length).toBeGreaterThan(0);
       expect(textContent).not.toBe('Not Set');
     });
+
+    it('should display timezone in short format (GMT-4 not GMT-04:00)', () => {
+      fixture.componentRef.setInput('property', MOCK_PROPERTIES.dateTimeLocal);
+      fixture.componentRef.setInput('datum', '2025-10-10T08:10:30-04:00');
+      fixture.detectChanges();
+
+      const textContent = fixture.nativeElement.textContent.trim();
+      // Using 'MMM d, y, h:mm:ss a z' format should produce short timezone like "GMT-4"
+      // This is more readable than the long format "GMT-04:00"
+      expect(textContent).toContain('GMT-4');
+      expect(textContent).not.toContain('GMT-04:00');
+    });
   });
 
   describe('ForeignKeyName Type', () => {

@@ -196,6 +196,11 @@ npm test -- --include='**/schema.service.spec.ts' --no-watch --browsers=ChromeHe
 - **CI testing**: The `test:ci` script includes code coverage for continuous integration pipelines
 - **Angular 20 requirements**: All test suites must include `provideZonelessChangeDetection()` in `TestBed.configureTestingModule`
 - **OnPush + async pattern**: Test observables using the `async` pipe pattern rather than manual subscriptions
+- **Never update failing tests without explanation**: If a test fails after your changes:
+  1. **Understand WHY it failed** - Examine the error message, actual vs expected values
+  2. **Determine the root cause** - Is the test expectation wrong or did your code break something?
+  3. **Document your reasoning** - Add comments explaining why the test expectation changed
+  4. **If the test was correct, fix your code** - Don't change passing tests to match broken code
 
 ### Build
 ```bash
