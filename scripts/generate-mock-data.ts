@@ -195,35 +195,26 @@ class MockDataGenerator {
 
   /**
    * Generate mock users for civic_os_users table
-   * Returns array of user records with UUIDs
+   * Returns array of user records with UUIDs and shortened public display names
+   * Each user object includes a full_name property for use in private table
    */
   private generateUsers(): any[] {
     const userCount = this.config.userCount || 10;
     const users: any[] = [];
-    const usedNames = new Set<string>();
 
     console.log(`Generating ${userCount} mock users...`);
 
     for (let i = 0; i < userCount; i++) {
-      let displayName: string;
-      let attempts = 0;
+      // Generate full name
+      const fullName = faker.person.fullName();
 
-      // Ensure unique display names
-      do {
-        displayName = faker.person.fullName();
-        attempts++;
-        if (attempts > 100) {
-          // Fallback: append number to guarantee uniqueness
-          displayName = `${faker.person.fullName()} ${i}`;
-          break;
-        }
-      } while (usedNames.has(displayName));
-
-      usedNames.add(displayName);
+      // Format for public display (e.g., "John D.")
+      const publicDisplayName = this.formatPublicDisplayName(fullName);
 
       const user = {
         id: faker.string.uuid(),
-        display_name: displayName,
+        display_name: publicDisplayName, // Shortened name for public table
+        full_name: fullName, // Keep full name for private table (not inserted into DB)
       };
 
       users.push(user);
@@ -234,15 +225,17 @@ class MockDataGenerator {
 
   /**
    * Generate mock private user data matching civic_os_users records
-   * Uses same UUIDs and display names from civic_os_users
+   * Uses same UUIDs but stores full names (not shortened versions)
    */
   private generateUsersPrivate(publicUsers: any[]): any[] {
     console.log(`Generating ${publicUsers.length} private user records...`);
 
     return publicUsers.map(user => {
-      // Generate email from display name
-      const nameParts = user.display_name.toLowerCase().split(' ');
-      const emailUsername = nameParts.join('.');
+      // Use full name for private table (e.g., "John Doe" instead of "John D.")
+      const fullName = user.full_name || user.display_name;
+
+      // Generate email from full name
+      const nameParts = fullName.toLowerCase().split(' ');
       const email = faker.internet.email({ firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] });
 
       // Generate phone number in format ###-###-####
@@ -250,11 +243,66 @@ class MockDataGenerator {
 
       return {
         id: user.id, // Same UUID as civic_os_users
-        display_name: user.display_name, // Same display name
+        display_name: fullName, // Full name in private table
         email: email,
         phone: phone,
       };
     });
+  }
+
+  /**
+   * Format full name as "First L." for public display
+   * Filters out titles (Mr., Dr., etc.) and suffixes (Jr., PhD, etc.)
+   * Examples: "Mr. John Doe Jr." -> "John D.", "Dr. Sarah Johnson PhD" -> "Sarah J."
+   * Matches the behavior of the SQL format_public_display_name() function
+   */
+  private formatPublicDisplayName(fullName: string): string {
+    // Common titles/prefixes to filter out (case-insensitive, with or without periods)
+    const titles = ['MR', 'MRS', 'MS', 'MISS', 'DR', 'PROF', 'PROFESSOR', 'REV', 'REVEREND',
+                    'SIR', 'MADAM', 'LORD', 'LADY', 'CAPT', 'CAPTAIN', 'LT', 'LIEUTENANT',
+                    'COL', 'COLONEL', 'GEN', 'GENERAL', 'MAJ', 'MAJOR', 'SGT', 'SERGEANT'];
+
+    // Common suffixes to filter out (case-insensitive, with or without periods)
+    const suffixes = ['JR', 'JUNIOR', 'SR', 'SENIOR', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
+                      'PHD', 'MD', 'DDS', 'ESQ', 'MBA', 'JD', 'DVM', 'RN', 'LPN',
+                      '1ST', '2ND', '3RD', '4TH', '5TH', '6TH', '7TH', '8TH', '9TH'];
+
+    // Handle null/empty
+    if (!fullName || fullName.trim() === '') {
+      return 'User';
+    }
+
+    // Split by spaces and filter empty parts
+    const nameParts = fullName.trim().split(/\s+/).filter(part => part.length > 0);
+
+    // Filter out titles and suffixes
+    const filteredParts = nameParts.filter(part => {
+      // Normalize: uppercase and remove periods for comparison
+      const partNormalized = part.replace(/\./g, '').toUpperCase();
+
+      // Skip if it's a title or suffix
+      return !titles.includes(partNormalized) && !suffixes.includes(partNormalized);
+    });
+
+    // Handle edge cases after filtering
+    if (filteredParts.length === 0) {
+      return 'User';
+    }
+
+    // Handle single name (e.g., "Madonna")
+    if (filteredParts.length === 1) {
+      // Capitalize first letter
+      return filteredParts[0].charAt(0).toUpperCase() + filteredParts[0].slice(1).toLowerCase();
+    }
+
+    // Extract first name and capitalize
+    const firstName = filteredParts[0].charAt(0).toUpperCase() + filteredParts[0].slice(1).toLowerCase();
+
+    // Extract last name initial and capitalize
+    const lastInitial = filteredParts[filteredParts.length - 1].charAt(0).toUpperCase();
+
+    // Return formatted name: "First L."
+    return `${firstName} ${lastInitial}.`;
   }
 
   /**
@@ -549,9 +597,12 @@ class MockDataGenerator {
     const hasAutoGeneratedId = idProperty?.is_identity === true;
 
     // Exclude 'id' from SQL only if it's auto-generated
-    const columns = Object.keys(records[0]).filter(col =>
-      hasAutoGeneratedId ? col !== 'id' : true
-    );
+    // Also exclude 'full_name' helper property (used for civic_os_users but not a DB column)
+    const columns = Object.keys(records[0]).filter(col => {
+      if (col === 'full_name') return false; // Helper property, not a DB column
+      if (hasAutoGeneratedId && col === 'id') return false;
+      return true;
+    });
     const columnList = columns.map(c => `"${c}"`).join(', ');
 
     const values = records.map(record => {

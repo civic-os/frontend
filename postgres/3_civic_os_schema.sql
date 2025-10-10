@@ -7,8 +7,7 @@ CREATE TABLE public.civic_os_users (
   id UUID PRIMARY KEY,
   display_name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT civic_os_users_display_name_key UNIQUE (display_name)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.civic_os_users ENABLE ROW LEVEL SECURITY;
@@ -57,6 +56,73 @@ CREATE POLICY "Permitted roles see all private data"
   USING (public.has_permission('civic_os_users_private', 'read'));
 
 -- =====================================================
+-- User Display Name Formatting
+-- =====================================================
+
+-- Function to format full name as "First L." for public display
+-- Filters out titles (Mr., Dr., etc.) and suffixes (Jr., PhD, etc.)
+-- Examples: "Mr. John Doe Jr." -> "John D.", "Dr. Sarah Johnson PhD" -> "Sarah J."
+CREATE OR REPLACE FUNCTION public.format_public_display_name(full_name TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  name_parts TEXT[];
+  filtered_parts TEXT[];
+  name_part TEXT;
+  part_normalized TEXT;
+  first_name TEXT;
+  last_initial TEXT;
+  -- Common titles/prefixes to filter out (case-insensitive, with or without periods)
+  titles TEXT[] := ARRAY['MR', 'MRS', 'MS', 'MISS', 'DR', 'PROF', 'PROFESSOR', 'REV', 'REVEREND',
+                         'SIR', 'MADAM', 'LORD', 'LADY', 'CAPT', 'CAPTAIN', 'LT', 'LIEUTENANT',
+                         'COL', 'COLONEL', 'GEN', 'GENERAL', 'MAJ', 'MAJOR', 'SGT', 'SERGEANT'];
+  -- Common suffixes to filter out (case-insensitive, with or without periods)
+  suffixes TEXT[] := ARRAY['JR', 'JUNIOR', 'SR', 'SENIOR', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
+                           'PHD', 'MD', 'DDS', 'ESQ', 'MBA', 'JD', 'DVM', 'RN', 'LPN',
+                           '1ST', '2ND', '3RD', '4TH', '5TH', '6TH', '7TH', '8TH', '9TH'];
+BEGIN
+  -- Handle NULL or empty string
+  IF full_name IS NULL OR TRIM(full_name) = '' THEN
+    RETURN 'User';
+  END IF;
+
+  -- Split name by spaces and filter out empty parts
+  name_parts := ARRAY(SELECT TRIM(part) FROM UNNEST(string_to_array(full_name, ' ')) AS part WHERE TRIM(part) != '');
+
+  -- Filter out titles and suffixes
+  filtered_parts := ARRAY[]::TEXT[];
+  FOREACH name_part IN ARRAY name_parts
+  LOOP
+    -- Normalize: uppercase and remove periods for comparison
+    part_normalized := UPPER(REPLACE(name_part, '.', ''));
+
+    -- Skip if it's a title or suffix
+    IF NOT (part_normalized = ANY(titles) OR part_normalized = ANY(suffixes)) THEN
+      filtered_parts := filtered_parts || name_part;
+    END IF;
+  END LOOP;
+
+  -- Handle edge cases after filtering
+  IF array_length(filtered_parts, 1) IS NULL OR array_length(filtered_parts, 1) = 0 THEN
+    RETURN 'User';
+  END IF;
+
+  -- Handle single name (e.g., "Madonna")
+  IF array_length(filtered_parts, 1) = 1 THEN
+    RETURN INITCAP(filtered_parts[1]);
+  END IF;
+
+  -- Extract first name and capitalize
+  first_name := INITCAP(filtered_parts[1]);
+
+  -- Extract last name initial and capitalize
+  last_initial := UPPER(SUBSTRING(filtered_parts[array_length(filtered_parts, 1)] FROM 1 FOR 1));
+
+  -- Return formatted name: "First L."
+  RETURN first_name || ' ' || last_initial || '.';
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- =====================================================
 -- User Refresh Function
 -- =====================================================
 
@@ -86,8 +152,9 @@ BEGIN
   END IF;
 
   -- Upsert into civic_os_users (public profile)
+  -- Store shortened name (e.g., "John D.") for privacy
   INSERT INTO public.civic_os_users (id, display_name, created_at, updated_at)
-  VALUES (v_user_id, v_display_name, NOW(), NOW())
+  VALUES (v_user_id, public.format_public_display_name(v_display_name), NOW(), NOW())
   ON CONFLICT (id) DO UPDATE
     SET display_name = EXCLUDED.display_name,
         updated_at = NOW();
