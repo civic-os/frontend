@@ -97,7 +97,9 @@ export class FilterBarComponent {
   private loadFilterOptions(columnName: string, tableName: string) {
     this.dataService.getData({
       key: tableName,
-      fields: ['id', 'display_name']
+      fields: ['id', 'display_name'],
+      orderField: 'display_name',
+      orderDirection: 'asc'
     }).subscribe(data => {
       const options = this.filterOptions();
       options.set(columnName, data as FilterOption[]);

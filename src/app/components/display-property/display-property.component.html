@@ -62,28 +62,25 @@
       }
     }
     @if (propType() == EntityPropertyType.User) {
-      @if (datum()?.private) {
-        {{ datum().private.display_name }} ({{ datum().private.email }})
-      }
-      @if (datum() && !datum().private) {
-        {{ datum().display_name }}
-      }
+      <div class="break-words">
+        @if (datum()?.private) {
+          {{ datum().private.display_name }} ({{ datum().private.email }})
+        }
+        @if (datum() && !datum().private) {
+          {{ datum().display_name }}
+        }
+      </div>
     }
     @if (propType() == EntityPropertyType.GeoPoint) {
       @if (datum()) {
-        <div class="geo-point-display">
+        <div class="geo-point-display min-w-[250px]">
           <app-geo-point-map
             mode="display"
             [initialValue]="datum()"
             width="100%"
-            height="200px"
+            height="150px"
             (coordinatesChange)="onCoordinatesChange($event)">
           </app-geo-point-map>
-          @if (displayCoordinates(); as coords) {
-            <div class="text-xs mt-1">
-              {{ coords[1] | number:'1.6-6' }}, {{ coords[0] | number:'1.6-6' }}
-            </div>
-          }
         </div>
       }
       @if (!datum()) {

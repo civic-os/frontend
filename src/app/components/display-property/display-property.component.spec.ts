@@ -263,24 +263,7 @@ describe('DisplayPropertyComponent', () => {
       expect(mapInstance.mode()).toBe('display');
       expect(mapInstance.initialValue()).toBe('POINT(-83.6875 43.0125)');
       expect(mapInstance.width()).toBe('100%');
-      expect(mapInstance.height()).toBe('200px');
-    });
-
-    it('should display coordinates when available', async () => {
-      fixture.componentRef.setInput('property', MOCK_PROPERTIES.geoPoint);
-      fixture.componentRef.setInput('datum', MOCK_DATA.geoPoint.location);
-      fixture.detectChanges();
-
-      // Simulate coordinates emission from map component
-      component.onCoordinatesChange([-83.6875, 43.0125]);
-      await new Promise(resolve => setTimeout(resolve, 10));
-      fixture.detectChanges();
-
-      const coordsDiv = fixture.debugElement.query(By.css('.text-xs'));
-      expect(coordsDiv).toBeTruthy();
-      const coordsText = coordsDiv.nativeElement.textContent.trim();
-      expect(coordsText).toContain('43.0125'); // Latitude
-      expect(coordsText).toContain('-83.6875'); // Longitude
+      expect(mapInstance.height()).toBe('150px');
     });
 
     it('should show "Not Set" for null GeoPoint', () => {
@@ -321,21 +304,6 @@ describe('DisplayPropertyComponent', () => {
         const textContent = fixture.nativeElement.textContent.trim();
         expect(textContent).toContain('Not Set');
       });
-    });
-  });
-
-  describe('onCoordinatesChange()', () => {
-    it('should update displayCoordinates when called', () => {
-      const coords: [number, number] = [-83.5, 43.2];
-      component.onCoordinatesChange(coords);
-
-      expect(component.displayCoordinates()).toEqual(coords);
-    });
-
-    it('should handle null coordinates', () => {
-      component.onCoordinatesChange(null);
-
-      expect(component.displayCoordinates()).toBeNull();
     });
   });
 
