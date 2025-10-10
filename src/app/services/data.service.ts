@@ -52,6 +52,14 @@ export class DataService {
     if(query.entityId) {
       args.push('id=eq.' + query.entityId);
     }
+    // Process filters
+    if(query.filters && query.filters.length > 0) {
+      query.filters.forEach(filter => {
+        if (filter.value !== null && filter.value !== undefined && filter.value !== '') {
+          args.push(`${filter.column}=${filter.operator}.${filter.value}`);
+        }
+      });
+    }
     let url = query.key + '?' + args.join('&');
     return this.get(url);
   }

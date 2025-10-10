@@ -371,6 +371,7 @@ describe('PropertyManagementPage', () => {
               0,
               200,
               true,
+              false,  // filterable defaults to false when undefined
               true,
               true,
               true,

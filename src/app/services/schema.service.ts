@@ -190,6 +190,31 @@ export class SchemaService {
           .sort((a, b) => a.sort_order - b.sort_order);
       }));
   }
+  public getPropsForFilter(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
+    return this.getPropertiesForEntity(table)
+      .pipe(map(props => {
+        return props
+          .filter(p => {
+            // Only include properties marked as filterable
+            if (p.filterable !== true) {
+              return false;
+            }
+            // Only include supported property types
+            const supportedTypes = [
+              EntityPropertyType.ForeignKeyName,
+              EntityPropertyType.DateTime,
+              EntityPropertyType.DateTimeLocal,
+              EntityPropertyType.Date,
+              EntityPropertyType.Boolean,
+              EntityPropertyType.IntegerNumber,
+              EntityPropertyType.Money,
+              EntityPropertyType.User
+            ];
+            return supportedTypes.includes(p.type);
+          })
+          .sort((a, b) => a.sort_order - b.sort_order);
+      }));
+  }
   public static getFormValidatorsForProperty(prop: SchemaEntityProperty): ValidatorFn[] {
     let validators:ValidatorFn[] = [];
 

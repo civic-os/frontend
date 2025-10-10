@@ -15,6 +15,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+export interface FilterCriteria {
+    column: string;
+    operator: string;
+    value: any;
+}
+
 export interface DataQuery {
     key: string;
     fields: string[];
@@ -22,4 +28,5 @@ export interface DataQuery {
     orderField?: string;
     orderDirection?: string;
     searchQuery?: string;
+    filters?: FilterCriteria[];
 }

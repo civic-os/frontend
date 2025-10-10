@@ -17,7 +17,7 @@
 
 import { Component, inject, ChangeDetectionStrategy, signal, OnInit, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Observable, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged, take, tap, shareReplay } from 'rxjs';
+import { Observable, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged, take, tap, shareReplay, switchMap, from } from 'rxjs';
 import { SchemaService } from '../../services/schema.service';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -26,6 +26,8 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DataService } from '../../services/data.service';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
+import { FilterBarComponent } from '../../components/filter-bar/filter-bar.component';
+import { FilterCriteria } from '../../interfaces/query';
 
 @Component({
     selector: 'app-view',
@@ -36,7 +38,8 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
-    DisplayPropertyComponent
+    DisplayPropertyComponent,
+    FilterBarComponent
 ]
 })
 export class ListPage implements OnInit {
@@ -47,21 +50,17 @@ export class ListPage implements OnInit {
 
   public entityKey?: string;
   public searchControl = new FormControl('');
-  public searchQuery = signal<string>('');
   public isLoading = signal<boolean>(false);
-  public sortState = signal<{ column: string | null, direction: 'asc' | 'desc' | null }>({
-    column: null,
-    direction: null
-  });
 
-  public entity$: Observable<SchemaEntityTable | undefined> = this.route.params.pipe(mergeMap(p => {
-    this.entityKey = p['entityKey'];
-    if(p['entityKey']) {
-      return this.schema.getEntity(p['entityKey']);
-    } else {
-      return of(undefined);
-    }
-  }));
+  public entity$: Observable<SchemaEntityTable | undefined> = this.route.params.pipe(
+    mergeMap(p => {
+      if(p['entityKey']) {
+        return this.schema.getEntity(p['entityKey']);
+      } else {
+        return of(undefined);
+      }
+    })
+  );
 
   public properties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
     if(e) {
@@ -72,97 +71,214 @@ export class ListPage implements OnInit {
     }
   }));
 
-  public data$: Observable<any> = combineLatest([
-    this.properties$,
-    toObservable(this.searchQuery),
-    toObservable(this.sortState)
-  ]).pipe(
-    tap(() => this.isLoading.set(true)),
-    mergeMap(([props, search, sortState]) => {
-      if(props && props.length > 0 && this.entityKey) {
-        let columns = props
-          .map(x => SchemaService.propertyToSelectString(x));
+  public filterProperties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
+    if(e) {
+      return this.schema.getPropsForFilter(e);
+    } else {
+      return of([]);
+    }
+  }));
 
-        // Build order field for PostgREST
-        let orderField: string | undefined = undefined;
-        if (sortState.column && sortState.direction) {
-          const sortProperty = props.find(p => p.column_name === sortState.column);
-          if (sortProperty) {
-            orderField = this.buildOrderField(sortProperty);
-          }
-        }
-
-        return this.data.getData({
-          key: this.entityKey,
-          fields: columns,
-          searchQuery: search || undefined,
-          orderField: orderField,
-          orderDirection: sortState.direction || undefined
+  // Derive filters from URL query params
+  public filters$: Observable<FilterCriteria[]> = this.route.queryParams.pipe(
+    map(params => {
+      const filters: FilterCriteria[] = [];
+      let index = 0;
+      while (params[`f${index}_col`]) {
+        filters.push({
+          column: params[`f${index}_col`],
+          operator: params[`f${index}_op`],
+          value: params[`f${index}_val`]
         });
+        index++;
+      }
+      return filters;
+    })
+  );
+
+  // Derive sort state from URL query params
+  public sortState$: Observable<{ column: string | null, direction: 'asc' | 'desc' | null }> =
+    this.route.queryParams.pipe(
+      map(params => ({
+        column: params['sort'] || null,
+        direction: (params['dir'] as 'asc' | 'desc') || null
+      }))
+    );
+
+  // Derive search query from URL query params
+  public searchQuery$: Observable<string> = this.route.queryParams.pipe(
+    map(params => params['q'] || '')
+  );
+
+  public data$: Observable<any> = this.route.params.pipe(
+    // switchMap cancels previous subscription when params change
+    switchMap(p => {
+      // Wait for query param clearing to complete before proceeding
+      if (this.entityKey && this.entityKey !== p['entityKey']) {
+        this.entityKey = p['entityKey'];
+        // Convert Promise to Observable and wait for navigation to complete
+        return from(
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: {},
+            replaceUrl: true
+          })
+        ).pipe(
+          // After navigation completes, return the params
+          map(() => p)
+        );
       } else {
-        return of([]);
+        this.entityKey = p['entityKey'];
+        // No navigation needed, just continue
+        return of(p);
       }
     }),
-    tap(() => this.isLoading.set(false)),
+    mergeMap(p => {
+      if (!p['entityKey']) return of([]);
+
+      // Now derive everything from the current route state
+      return combineLatest([
+        this.schema.getEntity(p['entityKey']),
+        this.schema.getEntity(p['entityKey']).pipe(
+          mergeMap(e => e ? this.schema.getPropsForList(e) : of([]))
+        ),
+        this.searchQuery$,
+        this.sortState$,
+        this.filters$
+      ]).pipe(
+        tap(() => this.isLoading.set(true)),
+        switchMap(([entity, props, search, sortState, filters]) => {
+          if (props && props.length > 0 && p['entityKey']) {
+            let columns = props
+              .map(x => SchemaService.propertyToSelectString(x));
+
+            // Build order field for PostgREST
+            let orderField: string | undefined = undefined;
+            if (sortState.column && sortState.direction) {
+              const sortProperty = props.find(p => p.column_name === sortState.column);
+              if (sortProperty) {
+                orderField = this.buildOrderField(sortProperty);
+              }
+            }
+
+            // Filter out any filters that don't match current entity's columns
+            const validColumnNames = props.map(p => p.column_name);
+            const validFilters = filters.filter(f => validColumnNames.includes(f.column));
+
+            // Only apply search if entity has search_fields defined
+            const validSearch = (entity && entity.search_fields && entity.search_fields.length > 0)
+              ? search
+              : undefined;
+
+            return this.data.getData({
+              key: p['entityKey'],
+              fields: columns,
+              searchQuery: validSearch || undefined,
+              orderField: orderField,
+              orderDirection: sortState.direction || undefined,
+              filters: validFilters && validFilters.length > 0 ? validFilters : undefined
+            });
+          } else {
+            return of([]);
+          }
+        }),
+        tap(() => this.isLoading.set(false))
+      );
+    }),
     shareReplay(1)
   );
 
   // Convert data$ observable to signal for use in computed
   public dataSignal = toSignal(this.data$, { initialValue: [] });
 
-  // Extract search terms for highlighting
-  public searchTerms = computed(() => {
-    const query = this.searchQuery();
-    if (!query || !query.trim()) {
-      return [];
-    }
-    // Split on whitespace and remove empty strings
-    return query.trim().split(/\s+/).filter(term => term.length > 0);
+  // Convert observables to signals for template use
+  public sortStateSignal = toSignal(this.sortState$, {
+    initialValue: { column: null, direction: null }
   });
+
+  public filtersSignal = toSignal(this.filters$, { initialValue: [] });
+
+  // Extract search terms for highlighting
+  private searchTerms$: Observable<string[]> = this.searchQuery$.pipe(
+    map(query => {
+      if (!query || !query.trim()) return [];
+      return query.trim().split(/\s+/).filter(term => term.length > 0);
+    })
+  );
+  public searchTerms = toSignal(this.searchTerms$, { initialValue: [] });
+
+  // Check if any filtering is active (filters or search)
+  private isFiltered$ = combineLatest([this.filters$, this.searchQuery$]).pipe(
+    map(([filters, search]) => filters.length > 0 || (search && search.trim().length > 0))
+  );
+  public isFiltered = toSignal(this.isFiltered$, { initialValue: false });
 
   // Count of search results
   public resultCount = computed(() => this.dataSignal().length);
 
   ngOnInit() {
-    // Initialize search and sort from URL query params
-    this.route.queryParams.pipe(take(1)).subscribe(params => {
-      if (params['q']) {
-        this.searchControl.setValue(params['q'], { emitEvent: false });
-        this.searchQuery.set(params['q']);
-      }
-      if (params['sort']) {
-        this.sortState.set({
-          column: params['sort'],
-          direction: params['dir'] || 'asc'
-        });
+    // Sync searchControl with URL query params (bidirectional)
+    // URL → searchControl
+    this.searchQuery$.subscribe(query => {
+      if (this.searchControl.value !== query) {
+        this.searchControl.setValue(query, { emitEvent: false });
       }
     });
 
-    // Debounce search input (300ms) and update URL
+    // searchControl → URL (debounced)
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged())
       .subscribe(value => {
-        this.searchQuery.set(value || '');
-        this.updateQueryParams();
+        // Navigate to update URL with new search value
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { q: value || null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
       });
   }
 
-  private updateQueryParams() {
-    const sortState = this.sortState();
+  public onFiltersChange(filters: FilterCriteria[]) {
+    // Build filter query params
+    const filterParams: any = {};
+
+    // First, clear all existing filter params by setting them to null
+    const currentParams = this.route.snapshot.queryParams;
+    Object.keys(currentParams).forEach(key => {
+      if (key.match(/^f\d+_(col|op|val)$/)) {
+        filterParams[key] = null;
+      }
+    });
+
+    // Then set the new filter params
+    filters.forEach((filter, index) => {
+      filterParams[`f${index}_col`] = filter.column;
+      filterParams[`f${index}_op`] = filter.operator;
+      filterParams[`f${index}_val`] = filter.value;
+    });
+
+    // Navigate with new filter params (preserves search and sort)
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: {
-        q: this.searchQuery() || null,
-        sort: sortState.column || null,
-        dir: sortState.direction || null
-      },
+      queryParams: filterParams,
       queryParamsHandling: 'merge',
       replaceUrl: true
     });
   }
 
+  public isColumnFiltered(columnName: string): boolean {
+    const filters = this.filtersSignal();
+    return filters.some(f => f.column === columnName);
+  }
+
   public clearSearch() {
-    this.searchControl.setValue('');
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
   }
 
   /**
@@ -197,30 +313,36 @@ export class ListPage implements OnInit {
       return;
     }
 
-    const currentState = this.sortState();
+    const currentState = this.sortStateSignal();
+
+    let newSort: string | null = null;
+    let newDir: 'asc' | 'desc' | null = null;
 
     // Clicking a different column - start with asc
     if (currentState.column !== property.column_name) {
-      this.sortState.set({
-        column: property.column_name,
-        direction: 'asc'
-      });
+      newSort = property.column_name;
+      newDir = 'asc';
     } else {
       // Clicking the same column - cycle through states
       if (currentState.direction === 'asc') {
-        this.sortState.set({
-          column: property.column_name,
-          direction: 'desc'
-        });
+        newSort = property.column_name;
+        newDir = 'desc';
       } else if (currentState.direction === 'desc') {
         // Reset to unsorted
-        this.sortState.set({
-          column: null,
-          direction: null
-        });
+        newSort = null;
+        newDir = null;
       }
     }
 
-    this.updateQueryParams();
+    // Navigate with new sort params
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        sort: newSort,
+        dir: newDir
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
   }
 }

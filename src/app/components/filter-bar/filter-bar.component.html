@@ -1,0 +1,112 @@
+@if (properties() && properties().length > 0) {
+  <div class="not-prose">
+    <!-- Filter Button -->
+    <button
+      class="btn btn-sm btn-outline gap-2"
+      (click)="toggleExpanded()">
+      <span class="material-symbols-outlined">filter_list</span>
+      Filters
+      @if (activeFilterCount() > 0) {
+        <span class="badge badge-primary">{{ activeFilterCount() }}</span>
+      }
+      <span class="material-symbols-outlined">
+        {{ isExpanded() ? 'expand_less' : 'expand_more' }}
+      </span>
+    </button>
+
+    <!-- Filter Controls Drawer (Collapsible) -->
+    @if (isExpanded()) {
+      <div class="card bg-base-200 p-4 mt-2 absolute right-6 z-10 shadow-lg max-w-4xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold">Filter Options</h3>
+          @if (activeFilterCount() > 0) {
+            <button
+              class="btn btn-sm btn-ghost gap-2"
+              (click)="clearAllFilters()">
+              <span class="material-symbols-outlined">clear</span>
+              Clear All
+            </button>
+          }
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (prop of properties(); track prop.column_name) {
+            <div class="form-control">
+              <label class="label pb-1 pt-0">
+                <span class="label-text font-semibold">{{ prop.display_name }}</span>
+              </label>
+
+              <!-- Foreign Key / User: Checkbox list -->
+              @if (prop.type === EntityPropertyType.ForeignKeyName || prop.type === EntityPropertyType.User) {
+                <div class="border border-base-300 rounded-lg p-2 gap-2 max-h-48 overflow-y-auto bg-base-100">
+                  @if (getFilterOptions(prop.column_name).length === 0) {
+                    <div class="text-sm text-base-content/60">Loading options...</div>
+                  }
+                  @for (option of getFilterOptions(prop.column_name); track option.id) {
+                    <label class="label cursor-pointer justify-start gap-2 py-1 pr-4">
+                      <input
+                        type="checkbox"
+                        class="checkbox checkbox-sm"
+                        [checked]="isOptionSelected(prop.column_name, option.id)"
+                        (change)="toggleOption(prop.column_name, option.id)" />
+                      <span class="label-text text-sm">{{ option.display_name }}</span>
+                    </label>
+                  }
+                </div>
+              }
+
+              <!-- Boolean: Dropdown (All/Yes/No) -->
+              @if (prop.type === EntityPropertyType.Boolean) {
+                <select
+                  class="select select-bordered select-sm w-full"
+                  [(ngModel)]="filterState()[prop.column_name]"
+                  (ngModelChange)="onFilterChange()">
+                  <option value="all">All</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              }
+
+              <!-- DateTime/Date: Date range inputs -->
+              @if (prop.type === EntityPropertyType.DateTime || prop.type === EntityPropertyType.DateTimeLocal || prop.type === EntityPropertyType.Date) {
+                <div class="flex flex-col gap-2">
+                  <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    [value]="filterState()[prop.column_name + '_start'] || ''"
+                    (change)="onDateChange($event, prop.column_name + '_start')"
+                    placeholder="Start date" />
+                  <span class="text-xs text-center text-base-content/60">to</span>
+                  <input
+                    type="date"
+                    class="input input-bordered input-sm w-full"
+                    [value]="filterState()[prop.column_name + '_end'] || ''"
+                    (change)="onDateChange($event, prop.column_name + '_end')"
+                    placeholder="End date" />
+                </div>
+              }
+
+              <!-- IntegerNumber/Money: Min/Max range inputs -->
+              @if (prop.type === EntityPropertyType.IntegerNumber || prop.type === EntityPropertyType.Money) {
+                <div class="flex flex-col gap-2">
+                  <input
+                    type="number"
+                    class="input input-bordered input-sm w-full"
+                    [value]="filterState()[prop.column_name + '_min'] || ''"
+                    (input)="onNumberChange($event, prop.column_name + '_min')"
+                    placeholder="Min" />
+                  <span class="text-xs text-center text-base-content/60">to</span>
+                  <input
+                    type="number"
+                    class="input input-bordered input-sm w-full"
+                    [value]="filterState()[prop.column_name + '_max'] || ''"
+                    (input)="onNumberChange($event, prop.column_name + '_max')"
+                    placeholder="Max" />
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+}

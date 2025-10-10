@@ -226,6 +226,7 @@ export class PropertyManagementPage {
       property.sort_order,
       property.customColumnWidth,
       property.sortable ?? true,
+      property.filterable ?? false,
       property.show_on_list ?? true,
       property.show_on_create ?? true,
       property.show_on_edit ?? true,
@@ -320,6 +321,27 @@ export class PropertyManagementPage {
       12: 'Geo Point'
     };
     return typeLabels[property.type] || 'Unknown';
+  }
+
+  isFilterableType(property: PropertyRow): boolean {
+    // Exclude system fields from filtering
+    const systemFields = ['id', 'created_at', 'updated_at', 'civic_os_text_search'];
+    if (systemFields.includes(property.column_name)) {
+      return false;
+    }
+
+    // Only show filterable checkbox for supported property types
+    const filterableTypes = [
+      10, // ForeignKeyName
+      5,  // DateTime
+      6,  // DateTimeLocal
+      4,  // Date
+      3,  // Boolean
+      8,  // IntegerNumber
+      7,  // Money
+      11  // User
+    ];
+    return filterableTypes.includes(property.type);
   }
 
   compareEntities(entity1: SchemaEntityTable, entity2: SchemaEntityTable): boolean {

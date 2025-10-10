@@ -167,6 +167,7 @@ CREATE TABLE metadata.properties (
   sort_order INT,
   column_width INT,
   sortable BOOLEAN DEFAULT true,
+  filterable BOOLEAN DEFAULT false,
   show_on_list BOOLEAN DEFAULT true,
   show_on_create BOOLEAN DEFAULT true,
   show_on_edit BOOLEAN DEFAULT true,
@@ -296,6 +297,7 @@ SELECT
   ) AS sort_order,
   properties.column_width,
   COALESCE(properties.sortable, true) AS sortable,
+  COALESCE(properties.filterable, false) AS filterable,
   -- Smart defaults: system fields hidden by default, but can be overridden via metadata
   COALESCE(properties.show_on_list,
     CASE WHEN columns.column_name::text IN ('id', 'civic_os_text_search', 'created_at', 'updated_at')
@@ -500,6 +502,7 @@ CREATE OR REPLACE FUNCTION public.upsert_property_metadata(
   p_sort_order INT,
   p_column_width INT,
   p_sortable BOOLEAN,
+  p_filterable BOOLEAN,
   p_show_on_list BOOLEAN,
   p_show_on_create BOOLEAN,
   p_show_on_edit BOOLEAN,
@@ -521,6 +524,7 @@ BEGIN
     sort_order,
     column_width,
     sortable,
+    filterable,
     show_on_list,
     show_on_create,
     show_on_edit,
@@ -534,6 +538,7 @@ BEGIN
     p_sort_order,
     p_column_width,
     p_sortable,
+    p_filterable,
     p_show_on_list,
     p_show_on_create,
     p_show_on_edit,
@@ -545,6 +550,7 @@ BEGIN
         sort_order = EXCLUDED.sort_order,
         column_width = EXCLUDED.column_width,
         sortable = EXCLUDED.sortable,
+        filterable = EXCLUDED.filterable,
         show_on_list = EXCLUDED.show_on_list,
         show_on_create = EXCLUDED.show_on_create,
         show_on_edit = EXCLUDED.show_on_edit,
@@ -552,7 +558,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION public.upsert_property_metadata(NAME, NAME, TEXT, TEXT, INT, INT, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_property_metadata(NAME, NAME, TEXT, TEXT, INT, INT, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN) TO authenticated;
 
 -- Update property sort order (admin only)
 CREATE OR REPLACE FUNCTION public.update_property_sort_order(
@@ -573,6 +579,7 @@ BEGIN
     table_name,
     column_name,
     sort_order,
+    filterable,
     show_on_list,
     show_on_create,
     show_on_edit,
@@ -582,6 +589,8 @@ BEGIN
     p_table_name,
     p_column_name,
     p_sort_order,
+    -- Filterable defaults to false (opt-in)
+    false,
     -- Smart defaults: same logic as schema_properties view
     CASE WHEN p_column_name IN ('id', 'civic_os_text_search', 'created_at', 'updated_at') THEN false ELSE true END,
     CASE WHEN p_column_name IN ('id', 'civic_os_text_search', 'created_at', 'updated_at') THEN false ELSE true END,
@@ -592,7 +601,7 @@ BEGIN
   )
   ON CONFLICT (table_name, column_name) DO UPDATE
     SET sort_order = EXCLUDED.sort_order;
-    -- Note: Don't update show_on_* flags to preserve user customizations
+    -- Note: Don't update show_on_* or filterable flags to preserve user customizations
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

@@ -1,7 +1,7 @@
 <div class="prose">
   @if (entity$ | async; as entity) {
     <h1>
-      {{ entity.display_name }} List
+      {{ entity.display_name }} List: {{ resultCount() }} {{ resultCount() === 1 ? 'result' : 'results' }} @if (isFiltered()) { <span class="text-base-content/60">(filtered)</span> }
       @if (entity.description) {
         <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
           <span class="material-symbols-outlined text-info cursor-help ml-2 text-2xl align-middle">help_outline</span>
@@ -9,31 +9,39 @@
       }
     </h1>
 
-    <!-- Search bar (only show if search_fields configured) -->
-    @if (entity.search_fields && entity.search_fields.length > 0) {
-      <div class="form-control mb-4 not-prose">
-        <label class="input input-bordered flex items-center gap-2">
-          <span class="material-symbols-outlined text-base-content/50">search</span>
-          <input
-            type="text"
-            [formControl]="searchControl"
-            placeholder="Search {{ entity.display_name }}..."
-            class="grow" />
-          @if (searchControl.value && isLoading()) {
-            <span class="loading loading-spinner loading-sm"></span>
-          } @else if (searchControl.value && !isLoading()) {
-            <button class="btn btn-ghost btn-xs btn-circle" (click)="clearSearch()" type="button">
-              <span class="material-symbols-outlined text-base">close</span>
-            </button>
-          }
-        </label>
-        @if (searchControl.value && !isLoading()) {
-          <div class="text-sm text-base-content/70 mt-2">
-            Found {{ resultCount() }} {{ resultCount() === 1 ? 'result' : 'results' }}
-          </div>
+    <!-- Search bar and Filter button -->
+    <div class="flex gap-2 items-start mb-4 not-prose" [class.justify-end]="!(entity.search_fields && entity.search_fields.length > 0)" [class.justify-between]="entity.search_fields && entity.search_fields.length > 0">
+      @if (entity.search_fields && entity.search_fields.length > 0) {
+        <div class="form-control flex-1">
+          <label class="input input-bordered flex items-center gap-2">
+            <span class="material-symbols-outlined text-base-content/50">search</span>
+            <input
+              type="text"
+              [formControl]="searchControl"
+              placeholder="Search {{ entity.display_name }}..."
+              class="grow" />
+            @if (searchControl.value && isLoading()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            } @else if (searchControl.value && !isLoading()) {
+              <button class="btn btn-ghost btn-xs btn-circle" (click)="clearSearch()" type="button">
+                <span class="material-symbols-outlined text-base">close</span>
+              </button>
+            }
+          </label>
+        </div>
+      }
+
+      <!-- Filter Bar -->
+      @if (filterProperties$ | async; as filterProps) {
+        @if (filterProps.length > 0) {
+          <app-filter-bar
+            [properties]="filterProps"
+            [entityKey]="entityKey"
+            (filtersChange)="onFiltersChange($event)">
+          </app-filter-bar>
         }
-      </div>
-    }
+      }
+    </div>
 
     <div class="overflow-x-auto">
       @if (entity.insert) {
@@ -52,10 +60,13 @@
                   (click)="onHeaderClick(prop)">
                   <span class="header-content">
                     {{ prop.display_name }}
-                    @if (sortState().column === prop.column_name && sortState().direction === 'asc') {
+                    @if (sortStateSignal().column === prop.column_name && sortStateSignal().direction === 'asc') {
                       <span class="material-symbols-outlined sort-icon sort-icon-flipped">sort</span>
-                    } @else if (sortState().column === prop.column_name && sortState().direction === 'desc') {
+                    } @else if (sortStateSignal().column === prop.column_name && sortStateSignal().direction === 'desc') {
                       <span class="material-symbols-outlined sort-icon">sort</span>
+                    }
+                    @if (isColumnFiltered(prop.column_name)) {
+                      <span class="material-symbols-outlined text-base-content/50 text-sm ml-1">filter_alt</span>
                     }
                   </span>
                 </th>

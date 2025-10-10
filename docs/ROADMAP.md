@@ -25,7 +25,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Add text search as an indexed column and toggle-able search box
 - [ ] Add Map view for List pages
 - [x] Add Sortable columns and default sort
-- [ ] Add filter-able columns (mostly FK fields, but also expand to other indexed fields like datetime)
+- [x] Add filter-able columns (mostly FK fields, but also expand to other indexed fields like datetime)
 
 ### Roles
 - [x] Build Roles/Permissions schema

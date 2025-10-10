@@ -33,22 +33,31 @@ describe('ListPage', () => {
   let mockSchemaService: jasmine.SpyObj<SchemaService>;
   let mockDataService: jasmine.SpyObj<DataService>;
   let routeParams: BehaviorSubject<any>;
+  let queryParams: BehaviorSubject<any>;
 
   beforeEach(async () => {
     routeParams = new BehaviorSubject({ entityKey: 'Issue' });
+    queryParams = new BehaviorSubject({});
 
     mockSchemaService = jasmine.createSpyObj('SchemaService', [
       'getEntity',
-      'getPropsForList'
+      'getPropsForList',
+      'getPropsForFilter'
     ]);
     mockDataService = jasmine.createSpyObj('DataService', ['getData']);
+
+    // Set default return values to prevent errors when component observables initialize
+    mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+    mockSchemaService.getPropsForList.and.returnValue(of([]));
+    mockSchemaService.getPropsForFilter.and.returnValue(of([]));
+    mockDataService.getData.and.returnValue(of([]));
 
     await TestBed.configureTestingModule({
       imports: [ListPage],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { params: routeParams.asObservable(), queryParams: of({}) } },
+        { provide: ActivatedRoute, useValue: { params: routeParams.asObservable(), queryParams: queryParams.asObservable() } },
         { provide: SchemaService, useValue: mockSchemaService },
         { provide: DataService, useValue: mockDataService }
       ]
@@ -118,8 +127,9 @@ describe('ListPage', () => {
     });
 
     it('should return empty array when entity is undefined', (done) => {
-      routeParams.next({});
+      mockSchemaService.getPropsForList.calls.reset();
       mockSchemaService.getEntity.and.returnValue(of(undefined));
+      routeParams.next({});
 
       component.properties$.subscribe(props => {
         expect(props).toEqual([]);
@@ -142,17 +152,22 @@ describe('ListPage', () => {
       mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
       mockDataService.getData.and.returnValue(of(mockData as any));
 
-      component.data$.subscribe(data => {
+      // Trigger new route params to force data$ to re-emit
+      routeParams.next({ entityKey: 'Issue' });
+
+      // Wait for async operations to complete
+      setTimeout(() => {
         expect(mockDataService.getData).toHaveBeenCalledWith({
           key: 'Issue',
           fields: ['name', 'status_id:Status(id,display_name)'],
           searchQuery: undefined,
           orderField: undefined,
-          orderDirection: undefined
+          orderDirection: undefined,
+          filters: undefined
         });
-        expect(data).toEqual(mockData);
+        expect(component.dataSignal()).toEqual(mockData);
         done();
-      });
+      }, 50);
     });
 
     it('should handle GeoPoint properties with computed field aliasing', (done) => {
@@ -164,16 +179,20 @@ describe('ListPage', () => {
       mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
       mockDataService.getData.and.returnValue(of([] as any));
 
-      component.data$.subscribe(() => {
+      // Trigger new route params to force data$ to re-emit
+      routeParams.next({ entityKey: 'Issue' });
+
+      setTimeout(() => {
         expect(mockDataService.getData).toHaveBeenCalledWith({
           key: 'Issue',
           fields: ['location:location_text'],
           searchQuery: undefined,
           orderField: undefined,
-          orderDirection: undefined
+          orderDirection: undefined,
+          filters: undefined
         });
         done();
-      });
+      }, 50);
     });
 
     it('should return empty observable when properties are empty', (done) => {
@@ -188,13 +207,14 @@ describe('ListPage', () => {
     });
 
     it('should return empty observable when entityKey is undefined', (done) => {
-      routeParams.next({});
+      mockDataService.getData.calls.reset();
       mockSchemaService.getEntity.and.returnValue(of(undefined));
+      routeParams.next({});
 
-      component.data$.subscribe(data => {
+      setTimeout(() => {
         expect(mockDataService.getData).not.toHaveBeenCalled();
         done();
-      });
+      }, 50);
     });
   });
 
@@ -240,8 +260,12 @@ describe('ListPage', () => {
       mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
       mockDataService.getData.and.returnValue(of([] as any));
 
-      component.data$.subscribe(() => {
-        const callArgs = mockDataService.getData.calls.argsFor(0)[0];
+      // Trigger new route params to force data$ to re-emit
+      routeParams.next({ entityKey: 'Issue' });
+
+      setTimeout(() => {
+        expect(mockDataService.getData).toHaveBeenCalled();
+        const callArgs = mockDataService.getData.calls.mostRecent().args[0];
         expect(callArgs.fields).toContain('name'); // TextShort
         expect(callArgs.fields).toContain('count'); // Integer
         expect(callArgs.fields).toContain('is_active'); // Boolean
@@ -249,7 +273,7 @@ describe('ListPage', () => {
         expect(callArgs.fields).toContain('assigned_to:civic_os_users!assigned_to(display_name,private:civic_os_users_private(display_name,phone,email))'); // User
         expect(callArgs.fields).toContain('location:location_text'); // GeoPoint
         done();
-      });
+      }, 50);
     });
   });
 
@@ -280,36 +304,57 @@ describe('ListPage', () => {
   });
 
   describe('Search Functionality', () => {
-    it('should extract search terms from search query', () => {
+    it('should extract search terms from search query', (done) => {
       mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
       mockSchemaService.getPropsForList.and.returnValue(of([MOCK_PROPERTIES.textShort]));
       mockDataService.getData.and.returnValue(of([] as any));
 
-      component.searchQuery.set('pothole main street');
-      expect(component.searchTerms()).toEqual(['pothole', 'main', 'street']);
+      // Update query params to simulate URL change
+      queryParams.next({ q: 'pothole main street' });
+
+      setTimeout(() => {
+        expect(component.searchTerms()).toEqual(['pothole', 'main', 'street']);
+        done();
+      }, 10);
     });
 
-    it('should return empty array for empty search query', () => {
-      component.searchQuery.set('');
-      expect(component.searchTerms()).toEqual([]);
+    it('should return empty array for empty search query', (done) => {
+      queryParams.next({ q: '' });
+
+      setTimeout(() => {
+        expect(component.searchTerms()).toEqual([]);
+        done();
+      }, 10);
     });
 
-    it('should trim whitespace and split search terms', () => {
-      component.searchQuery.set('  pothole   main   ');
-      expect(component.searchTerms()).toEqual(['pothole', 'main']);
+    it('should trim whitespace and split search terms', (done) => {
+      queryParams.next({ q: '  pothole   main   ' });
+
+      setTimeout(() => {
+        expect(component.searchTerms()).toEqual(['pothole', 'main']);
+        done();
+      }, 10);
     });
 
-    it('should handle single search term', () => {
-      component.searchQuery.set('pothole');
-      expect(component.searchTerms()).toEqual(['pothole']);
+    it('should handle single search term', (done) => {
+      queryParams.next({ q: 'pothole' });
+
+      setTimeout(() => {
+        expect(component.searchTerms()).toEqual(['pothole']);
+        done();
+      }, 10);
     });
 
-    it('should clear search when clearSearch is called', () => {
-      component.searchControl.setValue('pothole');
-      expect(component.searchControl.value).toBe('pothole');
+    it('should sync searchControl with URL query params', (done) => {
+      component.ngOnInit();
 
-      component.clearSearch();
-      expect(component.searchControl.value).toBe('');
+      // Update URL query params
+      queryParams.next({ q: 'pothole' });
+
+      setTimeout(() => {
+        expect(component.searchControl.value).toBe('pothole');
+        done();
+      }, 10);
     });
 
     it('should initialize search from URL query params', () => {
@@ -319,7 +364,6 @@ describe('ListPage', () => {
 
       // Should not set any value for empty query params
       expect(component.searchControl.value).toBe('');
-      expect(component.searchQuery()).toBe('');
     });
   });
 

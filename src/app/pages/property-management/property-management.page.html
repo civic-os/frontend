@@ -94,7 +94,7 @@
                         [placeholder]="getDisplayNamePlaceholder(property)" />
                     </div>
 
-                    <!-- Sortable (editable) -->
+                    <!-- Sortable & Filterable (editable) -->
                     <div>
                       <label class="label cursor-pointer justify-start gap-2">
                         <input
@@ -104,6 +104,16 @@
                           (ngModelChange)="onVisibilityChange(property)" />
                         <span class="label-text text-xs">Sortable</span>
                       </label>
+                      @if (isFilterableType(property)) {
+                        <label class="label cursor-pointer justify-start gap-2 ml-2">
+                          <input
+                            type="checkbox"
+                            class="checkbox checkbox-sm"
+                            [(ngModel)]="property.filterable"
+                            (ngModelChange)="onVisibilityChange(property)" />
+                          <span class="label-text text-xs">Filterable</span>
+                        </label>
+                      }
                     </div>
 
                     <!-- Expand Button -->
