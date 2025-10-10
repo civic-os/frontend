@@ -579,7 +579,8 @@ When `sortable` is enabled for a property, users can click the column header on 
 ### Custom Property Display
 - Override `metadata.properties.display_name` to change label
 - Set `metadata.properties.sort_order` to control field ordering
-- Use `metadata.properties.column_width` for layout hints (not yet implemented in UI)
+- Set `metadata.properties.column_width` to control form field width (1-2 columns) in Create/Edit forms
+- Set `metadata.properties.sortable` to enable/disable sorting on List pages
 
 ### Adding Form Validation
 - Extend `SchemaService.getFormValidatorsForProperty()` to add Angular validators based on property metadata
