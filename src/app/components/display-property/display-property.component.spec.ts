@@ -169,10 +169,11 @@ describe('DisplayPropertyComponent', () => {
       fixture.detectChanges();
 
       const textContent = fixture.nativeElement.textContent.trim();
-      // Using 'MMM d, y, h:mm:ss a z' format should produce short timezone like "GMT-4"
+      // Using 'MMM d, y, h:mm:ss a z' format should produce short timezone like "GMT-4", "GMT+0", etc.
       // This is more readable than the long format "GMT-04:00"
-      expect(textContent).toContain('GMT-4');
-      expect(textContent).not.toContain('GMT-04:00');
+      // Test is timezone-agnostic to work in different CI environments (local dev vs GitHub Actions UTC)
+      expect(textContent).toMatch(/GMT[+-]\d/);  // Short format: GMT-4, GMT+0, GMT+11
+      expect(textContent).not.toMatch(/GMT[+-]\d{2}:\d{2}/);  // Not long format: GMT-04:00
     });
   });
 
