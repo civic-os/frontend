@@ -21,11 +21,11 @@ You have **two options** for authentication:
 - ✅ Full control over roles and users
 - ✅ Test all RBAC features (permissions, role-based UI)
 - ✅ Required for testing admin features
-- 📖 See **[AUTHENTICATION.md](../AUTHENTICATION.md)** for complete setup instructions
+- 📖 See **[AUTHENTICATION.md](../docs/AUTHENTICATION.md)** for complete setup instructions
 
 **Which should you choose?**
 - Just exploring? → Use Option A (skip to Step 1 below)
-- Testing RBAC, developing features, need admin access? → Use Option B (complete [AUTHENTICATION.md](../AUTHENTICATION.md) first, then return here)
+- Testing RBAC, developing features, need admin access? → Use Option B (complete [AUTHENTICATION.md](../docs/AUTHENTICATION.md) first, then return here)
 
 ## Architecture
 
@@ -176,7 +176,7 @@ CREATE POLICY "Users see own records"
   USING (user_id = public.current_user_id());
 ```
 
-**Note**: These functions return NULL when called directly in psql (no JWT context). To test them with actual JWT tokens, see [AUTHENTICATION.md](../AUTHENTICATION.md) for curl examples through PostgREST.
+**Note**: These functions return NULL when called directly in psql (no JWT context). To test them with actual JWT tokens, see [AUTHENTICATION.md](../docs/AUTHENTICATION.md) for curl examples through PostgREST.
 
 ## Adding New Entities
 

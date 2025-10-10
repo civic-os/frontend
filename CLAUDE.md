@@ -20,38 +20,13 @@ Civic OS is a meta-application framework that automatically generates CRUD (Crea
 5. **Dynamic Pages** → List/Detail/Create/Edit pages render based on schema metadata
 6. **Smart Components** → `DisplayPropertyComponent` and `EditPropertyComponent` adapt to property types
 
-### Key Components
-
-**GeoPointMapComponent** (`src/app/components/geo-point-map/`)
-- Reusable Leaflet map component for geography Point fields
-- Supports both display (static) and edit (interactive) modes
-- Handles WKT/EWKT parsing, marker placement, and user location
-- Used by DisplayPropertyComponent and EditPropertyComponent for GeoPoint fields
-
 ### Key Services
 
-**SchemaService** (`src/app/services/schema.service.ts`)
-- Fetches and caches entity and property metadata
-- Determines property types from PostgreSQL data types (e.g., `int4` with `join_column` → `ForeignKeyName`)
-- Filters properties for different contexts (list, detail, create, edit)
-- Hides system fields: `id`, `created_at`, `updated_at`
+**SchemaService** (`src/app/services/schema.service.ts`) - Fetches and caches entity and property metadata, determines property types from PostgreSQL data types (e.g., `int4` with `join_column` → `ForeignKeyName`), filters properties for different contexts (list, detail, create, edit)
 
-**DataService** (`src/app/services/data.service.ts`)
-- Abstracts PostgREST API calls
-- Builds query strings with select fields, ordering, and filters
-- Handles error responses and provides human-readable messages
+**DataService** (`src/app/services/data.service.ts`) - Abstracts PostgREST API calls, builds query strings with select fields, ordering, and filters
 
-**AuthService** (`src/app/services/auth.service.ts`)
-- Integrates with Keycloak for authentication
-- Uses `keycloak-angular` library
-
-### Routing Pattern
-
-Routes are entity-driven using `entityKey` parameter:
-- `/view/:entityKey` → List all records
-- `/view/:entityKey/:entityId` → Detail view
-- `/create/:entityKey` → Create form
-- `/edit/:entityKey/:entityId` → Edit form
+**AuthService** (`src/app/services/auth.service.ts`) - Integrates with Keycloak for authentication via `keycloak-angular` library
 
 ### Property Type System
 
@@ -66,332 +41,49 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 - `TextLong`: `text` → Textarea
 - `GeoPoint`: `geography(Point, 4326)` → Interactive map (Leaflet) with location picker
 
-#### Geography (GeoPoint) Type Requirements
+**Geography (GeoPoint) Type**: When adding a geography column, you must create a paired computed field function `<column_name>_text` that returns `ST_AsText()`. PostgREST exposes this as a virtual field. Data format: Insert/Update uses EWKT `"SRID=4326;POINT(lng lat)"`, Read receives WKT `"POINT(lng lat)"`.
 
-**IMPORTANT**: When adding a geography column, you must create a paired computed field function for PostgREST to expose the data in a readable format.
-
-**Pattern**: For each geography column `<column_name>`, create a function `<column_name>_text`:
-
-```sql
--- Example: Issue table with location column
--- Note: PostGIS types must be schema-qualified in init scripts
-CREATE TABLE "public"."Issue" (
-  "location" postgis.geography(Point, 4326)
-);
-
--- Required computed field function
--- Note: PostGIS functions must be schema-qualified in init scripts
-CREATE OR REPLACE FUNCTION public.location_text("Issue")
-RETURNS text AS $$
-  SELECT postgis.ST_AsText($1.location);
-$$ LANGUAGE SQL STABLE;
-
-GRANT EXECUTE ON FUNCTION public.location_text("Issue") TO web_anon, authenticated;
-```
-
-**How it works**:
-1. The computed field function converts geography to Well-Known Text format (e.g., `"POINT(-83.6875 43.0125)"`)
-2. PostgREST automatically exposes `<column_name>_text` as a virtual computed field
-3. The frontend's `SchemaService.propertyToSelectString()` detects GeoPoint types and selects `location:location_text` (using PostgREST aliasing)
-4. Data returns with the original column name: `{"location": "POINT(-83.6875 43.0125)"}`
-5. Display/edit components parse the WKT string to extract coordinates for the map
-
-**Data format**:
-- **Insert/Update**: Send EWKT string `"SRID=4326;POINT(lng lat)"`
-- **Read**: Receive WKT string `"POINT(lng lat)"` (aliased to column name)
-
-### Full-Text Search
-
-Civic OS supports PostgreSQL full-text search on entities via a reserved column name pattern. When configured, a search field appears on List pages, allowing users to filter results with natural language queries.
-
-**How it works**:
-1. Add a `civic_os_text_search` tsvector column to your table (generated, indexed)
-2. Configure `metadata.entities.search_fields` array to indicate which fields are searchable
-3. The frontend automatically displays a search input on the List page
-4. Search queries are debounced (300ms) and update the URL with `?q=search+terms`
-5. Results are filtered using PostgREST's `wfts` (websearch full-text search) operator
-
-**Implementation pattern**:
-
-```sql
--- Add the generated tsvector column
-ALTER TABLE "public"."YourTable"
-  ADD COLUMN civic_os_text_search tsvector
-  GENERATED ALWAYS AS (
-    to_tsvector('english', coalesce(display_name, ''))
-    -- Add more fields for richer search:
-    || to_tsvector('english', coalesce(description, ''))
-  ) STORED;
-
--- Create GIN index for fast search
-CREATE INDEX "YourTable_text_search_idx"
-  ON "public"."YourTable"
-  USING GIN (civic_os_text_search);
-
--- Configure searchable fields in metadata (for UI display)
-UPDATE metadata.entities
-  SET search_fields = ARRAY['display_name', 'description']
-  WHERE table_name = 'YourTable';
-```
-
-**Search features**:
-- **Natural queries**: Supports phrases, AND/OR logic, quoted strings (via PostgreSQL's `websearch_to_tsquery`)
-- **URL sharing**: Search state persists in URL query parameters (`/view/Issue?q=pothole`)
-- **Auto-hide**: Search field only appears when `search_fields` is configured
-- **Debouncing**: Search input waits 300ms after typing stops before querying
-- **Visual feedback**:
-  - Search icon when idle
-  - Loading spinner during search
-  - Clear button (×) when search results are loaded
-  - Result count display (e.g., "Found 5 results")
-- **Search term highlighting**: Matching terms are highlighted in yellow within text fields using XSS-safe HTML escaping
-- **Field visibility**: The `civic_os_text_search` column is automatically hidden from all UI views
-
-**Search query examples**:
-- `pothole` - Single word
-- `pothole main street` - Multiple words (AND)
-- `"main street"` - Exact phrase
-- `pothole OR sinkhole` - OR logic
-- `pothole -resolved` - Exclude term
-
-**Note**: The `search_fields` array is for documentation/UI purposes only. The actual searchable content is determined by which fields are included in the `to_tsvector()` expression in the generated column definition.
+**Full-Text Search**: Add `civic_os_text_search` tsvector column (generated, indexed) and configure `metadata.entities.search_fields` array. Frontend automatically displays search input on List pages. See example tables for implementation pattern.
 
 ## Development Commands
 
-### Daily Development
+**Daily Development:**
 ```bash
-# Start dev server (runs on http://localhost:4200)
-npm start
-# or
-ng serve
-
-# Run in watch mode with live rebuild
-npm run watch
+npm start                          # Start dev server (http://localhost:4200)
+npm run watch                      # Build in watch mode
 ```
 
-### Testing
+**Testing:**
 ```bash
-# Run all unit tests (watch mode - stays open)
-npm test
-# or
-ng test
-
-# Run tests once and exit (headless, for development)
-npm run test:headless
-
-# Run tests with code coverage (for CI)
-npm run test:ci
-
-# Run specific test file (faster feedback during development)
-npm test -- --include='**/schema.service.spec.ts'
-
-# Run specific test file once and exit
-npm test -- --include='**/schema.service.spec.ts' --no-watch --browsers=ChromeHeadless
+npm test                           # Run all tests (watch mode)
+npm run test:headless              # Run once and exit (for quick checks)
+npm test -- --include='**/schema.service.spec.ts'  # Run specific file
 ```
 
-**Testing Best Practices**:
-- **Use `--include` during development**: Run only the test file you're working on for fast feedback
-- **Watch mode for TDD**: Use `npm test` (no flags) for test-driven development with auto-reload
-- **Headless for quick checks**: Use `npm run test:headless` before committing to verify all tests pass
-- **CI testing**: The `test:ci` script includes code coverage for continuous integration pipelines
-- **Angular 20 requirements**: All test suites must include `provideZonelessChangeDetection()` in `TestBed.configureTestingModule`
-- **OnPush + async pattern**: Test observables using the `async` pipe pattern rather than manual subscriptions
-- **Never update failing tests without explanation**: If a test fails after your changes:
-  1. **Understand WHY it failed** - Examine the error message, actual vs expected values
-  2. **Determine the root cause** - Is the test expectation wrong or did your code break something?
-  3. **Document your reasoning** - Add comments explaining why the test expectation changed
-  4. **If the test was correct, fix your code** - Don't change passing tests to match broken code
+See `docs/development/TESTING.md` for comprehensive testing guidelines, best practices, and troubleshooting.
 
-### Build
+**Building:**
 ```bash
-# Production build
-npm run build
-# or
-ng build
-
-# Development build with source maps
-ng build --configuration development
+npm run build                      # Production build
 ```
 
-### Code Generation
+**Code Generation:**
 ```bash
-# Generate new component
 ng generate component components/component-name
-
-# Generate new service
 ng generate service services/service-name
-
-# Generate page (use "page" suffix by convention)
-ng generate component pages/page-name --type=page
+ng generate component pages/page-name --type=page  # Use "page" suffix by convention
 ```
 
-### Mock Data Generation
-
-The project includes a TypeScript-based mock data generator that creates realistic test data for demonstration and testing purposes.
-
-**Features:**
-- Reads schema metadata from PostgREST to auto-generate appropriate fake data
-- Handles all property types (text, numbers, dates, foreign keys, users, geography points)
-- Generates mock users (civic_os_users and civic_os_users_private) with matching UUIDs
-- Respects foreign key dependencies and generates data in correct order
-- Configurable number of records per entity
-- Outputs SQL files or inserts directly into database
-
-**Configuration:**
-
-Edit `scripts/mock-data-config.json` to customize:
-```json
-{
-  "recordsPerEntity": {
-    "Issue": 25,
-    "WorkPackage": 5,
-    "Bid": 15
-  },
-  "geographyBounds": {
-    "minLat": 42.25,
-    "maxLat": 42.45,
-    "minLng": -83.30,
-    "maxLng": -82.90
-  },
-  "excludeTables": ["IssueStatus", "WorkPackageStatus"],
-  "outputPath": "./example/init-scripts/04_mock_data.sql",
-  "generateUsers": true,
-  "userCount": 15
-}
-```
-
-**Usage:**
-
-```bash
-# Load and export environment variables from Docker setup, then run generator
-set -a && source example/.env && set +a && npm run generate:mock
-
-# Or manually specify environment variables
-POSTGRES_PASSWORD=your_password npm run generate:mock
-
-# Insert data directly into running database
-set -a && source example/.env && set +a && npm run generate:seed
-```
-
-**Important Notes:**
-- Use `set -a` (allexport) before sourcing to export variables to npm's child process
-- Plain `source` loads variables but doesn't export them to child processes
-- Works reliably on both bash and zsh (macOS default shell since Catalina)
-- Safely handles values with spaces, quotes, and special characters
-
-**Data Generation by Property Type:**
-- `display_name` → Domain-specific descriptions based on entity type:
-  - **Issue**: "Large pothole on Main Street" (size + issue type + location)
-  - **WorkPackage**: "Q2 2024 road repairs - Detroit" (period + year + area)
-  - **Bid**: "ABC Construction proposal" (company name + "proposal")
-  - **WorkDetail**: "Inspected damage extent and recommended materials" (action + finding)
-- `TextShort` → Lorem ipsum words (3 words)
-- `TextLong` → Paragraphs of lorem ipsum
-- `IntegerNumber` → Random integers (1-1000)
-- `Money` → Currency values ($10-$10,000)
-- `Boolean` → Random true/false
-- `Date`/`DateTime` → Recent dates (last 30 days)
-- `ForeignKeyName` → Random selection from related table
-- `User` → Random selection from civic_os_users
-- `GeoPoint` → Random coordinates within configured bounds (EWKT format)
-
-**Note**: The `display_name` generator can be customized by editing the `generateDisplayName()` method in `scripts/generate-mock-data.ts`. See `scripts/README.md` for Faker API reference and examples.
-
-**Integration with Docker:**
-
-The generated SQL file (`04_mock_data.sql`) can be placed in `example/init-scripts/` to automatically populate the database when Docker Compose creates the PostgreSQL container. Remember to recreate the database volume to apply changes:
-
-```bash
-cd example
-docker-compose down -v
-docker-compose up -d
-```
+**Mock Data Generation:**
+Configure `scripts/mock-data-config.json`, then run `set -a && source example/.env && set +a && npm run generate:mock`. See `scripts/README.md` for details.
 
 ## Database Setup
 
-### Local Development with Docker Compose
+Docker Compose runs PostgreSQL 17 with PostGIS 3.5 and PostgREST locally with Keycloak authentication. Init scripts in `postgres/` directory run in alphabetical order to create PostgREST roles, RBAC functions, Civic OS metadata schema, and dynamic views. See `example/README.md` for complete setup instructions.
 
-The project uses Docker Compose to run PostgreSQL 17 with PostGIS 3.5 and PostgREST locally with Keycloak authentication.
+**Important**: Init scripts only run on first database creation. To apply changes, either recreate the database (`docker-compose down -v && docker-compose up -d`) or apply changes manually (`docker exec postgres_db psql ...`).
 
-```bash
-# Navigate to example folder
-cd example
-
-# Configure environment (first time only)
-cp .env.example .env
-# Edit .env and set your database password
-
-# Fetch Keycloak public key (first time only)
-./fetch-keycloak-jwk.sh
-
-# Start Docker services
-docker-compose up -d
-
-# Verify services are running
-docker-compose ps
-
-# View logs if needed
-docker-compose logs -f postgres
-docker-compose logs -f postgrest
-```
-
-The database initialization script (`example/init-scripts/00_init.sh`) runs all SQL files from the `postgres/` directory in alphabetical order, which automatically creates:
-- PostGIS extension in dedicated schema - `postgres/0_postgis_setup.sql`
-- PostgREST roles (`web_anon`, `authenticated`) - `postgres/1_postgrest_setup.sql`
-- RBAC functions (`get_user_roles()`, `has_permission()`, `is_admin()`) - `postgres/2_rbac_functions.sql`
-- Civic OS user tables (`civic_os_users`, `civic_os_users_private`) - `postgres/3_civic_os_schema.sql`
-- Metadata schema (`metadata.entities`, `metadata.properties`, `metadata.roles`, `metadata.permissions`, etc.) - `postgres/3_civic_os_schema.sql`
-- Dynamic views (`schema_entities`, `schema_properties`) - `postgres/3_civic_os_schema.sql`
-- Core RBAC roles and system table permissions - `postgres/4_rbac_sample_data.sql`
-- Example application (Pot Hole Observation System) - `example/init-scripts/01_pot_hole_schema.sql`, `02_pot_hole_data.sql`, `03_pot_hole_permissions.sql`, and `04_mock_data.sql` (optional)
-
-The Pot Hole Observation System serves as a reference implementation, demonstrating tables for issue tracking, work packages, bids, and status management. The separation of core RBAC (`postgres/4_rbac_sample_data.sql`) from example permissions (`example/init-scripts/03_pot_hole_permissions.sql`) allows developers to easily replace the example with their own application tables and permissions.
-
-#### PostGIS Schema Separation
-
-PostGIS is installed in a dedicated `postgis` schema (not `public`) to keep the public schema clean and make application functions easier to find. This separation:
-- Prevents ~1000+ PostGIS functions from cluttering `public` schema
-- Makes debugging and schema exploration easier
-- Follows PostgreSQL best practices
-
-PostGIS functions remain fully accessible via `search_path` configuration. The `web_anon` and `authenticated` roles have their search_path set to `public, postgis`, allowing unqualified PostGIS function calls.
-
-**When using PostGIS types or functions in SQL:**
-- In application code via PostgREST: Functions work without schema qualification (due to search_path)
-- In init scripts or migrations: Use schema-qualified references:
-  - Type: `postgis.geography(Point, 4326)`
-  - Function: `postgis.ST_AsText($1.location)`
-
-### Database Schema Updates
-
-**IMPORTANT**: Docker init scripts only run when the database is **first created**. If you modify SQL files in `postgres/` after the database has been initialized, you must either:
-
-1. **Recreate the database** (recommended for development):
-   ```bash
-   cd example
-   docker-compose down -v  # -v removes volumes
-   docker-compose up -d
-   ```
-
-2. **Apply changes manually** to running database:
-   ```bash
-   docker exec postgres_db psql -U postgres -d civic_os_db -f /civic-os-core/your-file.sql
-   docker exec postgres_db psql -U postgres -d civic_os_db -c "NOTIFY pgrst, 'reload schema';"
-   ```
-
-**PostgreSQL View Creation Syntax**: When creating views with `security_invoker` option, use separate statements:
-```sql
--- ✅ Correct: Use ALTER VIEW after creation
-CREATE OR REPLACE VIEW public.my_view AS SELECT ...;
-ALTER VIEW public.my_view SET (security_invoker = true);
-
--- ❌ Incorrect: WITH clause silently fails in PostgreSQL 15
-CREATE OR REPLACE VIEW public.my_view WITH (security_invoker = true) AS SELECT ...;
-```
-
-### Environment Configuration
-- **Development**: `src/environments/environment.development.ts` - Points to `http://localhost:3000/` (Docker PostgREST)
-- **Production**: `src/environments/environment.ts` - Configure before deployment
+**PostGIS**: Installed in dedicated `postgis` schema (not `public`) to keep the public schema clean. Functions accessible via `search_path`. In init scripts, use schema-qualified references: `postgis.geography(Point, 4326)` and `postgis.ST_AsText()`.
 
 ## PostgREST Integration
 
@@ -403,167 +95,101 @@ All API calls use PostgREST conventions:
 
 The `SchemaService.propertyToSelectString()` method builds PostgREST-compatible select strings for foreign keys and user references.
 
-## Authentication
+## Authentication & RBAC
 
-**For complete authentication setup, including running your own Keycloak instance for RBAC testing, see [AUTHENTICATION.md](./AUTHENTICATION.md).**
-
-Civic OS uses **Keycloak** for authentication via the `keycloak-angular` library.
+**Keycloak Authentication**: See `docs/AUTHENTICATION.md` for complete setup instructions including running your own Keycloak instance for RBAC testing.
 
 **Quick Reference** (default shared instance):
 - Keycloak URL: `https://auth.civic-os.org`
 - Realm: `civic-os-dev`
 - Client ID: `myclient`
-- Configuration location: `src/app/app.config.ts` (lines 36-39)
-- Bearer token automatically included for requests to `localhost:3000` via `includeBearerTokenInterceptor`
+- Configuration: `src/app/app.config.ts` (lines 36-39)
 
-**Testing RBAC Features**: To test role-based features (admin UI, permissions page), you must run your own Keycloak instance where you can create and assign roles. See [AUTHENTICATION.md](./AUTHENTICATION.md) for step-by-step setup instructions.
+**RBAC System**: Permissions are stored in database (`metadata.roles`, `metadata.permissions`, `metadata.permission_roles`). PostgreSQL functions (`get_user_roles()`, `has_permission()`, `is_admin()`) extract roles from JWT claims and enforce permissions via Row Level Security policies.
 
-## Role-Based Access Control (RBAC)
+**Default Roles**: `anonymous` (unauthenticated), `user` (authenticated), `editor` (create/edit), `admin` (full access + permissions UI)
 
-### Database-Driven Permissions
+**Admin Features** (require `admin` role):
+- **Permissions Page** (`/permissions`) - Manage role-based table permissions
+- **Entities Page** (`/entity-management`) - Customize entity display names, descriptions, menu order
+- **Properties Page** (`/property-management`) - Configure column labels, descriptions, sorting, width, visibility
 
-Civic OS uses a flexible RBAC system where permissions are stored in the database:
+**Troubleshooting RBAC**: See `docs/TROUBLESHOOTING.md` for debugging JWT roles and permissions issues.
 
-- **Roles** (`metadata.roles`): Defines user roles (e.g., `anonymous`, `user`, `editor`, `admin`)
-- **Permissions** (`metadata.permissions`): Defines table-level CRUD permissions (`create`, `read`, `update`, `delete`)
-- **Permission Roles** (`metadata.permission_roles`): Junction table mapping roles to permissions
+## Common Patterns
 
-### Default Roles
+### Adding a New Entity to the UI
+1. Create table in PostgreSQL `public` schema
+2. Grant permissions (INSERT, SELECT, UPDATE, DELETE) to `authenticated` role
+3. Navigate to `/view/your_table_name` - UI auto-generates
+4. (Optional) Add entries to `metadata.entities` and `metadata.properties` for custom display names, ordering, etc.
 
-The system comes with four predefined roles (defined in `postgres/3_rbac_sample_data.sql`):
-- `anonymous` - Unauthenticated users
-- `user` - Standard authenticated user
-- `editor` - Can create and edit content
-- `admin` - Full administrative access (required for permissions management UI)
+### Custom Property Display
+Override `metadata.properties.display_name` to change labels. Set `sort_order` to control field ordering. Set `column_width` (1-2) for form field width in Create/Edit forms. Set `sortable` to enable/disable column sorting on List pages.
 
-### Configuring Keycloak Roles
+### Handling New Property Types
+1. Add new type to `EntityPropertyType` enum
+2. Update `SchemaService.getPropertyType()` to detect the type
+3. Add rendering logic to `DisplayPropertyComponent`
+4. Add input control to `EditPropertyComponent`
 
-**Note**: To configure roles, you need admin access to a Keycloak instance. The default shared instance (`auth.civic-os.org`) does not allow developer access. See [AUTHENTICATION.md](./AUTHENTICATION.md) for instructions on setting up your own Keycloak instance.
+## Angular 20 Critical Patterns
 
-**Quick role setup overview** (detailed steps in AUTHENTICATION.md):
+### Signals for Reactive State
 
-1. **Create Realm Roles**: `user`, `editor`, `admin`
-2. **Configure Role Mapper**: Ensure roles appear in JWT tokens at `realm_access.roles`
-3. **Assign Roles to Users**: Use Keycloak admin console to assign roles
-4. **Verify Roles in JWT**: Use jwt.io to decode tokens and check for roles
+**IMPORTANT**: Use Signals for reactive component state to ensure proper change detection with zoneless architecture and new control flow syntax (`@if`, `@for`).
 
-The `anonymous` role is automatically assigned by the backend for unauthenticated requests - do not create this role in Keycloak.
+```typescript
+import { Component, signal } from '@angular/core';
 
-### How Roles Work in Civic OS
+export class MyComponent {
+  data = signal<MyData | undefined>(undefined);
+  loading = signal(true);
+  error = signal<string | undefined>(undefined);
 
-**Backend (PostgreSQL)**:
-- `public.get_user_roles()` extracts roles from JWT claims
-- `public.has_permission(table_name, permission)` checks if user's roles grant access
-- `public.is_admin()` checks if user has the `admin` role
-- Row Level Security (RLS) policies use these functions to enforce permissions
+  loadData() {
+    this.dataService.fetch().subscribe({
+      next: (result) => {
+        this.data.set(result);
+        this.loading.set(false);
+      },
+      error: (err) => this.error.set(err.message)
+    });
+  }
+}
+```
 
-**Frontend (Angular)**:
-- `AuthService.userRoles` populated from Keycloak JWT on login
-- `AuthService.hasRole(roleName)` checks for specific role
-- `AuthService.isAdmin()` checks for admin role
-- UI elements conditionally rendered based on roles
+**Template**: Access signal values with `()` syntax: `@if (loading()) { <span class="loading"></span> }`
 
-### Managing Permissions (Admin Only)
+### OnPush + Async Pipe Pattern
 
-Admins can manage role permissions via the **Permissions** page (`/permissions`):
-1. Login as a user with the `admin` role
-2. Open the left menu and click **Permissions** under the Admin section
-3. Select a role from the dropdown
-4. Toggle checkboxes to grant/revoke CRUD permissions for each table
-5. Changes are saved automatically
+**CRITICAL**: All components should use `OnPush` change detection with the `async` pipe. Do NOT manually subscribe to observables in components with `OnPush` - this causes change detection issues.
 
-**Note**: The Permissions page requires the `admin` role both at the database level (`public.is_admin()` check) and in the UI (menu visibility).
+```typescript
+@Component({
+  selector: 'app-my-page',
+  changeDetection: ChangeDetectionStrategy.OnPush,  // Required
+  // ...
+})
+export class MyPageComponent {
+  // Expose Observable with $ suffix
+  data$: Observable<MyData> = this.dataService.getData();
+}
+```
 
-### Managing Entity Configuration (Admin Only)
+**Template**: Use async pipe: `@if (data$ | async; as data) { <div>{{ data.name }}</div> }`
 
-Admins can customize how entities appear in the application via the **Entities** page (`/entity-management`):
+**Why**: OnPush change detection only runs when: (1) Input properties change, (2) Events fire from template, (3) The `async` pipe receives new values. Manual subscriptions don't trigger OnPush.
 
-**Features**:
-- **Display Names**: Override table names with user-friendly labels (e.g., "Issue" → "Issues")
-- **Descriptions**: Add helpful descriptions that appear as tooltips on List, Create, and Edit pages
-- **Drag-to-Reorder**: Change menu order by dragging entities
-- **Auto-save**: Changes save automatically with visual feedback
-
-**Access**:
-1. Login as a user with the `admin` role
-2. Open the left menu and click **Entities** under the Admin section
-3. Drag entities to reorder them in the menu
-4. Edit display names and descriptions inline
-5. Changes automatically refresh the menu without page reload
-
-**Database Schema**:
-- Entity metadata stored in `metadata.entities` table
-- Protected by RLS policies requiring admin role
-- Updates via RPC functions: `upsert_entity_metadata()`, `update_entity_sort_order()`
-
-**UI Components**:
-- **EntityManagementService** (`src/app/services/entity-management.service.ts`): Handles entity metadata CRUD operations
-- **EntityManagementPage** (`src/app/pages/entity-management/`): Admin UI with drag-drop powered by Angular CDK
-- **Tooltips**: Description tooltips use DaisyUI's tooltip component with `help_outline` icon
-
-### Managing Property Configuration (Admin Only)
-
-Admins can configure individual property (column) behavior via the **Properties** page (`/property-management`):
-
-**Features**:
-- **Display Names**: Override default column labels (e.g., "status_id" → "Status")
-- **Descriptions**: Add tooltips for properties that appear in forms
-- **Sortable**: Enable/disable column sorting on List pages
-- **Column Width**: Control form field width (1 or 2 columns) in Create/Edit forms
-- **Drag-to-Reorder**: Change property display order across all views
-- **Auto-save**: Changes save automatically with visual feedback
-
-**Access**:
-1. Login as a user with the `admin` role
-2. Open the left menu and click **Properties** under the Admin section
-3. Select an entity from the dropdown
-4. Configure properties in the main row or expand for additional options
-5. Changes automatically refresh forms and lists
-
-**Main Row Configuration**:
-- **Column Name**: Database column name (read-only)
-- **Type**: Property data type (read-only)
-- **Default**: Column default value (read-only)
-- **Display Name**: Custom label for forms and lists
-- **Sortable**: Checkbox to enable/disable sorting on List pages
-
-**Expanded Configuration** (click arrow to expand):
-- **Description**: Tooltip text for help icons in forms
-- **Grid Width**: Number of columns (1-2) the field spans in Create/Edit forms
-- **Visibility Toggles**: (Coming Soon) Show/hide in specific views
-
-**List Page Sorting**:
-
-When `sortable` is enabled for a property, users can click the column header on List pages to sort:
-- **First click**: Sort ascending (smallest to largest)
-- **Second click**: Sort descending (largest to smallest)
-- **Third click**: Remove sorting (return to default order)
-
-**Sort behavior**:
-- **Regular columns**: Sort by the column value directly
-- **Foreign Key columns**: Sort by the related entity's `display_name`
-- **User columns**: Sort by the user's `display_name` (public or private)
-- **URL persistence**: Sort state persists in URL (`?sort=column_name&dir=asc`)
-- **Visual indicator**: Sort icon shows current sort direction
-
-**Database Schema**:
-- Property metadata stored in `metadata.properties` table
-- Protected by RLS policies requiring admin role
-- Updates via RPC functions: `upsert_property_metadata()`, `update_property_sort_order()`
-
-**UI Components**:
-- **PropertyManagementService** (`src/app/services/property-management.service.ts`): Handles property metadata CRUD operations
-- **PropertyManagementPage** (`src/app/pages/property-management/`): Admin UI with drag-drop powered by Angular CDK
-- **ListPage** (`src/app/pages/list/`): Implements sorting with clickable headers and state management
-
-**Troubleshooting**: If you encounter issues with RBAC, such as JWT roles not being recognized or permissions not working correctly, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed debugging steps and common solutions.
+**Reference implementations**:
+- `PermissionsPage`, `EntityManagementPage` - Signal-based state
+- `SchemaErdPage`, `ListPage`, `DetailPage` - OnPush + async pipe
 
 ## Styling
 
 - **Tailwind CSS** for utility classes
 - **DaisyUI** component library (themes: light, dark, corporate, nord, emerald)
 - Global styles in `src/styles.css`
-- Component-specific styles use standalone CSS files
 
 ## TypeScript Configuration
 
@@ -572,246 +198,32 @@ When `sortable` is enabled for a property, users can click the column header on 
 - Target: ES2022
 - Module resolution: bundler
 
-## Common Patterns
+## Documentation Conventions
 
-### Adding a New Entity to the UI
-1. Create table in PostgreSQL `public` schema
-2. Add entry to `metadata.entities` table (optional, for custom display_name and sort_order)
-3. Add entries to `metadata.properties` table (optional, for custom labels and ordering)
-4. Grant appropriate permissions (INSERT, SELECT, UPDATE, DELETE)
-5. Navigate to `/view/your_table_name` - UI auto-generates
+When creating new documentation files, follow this structure:
 
-### Custom Property Display
-- Override `metadata.properties.display_name` to change label
-- Set `metadata.properties.sort_order` to control field ordering
-- Set `metadata.properties.column_width` to control form field width (1-2 columns) in Create/Edit forms
-- Set `metadata.properties.sortable` to enable/disable sorting on List pages
+**Root Level (reserved):**
+- `README.md` - Project overview and quick start guide
+- `CLAUDE.md` - AI assistant instructions (this file)
+- `LICENSE` - License file
 
-### Adding Form Validation
-- Extend `SchemaService.getFormValidatorsForProperty()` to add Angular validators based on property metadata
-- Currently only implements `Validators.required` for non-nullable columns
+**Documentation Structure:**
+- `docs/` - User-facing documentation (setup guides, troubleshooting)
+  - `AUTHENTICATION.md` - Authentication and Keycloak setup
+  - `TROUBLESHOOTING.md` - Common issues and solutions
+  - `ROADMAP.md` - Feature roadmap and planning
+- `docs/development/` - Developer-specific guides
+  - `ANGULAR.md` - Angular coding standards and patterns
+  - `TESTING.md` - Testing guidelines and best practices
+- `docs/notes/` - Historical notes, bug documentation, research
+  - `DRAG_DROP_BUG_FIX.md` - Bug fix documentation example
+  - `FILE_STORAGE_OPTIONS.md` - Research document example
 
-### Handling New Property Types
-1. Add new type to `EntityPropertyType` enum
-2. Update `SchemaService.getPropertyType()` to detect the type
-3. Add rendering logic to `DisplayPropertyComponent`
-4. Add input control to `EditPropertyComponent`
-
-### Angular 20 Reactive State with Signals
-
-**IMPORTANT**: Angular 20 requires Signals for reactive component state to ensure proper change detection, especially with the new control flow syntax (`@if`, `@for`) and zoneless change detection.
-
-**When to use Signals**:
-- Any component property that changes during runtime and is displayed in the template
-- Properties that control conditional rendering (`@if`, `@else`)
-- Data fetched from APIs that updates the UI
-- Form state, loading indicators, error messages
-
-**Pattern**:
-```typescript
-import { Component, signal } from '@angular/core';
-
-export class MyComponent {
-  // ✅ Use Signal for reactive state
-  data = signal<MyData | undefined>(undefined);
-  loading = signal(true);
-  error = signal<string | undefined>(undefined);
-
-  loadData() {
-    this.dataService.fetch().subscribe({
-      next: (result) => {
-        this.data.set(result);  // Update signal
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(err.message);
-        this.loading.set(false);
-      }
-    });
-  }
-}
-```
-
-**Template syntax**:
-```html
-<!-- Access signal values with () -->
-@if (loading()) {
-  <span class="loading"></span>
-}
-
-<!-- Use 'as' syntax for type narrowing -->
-@if (data(); as myData) {
-  <p>{{ myData.name }}</p>
-  <p>{{ myData.value }}</p>
-}
-
-@if (error(); as err) {
-  <div class="alert alert-error">{{ err }}</div>
-}
-```
-
-**Common mistake**:
-```typescript
-// ❌ Plain property - may not trigger change detection in Angular 20
-public error?: ApiError;
-
-// Template won't reliably update
-@if (this.error) { ... }
-```
-
-**Reference implementations**:
-- `DialogComponent` (src/app/components/dialog/dialog.component.ts) - Uses Signal for error state
-- `PermissionsPage` (src/app/pages/permissions/permissions.page.ts) - Uses Signals throughout
-- `EntityManagementPage` (src/app/pages/entity-management/entity-management.page.ts) - Signal-based reactive state
-
-### Angular 20 Best Practices: OnPush + Async Pipe
-
-**CRITICAL**: All components should use `OnPush` change detection with the `async` pipe for observables. Do NOT manually subscribe to observables in components with `OnPush` - this will cause change detection issues.
-
-**Required pattern for all pages**:
-```typescript
-import { Component, ChangeDetectionStrategy } from '@angular/core';
-import { Observable } from 'rxjs';
-
-@Component({
-  selector: 'app-my-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,  // ✅ Required
-  imports: [CommonModule],
-  templateUrl: './my-page.component.html'
-})
-export class MyPageComponent {
-  // ✅ Expose Observable with $ suffix
-  data$: Observable<MyData> = this.dataService.getData();
-
-  // ❌ WRONG - manual subscription with OnPush won't trigger change detection
-  constructor() {
-    this.dataService.getData().subscribe(data => {
-      this.someProperty = data;  // Won't update template reliably
-    });
-  }
-}
-```
-
-**Template pattern with async pipe**:
-```html
-<!-- ✅ Correct: Use async pipe to subscribe -->
-@if (data$ | async; as data) {
-  <div>{{ data.name }}</div>
-  <div>{{ data.value }}</div>
-} @else {
-  <span class="loading loading-spinner"></span>
-}
-```
-
-**Why this matters**:
-- `OnPush` change detection only runs when:
-  1. Input properties change
-  2. Events fire from the template
-  3. The `async` pipe receives new values
-- Manual subscriptions don't trigger `OnPush` change detection
-- The `async` pipe handles subscription/unsubscription automatically
-- Loading states are handled by the `@else` block (shown while Observable hasn't emitted)
-
-**Reference implementations**:
-- `SchemaErdPage` (src/app/pages/schema-erd/schema-erd.page.ts) - Uses OnPush + async pipe
-- `ListPage`, `DetailPage`, `CreatePage`, `EditPage` - Check these for async pipe usage
-
-### Coordinating ViewChild with Async Data (effect() Pattern)
-
-**Problem**: When a DOM element is conditionally rendered based on async data (e.g., `@if (data$ | async)`), the `viewChild()` signal won't have a value until AFTER the data loads and the element renders.
-
-**Solution**: Use Angular's `effect()` to react when BOTH the data and the DOM element are available.
-
-**Pattern**:
-```typescript
-import { Component, effect, viewChild, signal, ElementRef } from '@angular/core';
-
-@Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  // ...
-})
-export class MyComponent {
-  // Observable for template
-  data$: Observable<MyData> = this.dataService.getData();
-
-  // Signal to store loaded data
-  private dataLoaded = signal<MyData | null>(null);
-
-  // ViewChild signal (undefined until element renders)
-  containerElement = viewChild<ElementRef<HTMLDivElement>>('container');
-
-  constructor() {
-    // Store data when observable emits
-    this.data$.subscribe(data => this.dataLoaded.set(data));
-
-    // Effect runs when EITHER signal changes
-    effect(() => {
-      const data = this.dataLoaded();
-      const container = this.containerElement()?.nativeElement;
-
-      // Both available? Do the work!
-      if (data && container) {
-        this.processData(data, container);
-      }
-    });
-  }
-}
-```
-
-**Template**:
-```html
-@if (data$ | async; as data) {
-  <div #container>
-    <!-- Container appears AFTER data loads -->
-  </div>
-}
-```
-
-**Why this works**:
-- `effect()` automatically tracks signal dependencies
-- Runs when `dataLoaded` signal changes (when data arrives)
-- Runs when `containerElement` signal changes (when DOM renders)
-- Both conditions met = your code executes
-
-**Reference implementation**:
-- `SchemaErdPage` (src/app/pages/schema-erd/schema-erd.page.ts) - Uses effect() to coordinate Mermaid rendering with DOM availability
-
-## Database Schema Visualization (ERD)
-
-The application includes an Entity Relationship Diagram feature that automatically generates ERDs from the database schema metadata.
-
-**Components**:
-- **SchemaErdService** (`src/app/services/schema-erd.service.ts`) - Converts schema metadata to Mermaid erDiagram syntax
-- **SchemaErdPage** (`src/app/pages/schema-erd/schema-erd.page.ts`) - Renders ERD using Mermaid.js library
-
-**How it works**:
-1. Fetches entities and properties from `SchemaService` (using `take(1)` to complete observables for `forkJoin`)
-2. Generates Mermaid syntax for entities with their attributes (PK, FK, types)
-3. Generates relationship lines based on foreign key metadata (`join_table`, `join_column`)
-4. Renders diagram using Mermaid.js with automatic theme mapping
-
-**Theme Mapping**:
-The ERD automatically selects an appropriate Mermaid theme based on the active DaisyUI theme:
-- `light` → Mermaid `default` (standard light theme)
-- `dark` → Mermaid `dark` (dark mode)
-- `corporate` → Mermaid `neutral` (professional B&W aesthetic)
-- `nord` → Mermaid `dark` (dark theme)
-- `emerald` → Mermaid `forest` (green color scheme)
-
-**Relationship Detection**:
-Currently supports **many-to-one** relationships only:
-- Detects foreign keys via `join_table` and `join_column` in schema metadata
-- Syntax: `FROM }o--|| TO` (many FROM records reference one TO record)
-- Example: `Issue }o--|| IssueStatus : "status"` (many issues have one status)
-
-**Not currently supported**:
-- One-to-one relationships (would require unique constraint detection)
-- Many-to-many relationships (would require junction table pattern detection)
-
-**Accessing the ERD**:
-- Menu → About → Database Schema
-- Route: `/schema-erd`
-- Available to all users (no authentication required)
+**When to create new documentation:**
+- User guides → `docs/`
+- Developer guides → `docs/development/`
+- Bug postmortems, research notes → `docs/notes/`
+- **Never** create markdown files in the root directory (except README.md and CLAUDE.md)
 
 ## Git Commit Guidelines
 

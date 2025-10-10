@@ -43,7 +43,7 @@ npm install
 
 # 3. Set up authentication (choose one):
 #    A) Use shared Keycloak (basic testing, can't manage roles)
-#    B) Run your own Keycloak (see AUTHENTICATION.md for RBAC testing)
+#    B) Run your own Keycloak (see docs/AUTHENTICATION.md for RBAC testing)
 cd example
 cp .env.example .env
 ./fetch-keycloak-jwk.sh  # Fetch Keycloak public key
@@ -56,7 +56,7 @@ npm start
 
 Open http://localhost:4200 in your browser. The example includes a Pot Hole Observation System with sample data.
 
-**Authentication Note**: The default setup uses a shared Keycloak instance. To test RBAC features (roles, permissions, admin access), see [AUTHENTICATION.md](./AUTHENTICATION.md) for instructions on running your own Keycloak instance.
+**Authentication Note**: The default setup uses a shared Keycloak instance. To test RBAC features (roles, permissions, admin access), see [AUTHENTICATION.md](./docs/AUTHENTICATION.md) for instructions on running your own Keycloak instance.
 
 ## Development Commands
 
@@ -148,11 +148,11 @@ postgres/                # Shared PostgreSQL scripts
 
 ## Documentation
 
-- **[AUTHENTICATION.md](./AUTHENTICATION.md)** - Complete Keycloak setup guide for testing RBAC features
+- **[AUTHENTICATION.md](./docs/AUTHENTICATION.md)** - Complete Keycloak setup guide for testing RBAC features
 - **[CLAUDE.md](./CLAUDE.md)** - Comprehensive developer guide, architecture details, and coding patterns
 - **[example/README.md](./example/README.md)** - Docker Compose setup instructions
-- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Common issues and solutions (especially RBAC configuration)
-- **[ROADMAP.md](./ROADMAP.md)** - Development roadmap and feature tracking
+- **[TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)** - Common issues and solutions (especially RBAC configuration)
+- **[ROADMAP.md](./docs/ROADMAP.md)** - Development roadmap and feature tracking
 
 ## Adding a New Entity
 

@@ -540,6 +540,6 @@ After completing authentication setup:
 4. **Explore RBAC** - Understand how database Row-Level Security policies work with Keycloak roles
 
 For more information, see:
-- [CLAUDE.md](./CLAUDE.md) - Developer guide and architecture details
-- [example/README.md](./example/README.md) - Docker setup and database initialization
+- [CLAUDE.md](../CLAUDE.md) - Developer guide and architecture details
+- [example/README.md](../example/README.md) - Docker setup and database initialization
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Common issues and solutions
