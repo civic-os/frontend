@@ -19,7 +19,7 @@ import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType } from '@angula
 import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, filter, map, of } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { EntityData } from '../interfaces/entity';
+import { EntityData, InverseRelationshipMeta, InverseRelationshipData } from '../interfaces/entity';
 import { DataQuery } from '../interfaces/query';
 import { ApiError, ApiResponse } from '../interfaces/api';
 import { ErrorService } from './error.service';
@@ -304,5 +304,66 @@ export class DataService {
     error.humanMessage = ErrorService.parseToHuman(error);
     let resp: ApiResponse = {success: false, error: error};
     return of(resp);
+  }
+
+  /**
+   * Get both preview records and total count in a single optimized request.
+   * Uses PostgREST's Prefer: count=exact header to get total count in Content-Range
+   * while fetching limited preview records - reduces HTTP requests from 2N to N.
+   */
+  public getInverseRelationshipPreview(
+    sourceTable: string,
+    filterColumn: string,
+    filterValue: any,
+    limit: number = 5
+  ): Observable<{ records: EntityData[], totalCount: number }> {
+    const url = `${sourceTable}?${filterColumn}=eq.${filterValue}&select=id,display_name&limit=${limit}`;
+
+    return this.http.get<EntityData[]>(environment.postgrestUrl + url, {
+      observe: 'response',
+      headers: {
+        'Prefer': 'count=exact'
+      }
+    }).pipe(
+      map(response => {
+        const records = response.body || [];
+
+        // Parse count from Content-Range header: "0-4/15" -> 15
+        const contentRange = response.headers.get('Content-Range');
+        let totalCount = 0;
+        if (contentRange) {
+          const match = contentRange.match(/\/(\d+)$/);
+          totalCount = match ? parseInt(match[1], 10) : records.length;
+        }
+
+        return { records, totalCount };
+      }),
+      catchError(err => {
+        console.error('Error fetching inverse relationship preview:', err);
+        return of({ records: [], totalCount: 0 });
+      })
+    );
+  }
+
+  /**
+   * Get complete inverse relationship data for display
+   */
+  public getInverseRelationshipData(
+    meta: InverseRelationshipMeta,
+    targetId: string | number
+  ): Observable<InverseRelationshipData> {
+    return this.getInverseRelationshipPreview(
+      meta.sourceTable,
+      meta.sourceColumn,
+      targetId,
+      meta.previewLimit
+    ).pipe(
+      map(({ records, totalCount }) => ({
+        meta,
+        totalCount,
+        previewRecords: records,
+        targetId
+      }))
+    );
   }
 }

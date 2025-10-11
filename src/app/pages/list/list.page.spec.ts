@@ -18,12 +18,13 @@
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { ListPage } from './list.page';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
 import { BehaviorSubject, of } from 'rxjs';
+import { take } from 'rxjs/operators';
 import { MOCK_ENTITIES, MOCK_PROPERTIES, createMockProperty } from '../../testing';
 import { EntityPropertyType } from '../../interfaces/entity';
 
@@ -392,4 +393,5 @@ describe('ListPage', () => {
       });
     });
   });
+
 });

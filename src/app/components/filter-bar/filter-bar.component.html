@@ -16,7 +16,7 @@
 
     <!-- Filter Controls Drawer (Collapsible) -->
     @if (isExpanded()) {
-      <div class="card bg-base-200 p-4 mt-2 absolute right-6 z-10 shadow-lg w-fit max-w-[1064px]">
+      <div class="card bg-base-200 p-4 mt-2 absolute right-6 z-10 shadow-lg" [style.max-width]="dropdownMaxWidth()">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-semibold">Filter Options</h3>
           @if (activeFilterCount() > 0) {
@@ -28,7 +28,7 @@
             </button>
           }
         </div>
-        <div class="grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); max-width: 1064px;">
+        <div class="grid gap-4" [style.grid-template-columns]="gridColumns()">
           @for (prop of properties(); track prop.column_name) {
             <div class="form-control">
               <label class="label pb-1 pt-0">

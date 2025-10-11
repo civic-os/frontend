@@ -43,6 +43,7 @@ export class FilterBarComponent {
 
   properties = input<SchemaEntityProperty[]>([]);
   entityKey = input<string | undefined>(undefined);
+  currentFilters = input<FilterCriteria[]>([]);
   @Output() filtersChange = new EventEmitter<FilterCriteria[]>();
 
   public isExpanded = signal(false);
@@ -54,15 +55,33 @@ export class FilterBarComponent {
   // Property type enum exposed to template
   public EntityPropertyType = EntityPropertyType;
 
-  // Count active filters
+  // Count active filters that match filterable columns
   public activeFilterCount = computed(() => {
-    const state = this.filterState();
-    return Object.values(state).filter(value => {
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
-      return value !== null && value !== undefined && value !== '';
-    }).length;
+    const filters = this.currentFilters();
+    const filterableColumns = new Set(this.properties().map(p => p.column_name));
+
+    // Count filters that match filterable columns
+    return filters.filter(f => filterableColumns.has(f.column)).length;
+  });
+
+  // Calculate max width based on number of filterable properties
+  // Each column is 250px, gap is 16px, padding is 32px total
+  public dropdownMaxWidth = computed(() => {
+    const propCount = this.properties().length;
+    const columns = Math.min(propCount, 4); // Cap at 4 columns
+    const columnWidth = 250;
+    const gapWidth = 16;
+    const paddingWidth = 32;
+
+    const width = (columnWidth * columns) + (gapWidth * (columns - 1)) + paddingWidth;
+    return `${width}px`;
+  });
+
+  // Calculate grid columns string
+  public gridColumns = computed(() => {
+    const propCount = this.properties().length;
+    const columns = Math.min(propCount, 4); // Cap at 4 columns
+    return `repeat(${columns}, 250px)`;
   });
 
   // Load FK and User filter options when properties change

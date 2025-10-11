@@ -39,9 +39,18 @@ describe('DetailPage', () => {
 
     mockSchemaService = jasmine.createSpyObj('SchemaService', [
       'getEntity',
-      'getPropsForDetail'
+      'getPropsForDetail',
+      'getInverseRelationships',
+      'getEntities'
     ]);
-    mockDataService = jasmine.createSpyObj('DataService', ['getData']);
+    mockDataService = jasmine.createSpyObj('DataService', ['getData', 'getInverseRelationshipData']);
+
+    // Default mocks for inverse relationships
+    mockSchemaService.getInverseRelationships.and.returnValue(of([]));
+    mockSchemaService.getEntities.and.returnValue(of([
+      MOCK_ENTITIES.issue,
+      MOCK_ENTITIES.status
+    ]));
 
     await TestBed.configureTestingModule({
       imports: [DetailPage],

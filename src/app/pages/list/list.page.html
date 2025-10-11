@@ -37,11 +37,28 @@
           <app-filter-bar
             [properties]="filterProps"
             [entityKey]="entityKey"
+            [currentFilters]="filtersSignal()"
             (filtersChange)="onFiltersChange($event)">
           </app-filter-bar>
         }
       }
     </div>
+
+    <!-- Filter Chips -->
+    @if (filterChips$ | async; as chips) {
+      @if (chips.length > 0) {
+        <div class="flex flex-wrap gap-2 mb-4 not-prose justify-end">
+          @for (chip of chips; track chip.column) {
+            <div class="badge badge-lg gap-2 border-2 border-primary bg-primary/10 font-medium">
+              <span>{{ chip.columnLabel }}: {{ chip.displayValue }}</span>
+              <button class="btn btn-ghost btn-xs btn-circle hover:bg-primary/20" (click)="removeFilter(chip.column)" type="button">
+                <span class="material-symbols-outlined text-base font-bold">close</span>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    }
 
     <div class="overflow-x-auto">
       @if (entity.insert) {

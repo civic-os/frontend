@@ -17,7 +17,7 @@
 
 import { Component, inject, ChangeDetectionStrategy, signal, OnInit, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Observable, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged, take, tap, shareReplay, switchMap, from } from 'rxjs';
+import { Observable, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged, take, tap, shareReplay, switchMap, from, forkJoin } from 'rxjs';
 import { SchemaService } from '../../services/schema.service';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -28,6 +28,14 @@ import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 import { FilterBarComponent } from '../../components/filter-bar/filter-bar.component';
 import { FilterCriteria } from '../../interfaces/query';
+
+interface FilterChip {
+  column: string;
+  columnLabel: string;
+  operator: string;
+  value: any;
+  displayValue: string;
+}
 
 @Component({
     selector: 'app-view',
@@ -198,6 +206,9 @@ export class ListPage implements OnInit {
 
   public filtersSignal = toSignal(this.filters$, { initialValue: [] });
 
+  // Signal for filterable properties (used in filter preservation logic)
+  private filterablePropertiesSignal = toSignal(this.filterProperties$, { initialValue: [] });
+
   // Extract search terms for highlighting
   private searchTerms$: Observable<string[]> = this.searchQuery$.pipe(
     map(query => {
@@ -215,6 +226,102 @@ export class ListPage implements OnInit {
 
   // Count of search results
   public resultCount = computed(() => this.dataSignal().length);
+
+  // Build filter chips with human-readable labels
+  public filterChips$: Observable<FilterChip[]> = combineLatest([
+    this.filters$,
+    this.properties$
+  ]).pipe(
+    switchMap(([filters, props]) => {
+      if (filters.length === 0) return of([]);
+
+      // Build chips for each filter
+      const chipObservables = filters.map(filter => {
+        const prop = props.find(p => p.column_name === filter.column);
+        const columnLabel = prop?.display_name || filter.column;
+
+        // For FK and User filters, fetch display name
+        if (prop?.type === EntityPropertyType.ForeignKeyName && prop.join_table) {
+          // Extract ID from filter value (handles both single values and 'in' operator lists)
+          let filterIds: string[] = [];
+          if (filter.operator === 'in') {
+            // Parse "(1,2,3)" format
+            const match = filter.value.match(/\(([^)]+)\)/);
+            if (match) {
+              filterIds = match[1].split(',');
+            }
+          } else {
+            filterIds = [filter.value];
+          }
+
+          // Fetch display names for all IDs
+          return this.data.getData({
+            key: prop.join_table,
+            fields: ['id', 'display_name'],
+            filters: [{ column: 'id', operator: 'in', value: `(${filterIds.join(',')})` }]
+          }).pipe(
+            map(data => {
+              const displayNames = data.map((d: any) => d.display_name).join(', ');
+              return {
+                column: filter.column,
+                columnLabel,
+                operator: filter.operator,
+                value: filter.value,
+                displayValue: displayNames || filter.value
+              };
+            })
+          );
+        } else if (prop?.type === EntityPropertyType.User) {
+          // Similar handling for User type
+          let filterIds: string[] = [];
+          if (filter.operator === 'in') {
+            const match = filter.value.match(/\(([^)]+)\)/);
+            if (match) {
+              filterIds = match[1].split(',');
+            }
+          } else {
+            filterIds = [filter.value];
+          }
+
+          return this.data.getData({
+            key: 'civic_os_users',
+            fields: ['id', 'display_name'],
+            filters: [{ column: 'id', operator: 'in', value: `(${filterIds.join(',')})` }]
+          }).pipe(
+            map(data => {
+              const displayNames = data.map((d: any) => d.display_name).join(', ');
+              return {
+                column: filter.column,
+                columnLabel,
+                operator: filter.operator,
+                value: filter.value,
+                displayValue: displayNames || filter.value
+              };
+            })
+          );
+        } else {
+          // For other types, use the raw value
+          let displayValue = filter.value;
+
+          // Format boolean values
+          if (prop?.type === EntityPropertyType.Boolean) {
+            displayValue = filter.value === 'true' ? 'Yes' : 'No';
+          }
+
+          return of({
+            column: filter.column,
+            columnLabel,
+            operator: filter.operator,
+            value: filter.value,
+            displayValue: String(displayValue)
+          });
+        }
+      });
+
+      // Combine all chip observables
+      return chipObservables.length > 0 ? forkJoin(chipObservables) : of([]);
+    })
+  );
 
   ngOnInit() {
     // Sync searchControl with URL query params (bidirectional)
@@ -240,6 +347,30 @@ export class ListPage implements OnInit {
   }
 
   public onFiltersChange(filters: FilterCriteria[]) {
+    // Get current filters from URL
+    const currentFilters = this.filtersSignal();
+
+    let allFilters: FilterCriteria[];
+
+    if (filters.length === 0) {
+      // FilterBar is clearing all filterable columns
+      // Preserve only non-filterable column filters (e.g., from Related Records)
+      const filterableProps = this.filterablePropertiesSignal();
+      const filterableColumns = new Set(filterableProps.map(p => p.column_name));
+      allFilters = currentFilters.filter(f => !filterableColumns.has(f.column));
+    } else {
+      // FilterBar is updating specific columns
+      // Get columns that FilterBar is explicitly updating
+      const updatedColumns = new Set(filters.map(f => f.column));
+
+      // Preserve filters for columns NOT being updated by FilterBar
+      // This handles filters from Related Records or other sources that FilterBar doesn't know about
+      const preservedFilters = currentFilters.filter(f => !updatedColumns.has(f.column));
+
+      // Combine preserved filters with new filters from FilterBar
+      allFilters = [...preservedFilters, ...filters];
+    }
+
     // Build filter query params
     const filterParams: any = {};
 
@@ -251,8 +382,8 @@ export class ListPage implements OnInit {
       }
     });
 
-    // Then set the new filter params
-    filters.forEach((filter, index) => {
+    // Then set all filter params (preserved + new)
+    allFilters.forEach((filter, index) => {
       filterParams[`f${index}_col`] = filter.column;
       filterParams[`f${index}_op`] = filter.operator;
       filterParams[`f${index}_val`] = filter.value;
@@ -276,6 +407,37 @@ export class ListPage implements OnInit {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { q: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  public removeFilter(columnToRemove: string) {
+    const currentFilters = this.filtersSignal();
+    const newFilters = currentFilters.filter(f => f.column !== columnToRemove);
+
+    // Build filter query params directly (bypass onFiltersChange preservation logic)
+    const filterParams: any = {};
+
+    // First, clear all existing filter params by setting them to null
+    const currentParams = this.route.snapshot.queryParams;
+    Object.keys(currentParams).forEach(key => {
+      if (key.match(/^f\d+_(col|op|val)$/)) {
+        filterParams[key] = null;
+      }
+    });
+
+    // Then set the new filter params
+    newFilters.forEach((filter, index) => {
+      filterParams[`f${index}_col`] = filter.column;
+      filterParams[`f${index}_op`] = filter.operator;
+      filterParams[`f${index}_val`] = filter.value;
+    });
+
+    // Navigate with new filter params (preserves search and sort)
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: filterParams,
       queryParamsHandling: 'merge',
       replaceUrl: true
     });

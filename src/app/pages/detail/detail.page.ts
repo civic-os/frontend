@@ -17,8 +17,8 @@
 
 
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
-import { Observable, map, mergeMap, of } from 'rxjs';
-import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
+import { Observable, map, mergeMap, of, combineLatest } from 'rxjs';
+import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType, InverseRelationshipData } from '../../interfaces/entity';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
@@ -75,4 +75,46 @@ export class DetailPage {
       return of(undefined);
     }
   }));
+
+  // Fetch inverse relationships (entities that reference this entity)
+  public inverseRelationships$: Observable<InverseRelationshipData[]> =
+    combineLatest([
+      this.entity$,
+      this.data$
+    ]).pipe(
+      mergeMap(([entity, data]) => {
+        if (!entity || !data) return of([]);
+
+        // Get inverse relationship metadata
+        return this.schema.getInverseRelationships(entity.table_name).pipe(
+          mergeMap(relationships => {
+            // Fetch data for each relationship in parallel
+            const dataObservables = relationships.map(meta =>
+              this.data.getInverseRelationshipData(meta, data.id)
+            );
+
+            return dataObservables.length > 0
+              ? combineLatest(dataObservables)
+              : of([]);
+          })
+        );
+      }),
+      // Filter out relationships with zero count
+      map(relationships => relationships.filter(r => r.totalCount > 0)),
+      // Sort by entity sort_order
+      mergeMap(relationships =>
+        this.schema.getEntities().pipe(
+          map(entities => {
+            return relationships.sort((a, b) => {
+              const entityA = entities.find(e => e.table_name === a.meta.sourceTable);
+              const entityB = entities.find(e => e.table_name === b.meta.sourceTable);
+              return (entityA?.sort_order || 0) - (entityB?.sort_order || 0);
+            });
+          })
+        )
+      )
+    );
+
+  // Threshold for showing preview vs "View all" only
+  readonly LARGE_RELATIONSHIP_THRESHOLD = 20;
 }

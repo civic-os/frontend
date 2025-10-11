@@ -55,10 +55,14 @@ npm run watch                      # Build in watch mode
 
 **Testing:**
 ```bash
-npm test                           # Run all tests (watch mode)
-npm run test:headless              # Run once and exit (for quick checks)
-npm test -- --include='**/schema.service.spec.ts'  # Run specific file
+npm run test:headless              # Run once and exit (RECOMMENDED - use this!)
+npm test -- --no-watch             # Run all tests without watch mode
+npm test -- --no-watch --include='**/schema.service.spec.ts'  # Run specific file
 ```
+
+**CRITICAL**: Always use `--no-watch` or `npm run test:headless` when running tests as Claude Code. Watch mode keeps the process running indefinitely, which blocks the tool and wastes resources. The `test:headless` script is specifically configured to run once and exit cleanly.
+
+**KNOWN ISSUE**: FilterBarComponent cannot be unit tested due to Angular effects creating unmanaged subscriptions in `loadFilterOptions()`. The effect triggers on property changes and calls `dataService.getData().subscribe()` without cleanup, causing subscription leaks in tests. The component works correctly in production but causes test hangs when created/destroyed repeatedly. Fix requires refactoring to use `takeUntilDestroyed()` or converting to signal-based data loading.
 
 See `docs/development/TESTING.md` for comprehensive testing guidelines, best practices, and troubleshooting.
 
@@ -121,8 +125,23 @@ The `SchemaService.propertyToSelectString()` method builds PostgREST-compatible 
 ### Adding a New Entity to the UI
 1. Create table in PostgreSQL `public` schema
 2. Grant permissions (INSERT, SELECT, UPDATE, DELETE) to `authenticated` role
-3. Navigate to `/view/your_table_name` - UI auto-generates
-4. (Optional) Add entries to `metadata.entities` and `metadata.properties` for custom display names, ordering, etc.
+3. **IMPORTANT: Create indexes on all foreign key columns** (PostgreSQL does NOT auto-index FKs)
+   ```sql
+   -- Example: For a table with foreign keys
+   CREATE TABLE issues (
+     id SERIAL PRIMARY KEY,
+     status_id INT REFERENCES statuses(id),
+     user_id UUID REFERENCES civic_os_users(id)
+   );
+
+   -- REQUIRED: Add indexes for FK columns (needed for inverse relationships and performance)
+   CREATE INDEX idx_issues_status_id ON issues(status_id);
+   CREATE INDEX idx_issues_user_id ON issues(user_id);
+   ```
+4. Navigate to `/view/your_table_name` - UI auto-generates
+5. (Optional) Add entries to `metadata.entities` and `metadata.properties` for custom display names, ordering, etc.
+
+**Why FK indexes matter:** The inverse relationships feature (showing related records on Detail pages) requires indexes on foreign key columns to avoid full table scans. Without these indexes, queries like `SELECT * FROM issues WHERE status_id = 1` will be slow on large tables.
 
 ### Custom Property Display
 Override `metadata.properties.display_name` to change labels. Set `sort_order` to control field ordering. Set `column_width` (1-2) for form field width in Create/Edit forms. Set `sortable` to enable/disable column sorting on List pages.

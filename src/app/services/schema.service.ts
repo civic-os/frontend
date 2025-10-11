@@ -19,7 +19,7 @@ import { HttpClient } from '@angular/common/http';
 import { effect, inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { Observable, filter, map, of, ReplaySubject, tap } from 'rxjs';
-import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../interfaces/entity';
+import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable, InverseRelationshipMeta } from '../interfaces/entity';
 import { ValidatorFn, Validators } from '@angular/forms';
 
 @Injectable({
@@ -247,5 +247,83 @@ export class SchemaService {
       default:
         return 1;
     }
+  }
+
+  /**
+   * Get all inverse relationships for a given entity.
+   * Returns tables that have foreign keys pointing to this entity.
+   *
+   * Example: For entity 'issue_statuses', finds all tables with FK to issue_statuses
+   * (e.g., issues.status -> issue_statuses.id)
+   */
+  public getInverseRelationships(targetTable: string): Observable<InverseRelationshipMeta[]> {
+    return this.getProperties().pipe(
+      map(props => {
+        // Find all properties where join_table matches target
+        const inverseProps = props.filter(p =>
+          p.join_table === targetTable &&
+          p.join_schema === 'public'
+        );
+
+        // Group by source table to avoid duplicates
+        const grouped = this.groupBySourceTable(inverseProps);
+
+        // Convert to InverseRelationshipMeta[]
+        return grouped.map(g => ({
+          sourceTable: g.table_name,
+          sourceColumn: g.column_name,
+          sourceTableDisplayName: this.getDisplayNameForTable(g.table_name),
+          sourceColumnDisplayName: g.display_name,
+          showOnDetail: this.shouldShowOnDetail(g),
+          sortOrder: g.sort_order || 0,
+          previewLimit: this.getPreviewLimit(g)
+        }));
+      })
+    );
+  }
+
+  /**
+   * Group properties by source table (table_name).
+   * Takes first property found for each unique table.
+   */
+  private groupBySourceTable(props: SchemaEntityProperty[]): SchemaEntityProperty[] {
+    const tableMap = new Map<string, SchemaEntityProperty>();
+
+    for (const prop of props) {
+      if (!tableMap.has(prop.table_name)) {
+        tableMap.set(prop.table_name, prop);
+      }
+    }
+
+    return Array.from(tableMap.values());
+  }
+
+  /**
+   * Get cached display name for an entity
+   */
+  private getDisplayNameForTable(tableName: string): string {
+    const tables = this.tables();
+    const entity = tables?.find(t => t.table_name === tableName);
+    return entity?.display_name || tableName;
+  }
+
+  /**
+   * Determine if inverse relationship should be shown on detail page.
+   * Can be customized via metadata in future (Phase 3).
+   */
+  private shouldShowOnDetail(property: SchemaEntityProperty): boolean {
+    // Default: show all inverse relationships
+    // Future: check metadata.inverse_relationships table
+    return true;
+  }
+
+  /**
+   * Get preview limit for an inverse relationship.
+   * Can be customized via metadata in future (Phase 3).
+   */
+  private getPreviewLimit(property: SchemaEntityProperty): number {
+    // Default: 5 records
+    // Future: check metadata.inverse_relationships table
+    return 5;
   }
 }

@@ -46,6 +46,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] ADA/WCAG Compatibility
 - [ ] SOC II Compliance
 - [ ] Allow Angular app to be configured at container runtime (for flexible deployments)
+- [ ] Customizable dashboards
 
 ## Phase 2: Introspection Tools
 

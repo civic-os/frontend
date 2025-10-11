@@ -82,3 +82,28 @@ export interface EntityData {
     updated_at: string,
     display_name: string,
 }
+
+/**
+ * Metadata for an inverse relationship (back-reference).
+ * Describes a relationship where another entity references this entity via foreign key.
+ */
+export interface InverseRelationshipMeta {
+    sourceTable: string;
+    sourceTableDisplayName: string;
+    sourceColumn: string;
+    sourceColumnDisplayName: string;
+    showOnDetail: boolean;
+    sortOrder: number;
+    previewLimit: number;
+}
+
+/**
+ * Complete inverse relationship data including metadata and fetched records.
+ * Used to display related records on the Detail page.
+ */
+export interface InverseRelationshipData {
+    meta: InverseRelationshipMeta;
+    totalCount: number;
+    previewRecords: EntityData[];
+    targetId: string | number;
+}
