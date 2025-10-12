@@ -8,20 +8,20 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Build Entity metadata table
 - [x] Build Property metadata table
 - [x] Build out User table with public and private fields
-- [ ] Show related Entities (inverse relationships)
-- [ ] Allow one-to-many and many-to-many Properties
+- [x] Show related Entities (inverse relationships)
+- [x] Allow one-to-many and many-to-many Properties
 - [x] Build scheme for editable Properties, default values, etc.
-- [ ] Add Form Validation Messages
+- [ ] Add Form Validation Messages (Priority 2: Critical for UX)
 - [x] Allow sorting/layout of Property Views/Lists
 - [ ] Add User Profile and management
 - [x] Add Login/Logout Screens (uses Keycloak Auth)
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
 - [ ] Expand Form Validation by use of `CHECK` statements
-- [ ] Add File/Image data types
+- [ ] Add File/Image data types (Priority 3: Unlocks many use cases)
 
 #### List Pages
 - [ ] Add List page configuration on top of Properties Management page
-- [ ] Add pagination
+- [ ] Add pagination (Priority 1: Essential for scalability)
 - [x] Add text search as an indexed column and toggle-able search box
 - [ ] Add Map view for List pages
 - [x] Add Sortable columns and default sort
