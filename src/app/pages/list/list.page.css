@@ -27,3 +27,20 @@ th.sortable .sort-icon {
 th.sortable .sort-icon-flipped {
     transform: scaleY(-1);
 }
+
+/* Sticky header controls */
+.sticky-controls {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: hsl(var(--b1));
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.sticky-controls-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: hsl(var(--b1));
+}

@@ -1,34 +1,20 @@
 @if (showPagination()) {
   <div class="pagination-container">
-    <!-- Results summary and page size selector -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+    <!-- Single compact row with all pagination controls -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
       <!-- Results summary -->
-      <div class="text-sm">
+      <div class="text-sm flex items-center gap-2">
         @if (totalCountSignal() > 0) {
           <span class="font-medium">Showing {{ startItem() }}-{{ endItem() }} of {{ totalCountSignal() }} results</span>
         } @else {
           <span class="font-medium">No results</span>
         }
+        @if (loading) {
+          <span class="loading loading-spinner loading-sm"></span>
+        }
       </div>
 
-      <!-- Page size selector -->
-      <div class="flex items-center gap-2">
-        <label for="pageSize" class="text-sm font-medium">Items per page:</label>
-        <select
-          id="pageSize"
-          class="select select-bordered select-sm"
-          [ngModel]="pageSizeSignal()"
-          (ngModelChange)="onPageSizeChange($event)"
-          [disabled]="loading">
-          @for (option of pageSizeOptions; track option) {
-            <option [value]="option">{{ option }}</option>
-          }
-        </select>
-      </div>
-    </div>
-
-    <!-- Pagination controls -->
-    <div class="flex justify-center">
+      <!-- Pagination controls -->
       <div class="join">
         <!-- Previous button -->
         <button
@@ -70,13 +56,21 @@
           <span class="material-symbols-outlined text-base">chevron_right</span>
         </button>
       </div>
-    </div>
 
-    <!-- Loading indicator -->
-    @if (loading) {
-      <div class="flex justify-center mt-2">
-        <span class="loading loading-spinner loading-sm"></span>
+      <!-- Page size selector -->
+      <div class="flex items-center gap-2">
+        <label for="pageSize" class="text-sm font-medium whitespace-nowrap">Items per page:</label>
+        <select
+          id="pageSize"
+          class="select select-bordered select-sm"
+          [ngModel]="pageSizeSignal()"
+          (ngModelChange)="onPageSizeChange($event)"
+          [disabled]="loading">
+          @for (option of pageSizeOptions; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
       </div>
-    }
+    </div>
   </div>
 }

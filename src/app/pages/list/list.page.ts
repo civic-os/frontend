@@ -270,99 +270,55 @@ export class ListPage implements OnInit {
   // Count of search results (use totalCount for paginated results)
   public resultCount = computed(() => this.totalCount());
 
-  // Build filter chips with human-readable labels
+  // Build filter chips with compact format
   public filterChips$: Observable<FilterChip[]> = combineLatest([
     this.filters$,
     this.properties$
   ]).pipe(
-    switchMap(([filters, props]) => {
-      if (filters.length === 0) return of([]);
+    map(([filters, props]) => {
+      if (filters.length === 0) return [];
 
       // Build chips for each filter
-      const chipObservables = filters.map(filter => {
+      return filters.map(filter => {
         const prop = props.find(p => p.column_name === filter.column);
         const columnLabel = prop?.display_name || filter.column;
 
-        // For FK and User filters, fetch display name
-        if (prop?.type === EntityPropertyType.ForeignKeyName && prop.join_table) {
-          // Extract ID from filter value (handles both single values and 'in' operator lists)
-          let filterIds: string[] = [];
-          if (filter.operator === 'in') {
-            // Parse "(1,2,3)" format
-            const match = filter.value.match(/\(([^)]+)\)/);
-            if (match) {
-              filterIds = match[1].split(',');
-            }
-          } else {
-            filterIds = [filter.value];
-          }
+        // For FK and User filters with 'in' operator, show count
+        if ((prop?.type === EntityPropertyType.ForeignKeyName || prop?.type === EntityPropertyType.User)
+            && filter.operator === 'in') {
+          // Parse "(1,2,3)" format to count items
+          const match = filter.value.match(/\(([^)]+)\)/);
+          const count = match ? match[1].split(',').length : 1;
+          const displayValue = count === 1 ? '1 selected' : `${count} selected`;
 
-          // Fetch display names for all IDs
-          return this.data.getData({
-            key: prop.join_table,
-            fields: ['id', 'display_name'],
-            filters: [{ column: 'id', operator: 'in', value: `(${filterIds.join(',')})` }]
-          }).pipe(
-            map(data => {
-              const displayNames = data.map((d: any) => d.display_name).join(', ');
-              return {
-                column: filter.column,
-                columnLabel,
-                operator: filter.operator,
-                value: filter.value,
-                displayValue: displayNames || filter.value
-              };
-            })
-          );
-        } else if (prop?.type === EntityPropertyType.User) {
-          // Similar handling for User type
-          let filterIds: string[] = [];
-          if (filter.operator === 'in') {
-            const match = filter.value.match(/\(([^)]+)\)/);
-            if (match) {
-              filterIds = match[1].split(',');
-            }
-          } else {
-            filterIds = [filter.value];
-          }
-
-          return this.data.getData({
-            key: 'civic_os_users',
-            fields: ['id', 'display_name'],
-            filters: [{ column: 'id', operator: 'in', value: `(${filterIds.join(',')})` }]
-          }).pipe(
-            map(data => {
-              const displayNames = data.map((d: any) => d.display_name).join(', ');
-              return {
-                column: filter.column,
-                columnLabel,
-                operator: filter.operator,
-                value: filter.value,
-                displayValue: displayNames || filter.value
-              };
-            })
-          );
-        } else {
-          // For other types, use the raw value
-          let displayValue = filter.value;
-
-          // Format boolean values
-          if (prop?.type === EntityPropertyType.Boolean) {
-            displayValue = filter.value === 'true' ? 'Yes' : 'No';
-          }
-
-          return of({
+          return {
             column: filter.column,
             columnLabel,
             operator: filter.operator,
             value: filter.value,
-            displayValue: String(displayValue)
-          });
+            displayValue
+          };
+        } else if (prop?.type === EntityPropertyType.Boolean) {
+          // Format boolean values
+          const displayValue = filter.value === 'true' ? 'Yes' : 'No';
+          return {
+            column: filter.column,
+            columnLabel,
+            operator: filter.operator,
+            value: filter.value,
+            displayValue
+          };
+        } else {
+          // For other types, use the raw value
+          return {
+            column: filter.column,
+            columnLabel,
+            operator: filter.operator,
+            value: filter.value,
+            displayValue: String(filter.value)
+          };
         }
       });
-
-      // Combine all chip observables
-      return chipObservables.length > 0 ? forkJoin(chipObservables) : of([]);
     })
   );
 
