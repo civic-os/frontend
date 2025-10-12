@@ -100,7 +100,7 @@ describe('PropertyManagementPage', () => {
   ];
 
   beforeEach(async () => {
-    mockSchemaService = jasmine.createSpyObj('SchemaService', ['getEntities', 'getPropertiesForEntityFresh', 'refreshCache']);
+    mockSchemaService = jasmine.createSpyObj('SchemaService', ['getEntitiesForMenu', 'getPropertiesForEntityFresh', 'refreshCache']);
     mockPropertyManagementService = jasmine.createSpyObj('PropertyManagementService', [
       'isAdmin',
       'upsertPropertyMetadata',
@@ -121,7 +121,7 @@ describe('PropertyManagementPage', () => {
   it('should create', () => {
     // Set up mocks before creating component
     mockPropertyManagementService.isAdmin.and.returnValue(of(false));
-    mockSchemaService.getEntities.and.returnValue(of([]));
+    mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
     fixture = TestBed.createComponent(PropertyManagementPage);
     component = fixture.componentInstance;
@@ -132,7 +132,7 @@ describe('PropertyManagementPage', () => {
   describe('Admin Access Check', () => {
     it('should allow access when user is admin', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -148,7 +148,7 @@ describe('PropertyManagementPage', () => {
 
     it('should deny access when user is not admin', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(false));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -162,7 +162,7 @@ describe('PropertyManagementPage', () => {
 
     it('should handle admin check error', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(throwError(() => new Error('Network error')));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -178,7 +178,7 @@ describe('PropertyManagementPage', () => {
   describe('Entity Selection', () => {
     it('should load properties when entity is selected', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -200,7 +200,7 @@ describe('PropertyManagementPage', () => {
 
     it('should clear properties when no entity is selected', () => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -213,7 +213,7 @@ describe('PropertyManagementPage', () => {
 
     it('should handle property loading error', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(throwError(() => new Error('Load error')));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -236,7 +236,7 @@ describe('PropertyManagementPage', () => {
   describe('Property Expansion', () => {
     it('should toggle property expansion', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -265,7 +265,7 @@ describe('PropertyManagementPage', () => {
   describe('Drag and Drop', () => {
     it('should reorder properties and update sort order', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
       mockPropertyManagementService.updatePropertiesOrder.and.returnValue(of({ success: true }));
 
@@ -306,7 +306,7 @@ describe('PropertyManagementPage', () => {
 
     it('should refresh schema cache after reorder', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
       mockPropertyManagementService.updatePropertiesOrder.and.returnValue(of({ success: true }));
 
@@ -345,7 +345,7 @@ describe('PropertyManagementPage', () => {
   describe('Metadata Saving', () => {
     it('should save metadata on blur', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
       mockPropertyManagementService.upsertPropertyMetadata.and.returnValue(of({ success: true }));
 
@@ -385,7 +385,7 @@ describe('PropertyManagementPage', () => {
 
     it('should show saved indicator after save completes', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
       mockPropertyManagementService.upsertPropertyMetadata.and.returnValue(of({ success: true }));
 
@@ -412,7 +412,7 @@ describe('PropertyManagementPage', () => {
 
     it('should refresh schema cache but NOT reload properties after save', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
       mockPropertyManagementService.upsertPropertyMetadata.and.returnValue(of({ success: true }));
 
@@ -452,7 +452,7 @@ describe('PropertyManagementPage', () => {
   describe('Auto-Select First Entity', () => {
     it('should auto-select first entity when entities load', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -470,7 +470,7 @@ describe('PropertyManagementPage', () => {
 
     it('should not auto-select if entity already selected', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -490,7 +490,7 @@ describe('PropertyManagementPage', () => {
 
     it('should handle empty entities array gracefully', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -512,7 +512,7 @@ describe('PropertyManagementPage', () => {
       ];
 
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(unsortedProperties));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -536,7 +536,7 @@ describe('PropertyManagementPage', () => {
       ];
 
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(unsortedProperties));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
@@ -556,7 +556,7 @@ describe('PropertyManagementPage', () => {
   describe('compareEntities()', () => {
     it('should return true for entities with same table_name', () => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -569,7 +569,7 @@ describe('PropertyManagementPage', () => {
 
     it('should return false for entities with different table_name', () => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -579,7 +579,7 @@ describe('PropertyManagementPage', () => {
 
     it('should handle null/undefined entities', () => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -594,7 +594,7 @@ describe('PropertyManagementPage', () => {
   describe('Helper Methods', () => {
     it('should get correct property type label', () => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;
@@ -614,7 +614,7 @@ describe('PropertyManagementPage', () => {
 
     it('should get correct display name placeholder', () => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of([]));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of([]));
 
       fixture = TestBed.createComponent(PropertyManagementPage);
       component = fixture.componentInstance;

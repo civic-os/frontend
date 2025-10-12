@@ -60,9 +60,9 @@ export class PropertyManagementPage {
 
   private saveSubjects = new Map<string, Subject<void>>();
 
-  // Load entities for dropdown
+  // Load entities for dropdown (excluding junction tables)
   entities = toSignal(
-    this.schemaService.getEntities(),
+    this.schemaService.getEntitiesForMenu(),
     { initialValue: [] }
   );
 

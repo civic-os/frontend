@@ -37,7 +37,7 @@ describe('EntityManagementPage', () => {
   ];
 
   beforeEach(async () => {
-    mockSchemaService = jasmine.createSpyObj('SchemaService', ['getEntities', 'refreshCache']);
+    mockSchemaService = jasmine.createSpyObj('SchemaService', ['getEntitiesForMenu', 'refreshCache']);
     mockEntityManagementService = jasmine.createSpyObj('EntityManagementService', [
       'isAdmin',
       'upsertEntityMetadata',
@@ -68,7 +68,7 @@ describe('EntityManagementPage', () => {
   describe('Admin Access Check', () => {
     it('should load entities when user is admin', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
 
       fixture = TestBed.createComponent(EntityManagementPage);
       component = fixture.componentInstance;
@@ -115,7 +115,7 @@ describe('EntityManagementPage', () => {
   describe('Entity Loading', () => {
     it('should map entity data correctly', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
 
       fixture = TestBed.createComponent(EntityManagementPage);
       component = fixture.componentInstance;
@@ -133,7 +133,7 @@ describe('EntityManagementPage', () => {
 
     it('should handle entity loading error', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(throwError(() => new Error('Load error')));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(throwError(() => new Error('Load error')));
 
       fixture = TestBed.createComponent(EntityManagementPage);
       component = fixture.componentInstance;
@@ -150,7 +150,7 @@ describe('EntityManagementPage', () => {
   describe('Drag and Drop', () => {
     it('should reorder entities and update sort order', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockEntityManagementService.updateEntitiesOrder.and.returnValue(of({ success: true }));
 
       fixture = TestBed.createComponent(EntityManagementPage);
@@ -187,7 +187,7 @@ describe('EntityManagementPage', () => {
 
     it('should refresh schema cache after reorder', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockEntityManagementService.updateEntitiesOrder.and.returnValue(of({ success: true }));
 
       fixture = TestBed.createComponent(EntityManagementPage);
@@ -218,7 +218,7 @@ describe('EntityManagementPage', () => {
 
     it('should handle reorder error', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockEntityManagementService.updateEntitiesOrder.and.returnValue(
         of({
           success: false,
@@ -262,7 +262,7 @@ describe('EntityManagementPage', () => {
   describe('Metadata Saving', () => {
     it('should save metadata on blur', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockEntityManagementService.upsertEntityMetadata.and.returnValue(of({ success: true }));
 
       fixture = TestBed.createComponent(EntityManagementPage);
@@ -288,7 +288,7 @@ describe('EntityManagementPage', () => {
 
     it('should show saved indicator after save completes', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockEntityManagementService.upsertEntityMetadata.and.returnValue(of({ success: true }));
 
       fixture = TestBed.createComponent(EntityManagementPage);
@@ -310,7 +310,7 @@ describe('EntityManagementPage', () => {
 
     it('should handle save errors', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
       mockEntityManagementService.upsertEntityMetadata.and.returnValue(
         of({
           success: false,
@@ -343,7 +343,7 @@ describe('EntityManagementPage', () => {
   describe('Helper Methods', () => {
     it('should get correct display name placeholder', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
 
       fixture = TestBed.createComponent(EntityManagementPage);
       component = fixture.componentInstance;
@@ -358,7 +358,7 @@ describe('EntityManagementPage', () => {
 
     it('should track saved state', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
 
       fixture = TestBed.createComponent(EntityManagementPage);
       component = fixture.componentInstance;
@@ -374,7 +374,7 @@ describe('EntityManagementPage', () => {
 
     it('should track fading state', (done) => {
       mockEntityManagementService.isAdmin.and.returnValue(of(true));
-      mockSchemaService.getEntities.and.returnValue(of(mockEntities));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
 
       fixture = TestBed.createComponent(EntityManagementPage);
       component = fixture.componentInstance;

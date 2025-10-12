@@ -71,7 +71,8 @@ export class EntityManagementPage {
           } as EntityData);
         }
 
-        return this.schemaService.getEntities().pipe(
+        // Use getEntitiesForMenu() to exclude junction tables
+        return this.schemaService.getEntitiesForMenu().pipe(
           map(entities => {
             const entityRows: EntityRow[] = (entities || []).map(e => ({
               ...e,
