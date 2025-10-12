@@ -1,0 +1,131 @@
+<div class="many-to-many-editor py-4">
+  <label class="label">
+    <span class="font-semibold text-base">{{ property().display_name }}</span>
+  </label>
+
+  <!-- Error message -->
+  @if (error()) {
+    <div class="alert alert-error mb-3">
+      <span>{{ error() }}</span>
+      <button class="btn btn-sm btn-ghost" (click)="error.set(undefined)">×</button>
+    </div>
+  }
+
+  @if (!isEditing()) {
+    <!-- DISPLAY MODE: Read-only chips -->
+    <div class="flex flex-wrap gap-2 mb-3">
+      @for (item of currentValues(); track item.id) {
+        <a
+          [routerLink]="['/view', property().many_to_many_meta!.relatedTable, item.id]"
+          class="badge badge-lg badge-primary gap-2 py-3 px-3 bg-opacity-80 cursor-pointer hover:bg-opacity-100 transition-opacity">
+          <span>{{ item.display_name }}</span>
+          @if (item.color) {
+            <span class="w-3 h-3 rounded-full inline-block" [style.background-color]="item.color"></span>
+          }
+        </a>
+      } @empty {
+        <span class="text-sm text-base-content/60">None</span>
+      }
+    </div>
+
+    <!-- Edit button (only if has permission) -->
+    @if (canEdit()) {
+      <button
+        type="button"
+        class="btn btn-sm btn-outline"
+        (click)="enterEditMode()">
+        Edit {{ property().display_name }}
+      </button>
+    } @else {
+      <div class="text-sm text-base-content/60 italic">
+        You don't have permission to edit {{ property().display_name }}
+      </div>
+    }
+  } @else {
+    <!-- EDIT MODE: Checkboxes with search -->
+
+    <!-- Pending changes preview -->
+    @if (pendingChanges().toAdd.length > 0 || pendingChanges().toRemove.length > 0) {
+      <div class="alert alert-info mb-3 text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span>
+          Pending changes:
+          @if (pendingChanges().toAdd.length > 0) {
+            <strong>+{{ pendingChanges().toAdd.length }}</strong> to add
+          }
+          @if (pendingChanges().toAdd.length > 0 && pendingChanges().toRemove.length > 0) {
+            ,
+          }
+          @if (pendingChanges().toRemove.length > 0) {
+            <strong>-{{ pendingChanges().toRemove.length }}</strong> to remove
+          }
+        </span>
+      </div>
+    }
+
+    <div class="border border-base-300 rounded-lg p-4 mb-3">
+      <!-- Search box if many options -->
+      @if (availableOptions().length > 10) {
+        <input
+          type="search"
+          class="input input-sm input-bordered w-full mb-2"
+          placeholder="Search..."
+          [value]="searchTerm()"
+          (input)="searchTerm.set($any($event.target).value)"
+        />
+      }
+
+      <!-- Checkbox list -->
+      <div class="max-h-64 overflow-y-auto">
+        @for (option of filteredOptions(); track option.id) {
+          <label class="label cursor-pointer justify-start gap-1 p-2">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-sm checkbox-primary"
+              [checked]="workingSelection().includes(option.id)"
+              (change)="toggleSelection(option.id)"
+            />
+            <span class="label-text">{{ option.display_name }}</span>
+            @if (option.color) {
+              <span class="w-3 h-3 rounded-full inline-block" [style.background-color]="option.color"></span>
+            }
+          </label>
+        } @empty {
+          <div class="text-sm text-base-content/60 p-2">
+            @if (searchTerm()) {
+              No items match "{{ searchTerm() }}"
+            } @else {
+              No items available
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Selection count -->
+      <div class="text-xs text-base-content/60 mt-2">
+        {{ workingSelection().length }} selected
+      </div>
+    </div>
+
+    <!-- Save/Cancel buttons -->
+    <div class="flex gap-2">
+      <button
+        type="button"
+        class="btn btn-sm btn-primary"
+        (click)="save()"
+        [disabled]="loading()">
+        @if (loading()) {
+          <span class="loading loading-spinner loading-sm"></span>
+        }
+        Save Changes
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-ghost"
+        (click)="cancel()"
+        [disabled]="loading()">
+        Cancel
+      </button>
+    </div>
+  }
+</div>

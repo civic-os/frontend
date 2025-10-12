@@ -37,9 +37,10 @@ export class SchemaErdService {
   generateMermaidSyntax(): Observable<string> {
     return forkJoin({
       entities: this.schemaService.getEntities().pipe(take(1)),
-      properties: this.schemaService.getProperties().pipe(take(1))
+      properties: this.schemaService.getProperties().pipe(take(1)),
+      junctionTables: this.schemaService.getDetectedJunctionTables().pipe(take(1))
     }).pipe(
-      map(({ entities, properties }) => {
+      map(({ entities, properties, junctionTables }) => {
         if (!entities || !properties) {
           console.warn('[SchemaErdService] Missing entities or properties');
           return 'erDiagram\n  %% No schema data available';
@@ -47,13 +48,19 @@ export class SchemaErdService {
 
         let mermaidSyntax = 'erDiagram\n';
 
-        // Generate entity definitions with attributes
-        entities.forEach(entity => {
-          mermaidSyntax += this.generateEntityBlock(entity, properties);
+        // Filter out junction tables from entity list
+        const visibleEntities = entities.filter(e => !junctionTables.has(e.table_name));
+
+        // Filter out M:M virtual properties from property list (they don't belong on entities)
+        const realProperties = properties.filter(p => p.type !== EntityPropertyType.ManyToMany);
+
+        // Generate entity definitions with attributes (excluding junctions)
+        visibleEntities.forEach(entity => {
+          mermaidSyntax += this.generateEntityBlock(entity, realProperties);
         });
 
-        // Generate relationships based on foreign keys
-        mermaidSyntax += this.generateRelationships(entities, properties);
+        // Generate relationships (M:M and regular FK)
+        mermaidSyntax += this.generateRelationships(visibleEntities, properties, junctionTables);
 
         return mermaidSyntax;
       })
@@ -89,14 +96,48 @@ export class SchemaErdService {
   }
 
   /**
-   * Generates relationship lines between entities based on foreign keys
+   * Generates relationship lines between entities.
+   * Renders M:M relationships from virtual properties and regular FK relationships.
    */
-  private generateRelationships(entities: SchemaEntityTable[], properties: SchemaEntityProperty[]): string {
+  private generateRelationships(
+    entities: SchemaEntityTable[],
+    properties: SchemaEntityProperty[],
+    junctionTables: Set<string>
+  ): string {
     let relationships = '';
     const processedRelationships = new Set<string>();
 
+    // First, render M:M relationships (from virtual M:M properties)
+    const m2mProperties = properties.filter(p => p.type === EntityPropertyType.ManyToMany);
+    m2mProperties.forEach(prop => {
+      if (prop.many_to_many_meta) {
+        const meta = prop.many_to_many_meta;
+        const fromEntity = this.sanitizeEntityName(meta.sourceTable);
+        const toEntity = this.sanitizeEntityName(meta.targetTable);
+
+        // Create bidirectional key to avoid rendering same M:M twice
+        const key1 = `${fromEntity}-${toEntity}-${meta.junctionTable}`;
+        const key2 = `${toEntity}-${fromEntity}-${meta.junctionTable}`;
+
+        // Only render once per junction
+        if (!processedRelationships.has(key1) && !processedRelationships.has(key2)) {
+          // Many-to-many relationship
+          // Syntax: FROM }o--o{ TO : "junction_name"
+          relationships += `  ${fromEntity} }o--o{ ${toEntity} : "${meta.junctionTable}"\n`;
+          processedRelationships.add(key1);
+          processedRelationships.add(key2);
+        }
+      }
+    });
+
+    // Then, render regular FK relationships (but skip those from junction tables)
     properties.forEach(prop => {
       if (prop.join_table && prop.join_schema === 'public') {
+        // Skip FK relationships that belong to junction tables
+        if (junctionTables.has(prop.table_name)) {
+          return;
+        }
+
         const fromEntity = this.sanitizeEntityName(prop.table_name);
         const toEntity = this.sanitizeEntityName(prop.join_table);
 

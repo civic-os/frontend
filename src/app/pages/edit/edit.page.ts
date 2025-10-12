@@ -63,10 +63,14 @@ export class EditPage {
   }));
   public properties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
     if(e) {
+      // Filter OUT M:M properties - they can only be edited on Detail page
       return this.schema.getPropsForEdit(e)
-        .pipe(tap(props => {
-          this.currentProps = props;
-        }));
+        .pipe(
+          map(props => props.filter(p => p.type !== EntityPropertyType.ManyToMany)),
+          tap(props => {
+            this.currentProps = props;
+          })
+        );
     } else {
       return of([]);
     }
@@ -84,17 +88,15 @@ export class EditPage {
   tap(data => {
     if (data && this.currentProps.length > 0) {
       // Create form with actual data values, not defaults
+      // M:M properties are filtered out, so just map regular properties
       const formConfig = Object.fromEntries(
-        this.currentProps.map(p => {
-          const value = (data as any)[p.column_name];
-          return [
-            p.column_name,
-            new FormControl(
-              value,
-              SchemaService.getFormValidatorsForProperty(p)
-            )
-          ];
-        })
+        this.currentProps.map(p => [
+          p.column_name,
+          new FormControl(
+            (data as any)[p.column_name],
+            SchemaService.getFormValidatorsForProperty(p)
+          )
+        ])
       );
 
       this.editForm.set(new FormGroup(formConfig));
@@ -113,7 +115,10 @@ export class EditPage {
   submitForm(contents: any) {
     const form = this.editForm();
     if(this.entityKey && this.entityId && form) {
-      this.data.editData(this.entityKey, this.entityId, form.value)
+      const formData = form.value;
+
+      // M:M properties are filtered out, so just edit the entity directly
+      this.data.editData(this.entityKey, this.entityId, formData)
         .subscribe({
           next: (result) => {
             if(result.success === true) {

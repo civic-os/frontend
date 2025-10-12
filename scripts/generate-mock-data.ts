@@ -448,6 +448,39 @@ class MockDataGenerator {
     return dependencies;
   }
 
+  /**
+   * Detect if a table is a junction table (many-to-many).
+   * A junction table has exactly 2 foreign keys to other tables and only metadata columns.
+   * Note: Junction tables should use composite primary keys (no surrogate 'id' column).
+   */
+  private isJunctionTable(tableName: string): boolean {
+    const props = this.properties.filter(p => p.table_name === tableName);
+
+    // Get all foreign key columns
+    const fkProps = props.filter(p =>
+      p.join_table &&
+      p.join_table !== tableName &&
+      (this.getPropertyType(p) === EntityPropertyType.ForeignKeyName ||
+       this.getPropertyType(p) === EntityPropertyType.User)
+    );
+
+    // Must have exactly 2 foreign keys
+    if (fkProps.length !== 2) {
+      return false;
+    }
+
+    // Check if all non-FK columns are metadata
+    // Note: 'id' is included here for backwards compatibility with old junction tables,
+    // but new junction tables should use composite primary keys (FK1 + FK2)
+    const metadataColumns = ['id', 'created_at', 'updated_at'];
+    const hasExtraColumns = props.some(p =>
+      !metadataColumns.includes(p.column_name) &&
+      !fkProps.includes(p)
+    );
+
+    return !hasExtraColumns;
+  }
+
   private sortEntitiesByDependency(): SchemaEntityTable[] {
     const sorted: SchemaEntityTable[] = [];
     const visited = new Set<string>();
@@ -547,34 +580,102 @@ class MockDataGenerator {
 
       const records: any[] = [];
 
-      for (let i = 0; i < recordCount; i++) {
-        const record: any = {
-          id: i + 1  // Generate sequential IDs for foreign key references
-        };
+      // Special handling for junction tables (many-to-many)
+      if (this.isJunctionTable(tableName)) {
+        console.log(`  (Detected as junction table - ensuring unique combinations)`);
 
-        for (const prop of props) {
-          let relatedIds: any[] | undefined;
+        // Get the two foreign key properties
+        const fkProps = props.filter(p =>
+          p.join_table &&
+          (this.getPropertyType(p) === EntityPropertyType.ForeignKeyName ||
+           this.getPropertyType(p) === EntityPropertyType.User)
+        );
 
-          // Get related IDs for foreign keys
-          if (this.getPropertyType(prop) === EntityPropertyType.ForeignKeyName && prop.join_table) {
-            const relatedRecords = this.generatedData.get(prop.join_table) || await this.getExistingRecords(prop.join_table);
-            relatedIds = relatedRecords.map(r => r.id);
+        if (fkProps.length === 2) {
+          // Get IDs for both sides of the relationship
+          const fk1Records = this.generatedData.get(fkProps[0].join_table!) || await this.getExistingRecords(fkProps[0].join_table!);
+          const fk2Records = this.generatedData.get(fkProps[1].join_table!) || await this.getExistingRecords(fkProps[1].join_table!);
 
-            // Ensure we have IDs to reference
-            if (!relatedIds || relatedIds.length === 0) {
-              console.warn(`Warning: No records found for foreign key ${prop.column_name} -> ${prop.join_table}`);
+          const fk1Ids = fk1Records.map(r => r.id);
+          const fk2Ids = fk2Records.map(r => r.id);
+
+          if (fk1Ids.length === 0 || fk2Ids.length === 0) {
+            console.warn(`  Warning: Cannot generate junction records - missing related records`);
+          } else {
+            // Generate unique combinations
+            const usedCombinations = new Set<string>();
+            let attempts = 0;
+            const maxAttempts = recordCount * 10; // Prevent infinite loops
+
+            while (records.length < recordCount && attempts < maxAttempts) {
+              attempts++;
+
+              const fk1Id = faker.helpers.arrayElement(fk1Ids);
+              const fk2Id = faker.helpers.arrayElement(fk2Ids);
+              const combinationKey = `${fk1Id}-${fk2Id}`;
+
+              // Skip if this combination already exists
+              if (usedCombinations.has(combinationKey)) {
+                continue;
+              }
+
+              usedCombinations.add(combinationKey);
+
+              // Junction tables use composite keys (no surrogate id)
+              const record: any = {
+                [fkProps[0].column_name]: fk1Id,
+                [fkProps[1].column_name]: fk2Id,
+              };
+
+              // Add any additional metadata columns (created_at, etc.)
+              for (const prop of props) {
+                if (!fkProps.includes(prop) && prop.column_name !== 'id') {
+                  const value = this.generateFakeValue(prop);
+                  if (value !== null) {
+                    record[prop.column_name] = value;
+                  }
+                }
+              }
+
+              records.push(record);
             }
-          } else if (this.getPropertyType(prop) === EntityPropertyType.User) {
-            relatedIds = userIds;
-          }
 
-          const value = this.generateFakeValue(prop, relatedIds);
-          if (value !== null) {
-            record[prop.column_name] = value;
+            if (records.length < recordCount) {
+              console.warn(`  Warning: Only generated ${records.length}/${recordCount} unique combinations`);
+            }
           }
         }
+      } else {
+        // Normal table handling
+        for (let i = 0; i < recordCount; i++) {
+          const record: any = {
+            id: i + 1  // Generate sequential IDs for foreign key references
+          };
 
-        records.push(record);
+          for (const prop of props) {
+            let relatedIds: any[] | undefined;
+
+            // Get related IDs for foreign keys
+            if (this.getPropertyType(prop) === EntityPropertyType.ForeignKeyName && prop.join_table) {
+              const relatedRecords = this.generatedData.get(prop.join_table) || await this.getExistingRecords(prop.join_table);
+              relatedIds = relatedRecords.map(r => r.id);
+
+              // Ensure we have IDs to reference
+              if (!relatedIds || relatedIds.length === 0) {
+                console.warn(`Warning: No records found for foreign key ${prop.column_name} -> ${prop.join_table}`);
+              }
+            } else if (this.getPropertyType(prop) === EntityPropertyType.User) {
+              relatedIds = userIds;
+            }
+
+            const value = this.generateFakeValue(prop, relatedIds);
+            if (value !== null) {
+              record[prop.column_name] = value;
+            }
+          }
+
+          records.push(record);
+        }
       }
 
       this.generatedData.set(tableName, records);

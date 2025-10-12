@@ -1,6 +1,6 @@
 <div class="prose">
   @if (entity$ | async; as entity) {
-    @if (properties$ | async; as props) {
+    @if (regularProps$ | async; as regularProps) {
       @if (data$ | async; as data) {
         <h1 class="mt-4">{{ entity.display_name }}: {{ data.display_name }}
           @if (entity.update) {
@@ -11,12 +11,33 @@
         </h1>
         <h2>Id: {{data.id}}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 2xl:grid-cols-8 gap-6">
-          @for (prop of props; track prop) {
+          @for (prop of regularProps; track prop) {
             <div [class]="'col-span-full sm:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 3) + ' lg:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 6) + ' 2xl:col-span-' + SchemaService.getColumnSpan(prop)">
               <app-display-property [datum]="data[prop.column_name]" [property]="prop"></app-display-property>
             </div>
           }
         </div>
+
+        <!-- Many-to-Many Relationships Section -->
+        @if (manyToManyProps$ | async; as manyToManyProps) {
+          @if (manyToManyProps.length > 0) {
+            <div class="card bg-base-100 shadow-xl mt-6">
+              <div class="card-body">
+                @for (prop of manyToManyProps; track prop.column_name) {
+                  <app-many-to-many-editor
+                    [entityId]="data.id"
+                    [property]="prop"
+                    [currentValues]="data[prop.column_name] || []"
+                    (relationChanged)="refreshData()">
+                  </app-many-to-many-editor>
+                  @if (!$last) {
+                    <div class="divider"></div>
+                  }
+                }
+              </div>
+            </div>
+          }
+        }
 
         <!-- Inverse Relationships Section -->
         @if (inverseRelationships$ | async; as relationships) {

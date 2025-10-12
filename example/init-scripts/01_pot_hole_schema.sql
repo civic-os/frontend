@@ -63,6 +63,27 @@ CREATE TABLE "public"."WorkPackageStatus" (
 	"display_name" CHARACTER VARYING NOT NULL
 );
 
+-- Tag table (for M:M relationship example)
+CREATE TABLE "public"."Tag" (
+	"id" SERIAL PRIMARY KEY,
+	"name" VARCHAR(50) NOT NULL UNIQUE,
+	"color" VARCHAR(7) DEFAULT '#3B82F6',
+	"description" TEXT,
+	"created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	"updated_at" TIMESTAMPTZ,
+	"display_name" TEXT GENERATED ALWAYS AS (name) STORED
+);
+
+-- Issue_Tags junction table (many-to-many)
+-- This table will be auto-detected as a junction and hidden from menu
+-- Uses composite primary key (PostgreSQL best practice for junction tables)
+CREATE TABLE "public"."issue_tags" (
+	"issue_id" BIGINT NOT NULL,
+	"tag_id" INT NOT NULL,
+	"created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (issue_id, tag_id)
+);
+
 -- Create indexes
 CREATE UNIQUE INDEX "Bid_pkey" ON public."Bid" USING btree (id);
 CREATE UNIQUE INDEX "IssueStatus_display_name_key" ON public."IssueStatus" USING btree (display_name);
@@ -116,6 +137,14 @@ ALTER TABLE "public"."WorkPackage" ADD CONSTRAINT "WorkPackage_status_fkey"
   FOREIGN KEY (status) REFERENCES "WorkPackageStatus"(id) NOT VALID;
 ALTER TABLE "public"."WorkPackage" VALIDATE CONSTRAINT "WorkPackage_status_fkey";
 
+ALTER TABLE "public"."issue_tags" ADD CONSTRAINT "issue_tags_issue_fkey"
+  FOREIGN KEY (issue_id) REFERENCES "Issue"(id) ON DELETE CASCADE NOT VALID;
+ALTER TABLE "public"."issue_tags" VALIDATE CONSTRAINT "issue_tags_issue_fkey";
+
+ALTER TABLE "public"."issue_tags" ADD CONSTRAINT "issue_tags_tag_fkey"
+  FOREIGN KEY (tag_id) REFERENCES "Tag"(id) ON DELETE CASCADE NOT VALID;
+ALTER TABLE "public"."issue_tags" VALIDATE CONSTRAINT "issue_tags_tag_fkey";
+
 -- Grant permissions
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."Bid" TO web_anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."Issue" TO web_anon, authenticated;
@@ -123,6 +152,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."IssueStatus" TO web_anon
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."WorkDetail" TO web_anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."WorkPackage" TO web_anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."WorkPackageStatus" TO web_anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."Tag" TO web_anon, authenticated;
+GRANT SELECT, INSERT, DELETE ON TABLE "public"."issue_tags" TO web_anon, authenticated;
 
 -- Grant sequence permissions
 GRANT USAGE ON SEQUENCE "public"."Bid_id_seq" TO web_anon, authenticated;
@@ -131,6 +162,7 @@ GRANT USAGE ON SEQUENCE "public"."IssueStatus_id_seq" TO web_anon, authenticated
 GRANT USAGE ON SEQUENCE "public"."WorkDetail_id_seq" TO web_anon, authenticated;
 GRANT USAGE ON SEQUENCE "public"."WorkPackage_id_seq" TO web_anon, authenticated;
 GRANT USAGE ON SEQUENCE "public"."WorkPackageStatus_id_seq" TO web_anon, authenticated;
+GRANT USAGE ON SEQUENCE "public"."Tag_id_seq" TO web_anon, authenticated;
 
 -- Enable Row Level Security
 ALTER TABLE "public"."Bid" ENABLE ROW LEVEL SECURITY;
@@ -139,6 +171,8 @@ ALTER TABLE "public"."IssueStatus" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."WorkDetail" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."WorkPackage" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."WorkPackageStatus" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."Tag" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."issue_tags" ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for Bid
 CREATE POLICY "Bid: read permission" ON "public"."Bid"
@@ -272,6 +306,44 @@ CREATE POLICY "WorkPackageStatus: delete permission" ON "public"."WorkPackageSta
   TO PUBLIC
   USING (public.has_permission('WorkPackageStatus', 'delete'));
 
+-- RLS Policies for Tag
+CREATE POLICY "Tag: read permission" ON "public"."Tag"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('Tag', 'read'));
+
+CREATE POLICY "Tag: create permission" ON "public"."Tag"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('Tag', 'create'));
+
+CREATE POLICY "Tag: update permission" ON "public"."Tag"
+  FOR UPDATE
+  TO PUBLIC
+  USING (public.has_permission('Tag', 'update'))
+  WITH CHECK (public.has_permission('Tag', 'update'));
+
+CREATE POLICY "Tag: delete permission" ON "public"."Tag"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('Tag', 'delete'));
+
+-- RLS Policies for issue_tags (junction table)
+CREATE POLICY "issue_tags: read permission" ON "public"."issue_tags"
+  FOR SELECT
+  TO PUBLIC
+  USING (public.has_permission('issue_tags', 'read'));
+
+CREATE POLICY "issue_tags: create permission" ON "public"."issue_tags"
+  FOR INSERT
+  TO PUBLIC
+  WITH CHECK (public.has_permission('issue_tags', 'create'));
+
+CREATE POLICY "issue_tags: delete permission" ON "public"."issue_tags"
+  FOR DELETE
+  TO PUBLIC
+  USING (public.has_permission('issue_tags', 'delete'));
+
 -- Apply timestamp triggers
 CREATE TRIGGER set_created_at_trigger
   BEFORE INSERT ON public."Bid"
@@ -320,6 +392,21 @@ CREATE TRIGGER set_updated_at_trigger
 
 CREATE TRIGGER set_created_at_trigger
   BEFORE INSERT ON public."WorkPackageStatus"
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_created_at();
+
+CREATE TRIGGER set_created_at_trigger
+  BEFORE INSERT ON public."Tag"
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_created_at();
+
+CREATE TRIGGER set_updated_at_trigger
+  BEFORE INSERT OR UPDATE ON public."Tag"
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER set_created_at_trigger
+  BEFORE INSERT ON public."issue_tags"
   FOR EACH ROW
   EXECUTE FUNCTION public.set_created_at();
 

@@ -20,5 +20,24 @@ INSERT INTO "public"."WorkPackageStatus" ("id", "created_at", "display_name") VA
   ('4', '2024-12-14 21:30:47.936383+00', 'Awarded'),
   ('5', '2024-12-14 21:30:53.014772+00', 'Not Selected');
 
+-- Seed Tag data (for many-to-many relationship example)
+INSERT INTO public."Tag" (name, color, description) VALUES
+  ('Urgent', '#EF4444', 'Requires immediate attention'),
+  ('Intersection', '#F59E0B', 'Located at an intersection'),
+  ('School Zone', '#EAB308', 'Near a school'),
+  ('Sidewalk', '#3B82F6', 'Sidewalk-related issue'),
+  ('Road Surface', '#6366F1', 'Road surface damage'),
+  ('Drainage', '#06B6D4', 'Water drainage problem'),
+  ('Lighting', '#8B5CF6', 'Street lighting issue'),
+  ('Signage', '#EC4899', 'Traffic sign or street sign');
+
+-- Metadata: Configure display name and description for Tag entity
+INSERT INTO metadata.entities (table_name, display_name, description, sort_order) VALUES
+  ('Tag', 'Tags', 'Categorization tags for issues', 60)
+ON CONFLICT (table_name) DO UPDATE
+  SET display_name = EXCLUDED.display_name,
+      description = EXCLUDED.description,
+      sort_order = EXCLUDED.sort_order;
+
 -- Notify PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

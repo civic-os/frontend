@@ -17,7 +17,7 @@
 
 
 import { Component, inject, ViewChild, ChangeDetectionStrategy } from '@angular/core';
-import { Observable, mergeMap, of, tap } from 'rxjs';
+import { Observable, mergeMap, of, tap, map } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
@@ -61,16 +61,24 @@ export class CreatePage {
   }));
   public properties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
     if(e) {
+      // Filter OUT M:M properties - they can only be edited on Detail page after entity is created
       let props = this.schema.getPropsForCreate(e)
-        .pipe(tap(props => {
-          this.createForm = new FormGroup(
-            Object.fromEntries(
-              props.map(p => [p.column_name, new FormControl(
-                SchemaService.getDefaultValueForProperty(p),
-                SchemaService.getFormValidatorsForProperty(p))])
-            )
-          );
-        }));
+        .pipe(
+          map(props => props.filter(p => p.type !== EntityPropertyType.ManyToMany)),
+          tap(props => {
+            this.createForm = new FormGroup(
+              Object.fromEntries(
+                props.map(p => [
+                  p.column_name,
+                  new FormControl(
+                    SchemaService.getDefaultValueForProperty(p),
+                    SchemaService.getFormValidatorsForProperty(p)
+                  )
+                ])
+              )
+            );
+          })
+        );
       return props;
     } else {
       return of([]);
@@ -83,7 +91,10 @@ export class CreatePage {
 
   submitForm(contents: any) {
     if(this.entityKey && this.createForm) {
-      this.data.createData(this.entityKey, this.createForm.value)
+      const formData = this.createForm.value;
+
+      // M:M properties are filtered out, so just create the entity directly
+      this.data.createData(this.entityKey, formData)
         .subscribe({
           next: (result) => {
             if(result.success === true) {

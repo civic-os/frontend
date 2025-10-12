@@ -47,7 +47,8 @@ export class AppComponent implements AfterViewInit {
   // Initialize schema on app startup
   private _schemaInit = this.schema.init();
 
-  public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntities();
+  // Menu items exclude detected junction tables (accessible via direct URL)
+  public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntitiesForMenu();
 
   public navigate(key: string) {
     this.router.navigate(['view', key]);

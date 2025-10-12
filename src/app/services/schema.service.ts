@@ -18,8 +18,8 @@
 import { HttpClient } from '@angular/common/http';
 import { effect, inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { Observable, filter, map, of, ReplaySubject, tap } from 'rxjs';
-import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable, InverseRelationshipMeta } from '../interfaces/entity';
+import { Observable, combineLatest, filter, map, of, ReplaySubject, tap } from 'rxjs';
+import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable, InverseRelationshipMeta, ManyToManyMeta } from '../interfaces/entity';
 import { ValidatorFn, Validators } from '@angular/forms';
 
 @Injectable({
@@ -73,16 +73,28 @@ export class SchemaService {
     }));
   }
   public getProperties(): Observable<SchemaEntityProperty[]> {
-    return this.properties ? of(this.properties) : this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_properties')
-    .pipe(
-      map(props => {
-        return props.map(p => {
+    // Return cached properties if available
+    if (this.properties) {
+      return of(this.properties);
+    }
+
+    // Fetch both properties and tables to enable M:M enrichment
+    return combineLatest([
+      this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_properties'),
+      this.getEntities()
+    ]).pipe(
+      map(([props, tables]) => {
+        // First, set property types
+        const typedProps = props.map(p => {
           p.type = this.getPropertyType(p);
           return p;
-        })
+        });
+
+        // Then enrich with M:M virtual properties
+        return this.enrichPropertiesWithManyToMany(typedProps, tables);
       }),
-      tap(props => {
-        this.properties = props;
+      tap(enrichedProps => {
+        this.properties = enrichedProps;
       })
     );
   }
@@ -120,6 +132,17 @@ export class SchemaService {
       EntityPropertyType.Unknown;
   }
   public static propertyToSelectString(prop: SchemaEntityProperty): string {
+    // M:M: Embed junction records with related entity data
+    // Format: junction_table_m2m:junction_table!source_column(related_table!target_column(id,display_name[,color]))
+    if (prop.type == EntityPropertyType.ManyToMany && prop.many_to_many_meta) {
+      const meta = prop.many_to_many_meta;
+      // Build the embedded select string with FK hints
+      // Example: issue_tags_m2m:issue_tags!issue_id(Tag!tag_id(id,display_name,color))
+      // The ! syntax tells PostgREST which FK to follow (required when table has multiple FKs)
+      const fields = meta.relatedTableHasColor ? 'id,display_name,color' : 'id,display_name';
+      return `${prop.column_name}:${meta.junctionTable}!${meta.sourceColumn}(${meta.relatedTable}!${meta.targetColumn}(${fields}))`;
+    }
+
     return (prop.type == EntityPropertyType.User) ? prop.column_name + ':civic_os_users!' + prop.column_name + '(display_name,private:civic_os_users_private(display_name,phone,email))' :
       (prop.join_schema == 'public' && prop.join_column) ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
       (prop.type == EntityPropertyType.GeoPoint) ? prop.column_name + ':' + prop.column_name + '_text' :
@@ -132,6 +155,15 @@ export class SchemaService {
    * Edit forms need primitive IDs for form controls, not display objects.
    */
   public static propertyToSelectStringForEdit(prop: SchemaEntityProperty): string {
+    // M:M: Need full junction data with IDs for edit forms
+    // Format same as detail view - we'll extract IDs in the component
+    if (prop.type === EntityPropertyType.ManyToMany && prop.many_to_many_meta) {
+      const meta = prop.many_to_many_meta;
+      // The ! syntax tells PostgREST which FK to follow (required when table has multiple FKs)
+      const fields = meta.relatedTableHasColor ? 'id,display_name,color' : 'id,display_name';
+      return `${prop.column_name}:${meta.junctionTable}!${meta.sourceColumn}(${meta.relatedTable}!${meta.targetColumn}(${fields}))`;
+    }
+
     // For FK fields in edit forms, we only need the raw ID value
     if (prop.type === EntityPropertyType.ForeignKeyName) {
       return prop.column_name;
@@ -259,10 +291,15 @@ export class SchemaService {
   public getInverseRelationships(targetTable: string): Observable<InverseRelationshipMeta[]> {
     return this.getProperties().pipe(
       map(props => {
+        // Derive junction tables on-demand from properties (no caching needed)
+        const junctionTables = this.getJunctionTableNamesFromProperties(props);
+
         // Find all properties where join_table matches target
+        // But exclude properties from junction tables (they're handled by M:M)
         const inverseProps = props.filter(p =>
           p.join_table === targetTable &&
-          p.join_schema === 'public'
+          p.join_schema === 'public' &&
+          !junctionTables.has(p.table_name)  // Filter out junction tables
         );
 
         // Group by source table to avoid duplicates
@@ -280,6 +317,24 @@ export class SchemaService {
         }));
       })
     );
+  }
+
+  /**
+   * Derive junction table names from enriched properties.
+   * Looks for virtual M:M properties and extracts their junction table names.
+   * This is cheaper than re-detecting from scratch since M:M properties are already identified.
+   */
+  private getJunctionTableNamesFromProperties(props: SchemaEntityProperty[]): Set<string> {
+    const junctionNames = new Set<string>();
+
+    // M:M properties have type ManyToMany and contain junction table metadata
+    props.forEach(p => {
+      if (p.type === EntityPropertyType.ManyToMany && p.many_to_many_meta) {
+        junctionNames.add(p.many_to_many_meta.junctionTable);
+      }
+    });
+
+    return junctionNames;
   }
 
   /**
@@ -325,5 +380,208 @@ export class SchemaService {
     // Default: 5 records
     // Future: check metadata.inverse_relationships table
     return 5;
+  }
+
+  /**
+   * Detect junction tables using structural heuristics.
+   * A junction table must have exactly 2 FKs to 'public' schema and only metadata columns.
+   *
+   * @param tables All entity tables in the schema
+   * @param properties All properties across all tables
+   * @returns Map of junction table name to array of M:M metadata (bidirectional)
+   */
+  private detectJunctionTables(
+    tables: SchemaEntityTable[],
+    properties: SchemaEntityProperty[]
+  ): Map<string, ManyToManyMeta[]> {
+    const junctions = new Map<string, ManyToManyMeta[]>();
+
+    tables.forEach(table => {
+      const tableProps = properties.filter(p => p.table_name === table.table_name);
+
+      // Find all foreign key columns
+      const fkProps = tableProps.filter(p =>
+        p.join_table &&
+        p.join_schema === 'public' &&
+        (p.type === EntityPropertyType.ForeignKeyName || p.type === EntityPropertyType.User)
+      );
+
+      // Must have exactly 2 FKs
+      if (fkProps.length !== 2) {
+        return;
+      }
+
+      // Check for non-metadata columns
+      const metadataColumns = ['id', 'created_at', 'updated_at'];
+      const hasExtraColumns = tableProps.some(p =>
+        !metadataColumns.includes(p.column_name) &&
+        !fkProps.includes(p)
+      );
+
+      if (hasExtraColumns) {
+        return;
+      }
+
+      // This is a junction table! Create M:M metadata for both directions
+      const [fk1, fk2] = fkProps;
+
+      // Check if related tables have 'color' column
+      const fk2TableHasColor = properties.some(p =>
+        p.table_name === fk2.join_table && p.column_name === 'color'
+      );
+      const fk1TableHasColor = properties.some(p =>
+        p.table_name === fk1.join_table && p.column_name === 'color'
+      );
+
+      // Direction 1: fk1.join_table -> fk2.join_table via this junction
+      const meta1: ManyToManyMeta = {
+        junctionTable: table.table_name,
+        sourceTable: fk1.join_table,
+        targetTable: fk2.join_table,
+        sourceColumn: fk1.column_name,
+        targetColumn: fk2.column_name,
+        relatedTable: fk2.join_table,
+        relatedTableDisplayName: this.getDisplayNameForTable(fk2.join_table),
+        showOnSource: true,
+        showOnTarget: true,
+        displayOrder: 100, // Default high sort order (appears after regular props)
+        relatedTableHasColor: fk2TableHasColor
+      };
+
+      // Direction 2: fk2.join_table -> fk1.join_table via this junction
+      const meta2: ManyToManyMeta = {
+        junctionTable: table.table_name,
+        sourceTable: fk2.join_table,
+        targetTable: fk1.join_table,
+        sourceColumn: fk2.column_name,
+        targetColumn: fk1.column_name,
+        relatedTable: fk1.join_table,
+        relatedTableDisplayName: this.getDisplayNameForTable(fk1.join_table),
+        showOnSource: true,
+        showOnTarget: true,
+        displayOrder: 100,
+        relatedTableHasColor: fk1TableHasColor
+      };
+
+      // Store both directions
+      if (!junctions.has(fk1.join_table)) {
+        junctions.set(fk1.join_table, []);
+      }
+      junctions.get(fk1.join_table)!.push(meta1);
+
+      if (!junctions.has(fk2.join_table)) {
+        junctions.set(fk2.join_table, []);
+      }
+      junctions.get(fk2.join_table)!.push(meta2);
+    });
+
+    return junctions;
+  }
+
+  /**
+   * Enrich properties with virtual M:M properties based on detected junctions.
+   * Creates synthetic properties for each M:M relationship.
+   *
+   * @param properties Original properties from database
+   * @param tables All entity tables
+   * @returns Properties array with added virtual M:M properties
+   */
+  private enrichPropertiesWithManyToMany(
+    properties: SchemaEntityProperty[],
+    tables: SchemaEntityTable[]
+  ): SchemaEntityProperty[] {
+    const junctions = this.detectJunctionTables(tables, properties);
+    const enriched: SchemaEntityProperty[] = [...properties];
+
+    // For each junction table, create virtual M:M properties on source/target
+    junctions.forEach((metas, tableName) => {
+      metas.forEach(meta => {
+        // Create a virtual property for the M:M relationship
+        // Use empty string for fields we don't have from database
+        const virtualProp: SchemaEntityProperty = {
+          table_catalog: '',
+          table_schema: 'public',
+          table_name: meta.sourceTable,
+          column_name: `${meta.junctionTable}_m2m`,  // Virtual column name
+          display_name: meta.relatedTableDisplayName,
+          description: `Many-to-many relationship via ${meta.junctionTable}`,
+          sort_order: meta.displayOrder,
+          column_width: 2,  // Full width for multi-select
+          sortable: false,  // M:M not sortable in list view
+          filterable: false, // M:M not filterable (yet)
+          column_default: '',
+          is_nullable: true,  // M:M is always optional
+          data_type: 'many_to_many',
+          character_maximum_length: 0,
+          udt_schema: 'public',
+          udt_name: 'many_to_many',
+          is_self_referencing: false,
+          is_identity: false,
+          is_generated: false,
+          is_updatable: true,
+          join_schema: '',
+          join_table: '',
+          join_column: '',
+          geography_type: '',
+          show_on_list: false,  // Don't show M:M in list by default (too wide)
+          show_on_create: true,
+          show_on_edit: true,
+          show_on_detail: true,
+          type: EntityPropertyType.ManyToMany,
+          many_to_many_meta: meta
+        };
+
+        enriched.push(virtualProp);
+      });
+    });
+
+    return enriched;
+  }
+
+  /**
+   * Get M:M relationships for a given table.
+   * Public method for components to check if table has M:M relationships.
+   *
+   * @param tableName The table to get M:M relationships for
+   * @returns Observable of M:M metadata array (may be empty)
+   */
+  public getManyToManyRelationships(tableName: string): Observable<ManyToManyMeta[]> {
+    return this.getProperties().pipe(
+      map(props => {
+        // Properties are already enriched, just filter for M:M on this table
+        return props
+          .filter(p => p.table_name === tableName && p.type === EntityPropertyType.ManyToMany)
+          .map(p => p.many_to_many_meta!)
+          .filter(meta => meta !== undefined);
+      })
+    );
+  }
+
+  /**
+   * Get all detected junction tables.
+   * Used by ERD service to hide junction tables from diagram.
+   *
+   * @returns Observable of Set of junction table names
+   */
+  public getDetectedJunctionTables(): Observable<Set<string>> {
+    return this.getProperties().pipe(
+      map(props => this.getJunctionTableNamesFromProperties(props))
+    );
+  }
+
+  /**
+   * Get entities for menu display (excluding junction tables).
+   * Junction tables are hidden from the menu but still accessible via direct URL.
+   *
+   * @returns Observable of entities excluding detected junction tables
+   */
+  public getEntitiesForMenu(): Observable<SchemaEntityTable[]> {
+    return this.getDetectedJunctionTables().pipe(
+      map(junctions => {
+        const allTables = this.tables();
+        if (!allTables) return [];
+        return allTables.filter(t => !junctions.has(t.table_name));
+      })
+    );
   }
 }

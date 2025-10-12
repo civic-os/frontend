@@ -55,6 +55,8 @@ export class EditPropertyComponent {
 
   ngOnInit() {
     const prop = this.prop();
+
+    // Load FK options
     if(this.propType() == EntityPropertyType.ForeignKeyName) {
       this.selectOptions$ = this.data.getData({
         key: prop.join_table,

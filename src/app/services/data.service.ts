@@ -17,9 +17,9 @@
 
 import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, filter, map, of } from 'rxjs';
+import { Observable, catchError, filter, forkJoin, map, of } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { EntityData, InverseRelationshipMeta, InverseRelationshipData } from '../interfaces/entity';
+import { EntityData, InverseRelationshipMeta, InverseRelationshipData, ManyToManyMeta } from '../interfaces/entity';
 import { DataQuery } from '../interfaces/query';
 import { ApiError, ApiResponse } from '../interfaces/api';
 import { ErrorService } from './error.service';
@@ -364,6 +364,79 @@ export class DataService {
         previewRecords: records,
         targetId
       }))
+    );
+  }
+
+  /**
+   * Transform M:M data from PostgREST response.
+   * Flattens junction records to just the related entities.
+   *
+   * Input:  [{Tag: {id: 1, display_name: 'Urgent'}}, {Tag: {id: 2, display_name: 'Road'}}]
+   * Output: [{id: 1, display_name: 'Urgent'}, {id: 2, display_name: 'Road'}]
+   *
+   * @param junctionData Array of junction records with embedded related entities
+   * @param relatedTable Name of the related table (used as key in PostgREST embedded resource)
+   * @returns Flattened array of related entity objects
+   */
+  public static transformManyToManyData(junctionData: any[], relatedTable: string): any[] {
+    if (!junctionData || !Array.isArray(junctionData)) {
+      return [];
+    }
+
+    return junctionData
+      .map(record => record[relatedTable])
+      .filter(item => item !== null && item !== undefined);
+  }
+
+  /**
+   * Add a single many-to-many relationship (immediate save).
+   * Used by ManyToManyEditorComponent on Detail page.
+   *
+   * @param entityId The source entity ID
+   * @param meta M:M relationship metadata
+   * @param targetId The related entity ID to add
+   * @returns Observable of API response
+   */
+  public addManyToManyRelation(
+    entityId: number | string,
+    meta: ManyToManyMeta,
+    targetId: number
+  ): Observable<ApiResponse> {
+    return this.http.post(
+      environment.postgrestUrl + meta.junctionTable,
+      {
+        [meta.sourceColumn]: entityId,
+        [meta.targetColumn]: targetId
+      },
+      { headers: { Prefer: 'return=minimal' } }
+    ).pipe(
+      map(() => ({ success: true, body: null })),
+      catchError(err => this.parseApiError(err))
+    );
+  }
+
+  /**
+   * Remove a single many-to-many relationship (immediate save).
+   * Used by ManyToManyEditorComponent on Detail page.
+   *
+   * @param entityId The source entity ID
+   * @param meta M:M relationship metadata
+   * @param targetId The related entity ID to remove
+   * @returns Observable of API response
+   */
+  public removeManyToManyRelation(
+    entityId: number | string,
+    meta: ManyToManyMeta,
+    targetId: number
+  ): Observable<ApiResponse> {
+    // Delete by composite key (issue_id, tag_id)
+    const filter = `${meta.sourceColumn}=eq.${entityId}&${meta.targetColumn}=eq.${targetId}`;
+
+    return this.http.delete(
+      environment.postgrestUrl + meta.junctionTable + '?' + filter
+    ).pipe(
+      map(() => ({ success: true, body: null })),
+      catchError(err => this.parseApiError(err))
     );
   }
 }

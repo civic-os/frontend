@@ -3,7 +3,8 @@
     "Issue": 25,
     "WorkPackage": 2,
     "Bid": 10,
-    "WorkDetail": 50
+    "WorkDetail": 50,
+    "issue_tags": 75
   },
   "geographyBounds": {
     "minLat": 42.9745,
@@ -13,7 +14,8 @@
   },
   "excludeTables": [
     "IssueStatus",
-    "WorkPackageStatus"
+    "WorkPackageStatus",
+    "Tag"
   ],
   "outputFormat": "sql",
   "outputPath": "./example/init-scripts/04_mock_data.sql",

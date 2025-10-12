@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../interfaces/entity';
+import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable, ManyToManyMeta } from '../interfaces/entity';
 
 /**
  * Creates a mock SchemaEntityTable with sensible defaults.
@@ -209,6 +209,27 @@ export const MOCK_ENTITIES = {
 };
 
 /**
+ * Creates a mock ManyToManyMeta object with sensible defaults.
+ * Override any properties as needed for specific test cases.
+ */
+export function createMockManyToManyMeta(overrides?: Partial<ManyToManyMeta>): ManyToManyMeta {
+  return {
+    junctionTable: 'issue_tags',
+    sourceTable: 'Issue',
+    targetTable: 'tags',
+    sourceColumn: 'issue_id',
+    targetColumn: 'tag_id',
+    relatedTable: 'tags',
+    relatedTableDisplayName: 'Tags',
+    showOnSource: true,
+    showOnTarget: true,
+    displayOrder: 100,
+    relatedTableHasColor: true,
+    ...overrides
+  };
+}
+
+/**
  * Mock data samples for testing DisplayPropertyComponent
  */
 export const MOCK_DATA = {
@@ -229,3 +250,97 @@ export const MOCK_DATA = {
   geoPoint: { location: 'POINT(-83.6875 43.0125)' },
   geoPointNull: { location: null }
 };
+
+/**
+ * Mock M:M property with complete metadata for testing ManyToManyEditorComponent
+ */
+export const MOCK_M2M_PROPERTY = createMockProperty({
+  column_name: 'tags',
+  display_name: 'Tags',
+  table_name: 'Issue',
+  udt_name: '_junction_',
+  type: EntityPropertyType.ManyToMany,
+  many_to_many_meta: createMockManyToManyMeta()
+});
+
+/**
+ * Mock related entity data with colors (for M:M display/edit testing)
+ */
+export const MOCK_RELATED_DATA = [
+  { id: 1, display_name: 'Urgent', color: '#FF0000', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+  { id: 2, display_name: 'Road Surface', color: '#00FF00', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+  { id: 3, display_name: 'Sidewalk', color: '#0000FF', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+  { id: 4, display_name: 'Lighting', color: '#FFFF00', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' },
+  { id: 5, display_name: 'Drainage', color: '#FF00FF', created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z' }
+];
+
+/**
+ * Mock junction table properties for testing junction detection logic.
+ * This represents a clean junction table with exactly 2 FKs and only metadata columns.
+ */
+export const MOCK_JUNCTION_PROPERTIES = [
+  createMockProperty({
+    table_name: 'issue_tags',
+    column_name: 'issue_id',
+    display_name: 'Issue ID',
+    udt_name: 'int8',
+    join_schema: 'public',
+    join_table: 'Issue',
+    join_column: 'id',
+    type: EntityPropertyType.ForeignKeyName
+  }),
+  createMockProperty({
+    table_name: 'issue_tags',
+    column_name: 'tag_id',
+    display_name: 'Tag ID',
+    udt_name: 'int4',
+    join_schema: 'public',
+    join_table: 'tags',
+    join_column: 'id',
+    type: EntityPropertyType.ForeignKeyName
+  }),
+  createMockProperty({
+    table_name: 'issue_tags',
+    column_name: 'created_at',
+    display_name: 'Created At',
+    udt_name: 'timestamptz',
+    is_generated: true,
+    is_updatable: false,
+    type: EntityPropertyType.DateTime
+  })
+];
+
+/**
+ * Mock non-junction table properties (has extra business columns).
+ * This table has 2+ FKs but also has non-metadata columns, so it should NOT be detected as a junction table.
+ */
+export const MOCK_NON_JUNCTION_PROPERTIES = [
+  createMockProperty({
+    table_name: 'user_roles',
+    column_name: 'user_id',
+    udt_name: 'uuid',
+    join_table: 'civic_os_users',
+    type: EntityPropertyType.User
+  }),
+  createMockProperty({
+    table_name: 'user_roles',
+    column_name: 'role_id',
+    udt_name: 'int4',
+    join_table: 'roles',
+    type: EntityPropertyType.ForeignKeyName
+  }),
+  createMockProperty({
+    table_name: 'user_roles',
+    column_name: 'granted_by',
+    display_name: 'Granted By',
+    udt_name: 'uuid',
+    join_table: 'civic_os_users',
+    type: EntityPropertyType.User
+  }),
+  createMockProperty({
+    table_name: 'user_roles',
+    column_name: 'granted_at',
+    udt_name: 'timestamptz',
+    type: EntityPropertyType.DateTime
+  })
+];

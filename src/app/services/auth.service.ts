@@ -20,6 +20,9 @@ import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType, KeycloakService, ReadyArgs, t
 import Keycloak from 'keycloak-js';
 import { DataService } from './data.service';
 import { SchemaService } from './schema.service';
+import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, of } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -28,6 +31,7 @@ export class AuthService {
   private data = inject(DataService);
   private schema = inject(SchemaService);
   private keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
+  private http = inject(HttpClient);
 
   authenticated = signal(false);
   userRoles = signal<string[]>([]);
@@ -92,6 +96,29 @@ export class AuthService {
 
   isAdmin(): boolean {
     return this.hasRole('admin');
+  }
+
+  /**
+   * Check if the current user has a specific permission on a table.
+   * Calls the PostgreSQL has_permission RPC function.
+   *
+   * @param tableName The name of the table to check
+   * @param permission The permission to check: 'create', 'read', 'update', or 'delete'
+   * @returns Observable<boolean> - true if user has the permission, false otherwise
+   */
+  hasPermission(tableName: string, permission: string): Observable<boolean> {
+    return this.http.post<boolean>(
+      environment.postgrestUrl + 'rpc/has_permission',
+      {
+        p_table_name: tableName,
+        p_permission: permission
+      }
+    ).pipe(
+      catchError((error) => {
+        console.error(`Error checking permission ${permission} on ${tableName}:`, error);
+        return of(false);
+      })
+    );
   }
 
   login() {

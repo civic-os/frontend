@@ -126,6 +126,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', []);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
 
@@ -141,6 +142,7 @@ describe('SchemaService', () => {
         });
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', []);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
   });
@@ -322,6 +324,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
 
@@ -337,6 +340,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
   });
@@ -355,6 +359,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
 
@@ -370,6 +375,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
 
@@ -386,6 +392,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
 
@@ -404,6 +411,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
   });
@@ -421,6 +429,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
 
@@ -439,6 +448,7 @@ describe('SchemaService', () => {
         done();
       });
 
+      expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
   });
@@ -460,6 +470,7 @@ describe('SchemaService', () => {
           done();
         });
 
+        expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
         expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
       });
     });
@@ -477,6 +488,7 @@ describe('SchemaService', () => {
           done();
         });
 
+        expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
         expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
       });
 
@@ -497,6 +509,7 @@ describe('SchemaService', () => {
           done();
         });
 
+        expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
         expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
       });
     });
@@ -516,6 +529,7 @@ describe('SchemaService', () => {
           done();
         });
 
+        expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
         expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
       });
     });
@@ -533,6 +547,7 @@ describe('SchemaService', () => {
           done();
         });
 
+        expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
         expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
       });
     });
@@ -700,12 +715,435 @@ describe('SchemaService', () => {
     it('should trigger background refresh of schema and properties', () => {
       service.refreshCache();
 
-      // Should make HTTP requests for both endpoints
-      const entitiesReq = httpMock.expectOne(req => req.url.includes('schema_entities'));
+      // refreshCache() calls getSchema() and getProperties()
+      // getProperties() internally calls getEntities() which may trigger another getSchema()
+      // So we may get 2 schema_entities requests (race condition) and 1 schema_properties request
+      const requests = httpMock.match(req => req.url.includes('schema_entities'));
       const propsReq = httpMock.expectOne(req => req.url.includes('schema_properties'));
 
-      entitiesReq.flush([]);
+      // Flush all schema_entities requests (there may be 1 or 2 depending on timing)
+      requests.forEach(req => req.flush([]));
       propsReq.flush([]);
+    });
+  });
+
+  describe('Many-to-Many Detection', () => {
+    it('should detect junction table with exactly 2 FKs and only metadata columns', () => {
+      const tables = [createMockEntity({ table_name: 'issue_tags' })];
+      const junctionProps = [
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'issue_id',
+          udt_name: 'int8',
+          join_schema: 'public',
+          join_table: 'Issue',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'tag_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'tags',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'created_at',
+          udt_name: 'timestamptz',
+          is_generated: true,
+          is_updatable: false,
+          type: EntityPropertyType.DateTimeLocal
+        })
+      ];
+
+      const result = (service as any).detectJunctionTables(tables, junctionProps);
+      // Should detect issue_tags as a junction table (returns M:M metadata for both sides)
+      expect(result.size).toBeGreaterThan(0);
+      expect(result.has('Issue') || result.has('tags')).toBe(true);
+    });
+
+    it('should not detect junction table with only 1 FK', () => {
+      const tables = [createMockEntity({ table_name: 'Issue' })];
+      const props = [
+        createMockProperty({
+          table_name: 'Issue',
+          column_name: 'status_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'statuses',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        createMockProperty({
+          table_name: 'Issue',
+          column_name: 'name',
+          udt_name: 'varchar',
+          type: EntityPropertyType.TextShort
+        })
+      ];
+
+      const result = (service as any).detectJunctionTables(tables, props);
+      // Should not detect Issue as a junction table (only 1 FK)
+      expect(result.size).toBe(0);
+    });
+
+    it('should not detect junction table with 3+ FKs', () => {
+      const tables = [createMockEntity({ table_name: 'assignment' })];
+      const props = [
+        createMockProperty({
+          table_name: 'assignment',
+          column_name: 'user_id',
+          udt_name: 'uuid',
+          join_schema: 'public',
+          join_table: 'civic_os_users',
+          join_column: 'id',
+          type: EntityPropertyType.User
+        }),
+        createMockProperty({
+          table_name: 'assignment',
+          column_name: 'role_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'roles',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        createMockProperty({
+          table_name: 'assignment',
+          column_name: 'granted_by',
+          udt_name: 'uuid',
+          join_schema: 'public',
+          join_table: 'civic_os_users',
+          join_column: 'id',
+          type: EntityPropertyType.User
+        })
+      ];
+
+      const result = (service as any).detectJunctionTables(tables, props);
+      // Should not detect assignment as a junction table (3 FKs)
+      expect(result.size).toBe(0);
+    });
+
+    it('should not detect junction table with extra business columns', () => {
+      const tables = [createMockEntity({ table_name: 'user_roles' })];
+      const props = [
+        createMockProperty({
+          table_name: 'user_roles',
+          column_name: 'user_id',
+          udt_name: 'uuid',
+          join_schema: 'public',
+          join_table: 'civic_os_users',
+          join_column: 'id',
+          type: EntityPropertyType.User
+        }),
+        createMockProperty({
+          table_name: 'user_roles',
+          column_name: 'role_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'roles',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        createMockProperty({
+          table_name: 'user_roles',
+          column_name: 'notes',
+          udt_name: 'text',
+          type: EntityPropertyType.TextLong
+        }),
+        createMockProperty({
+          table_name: 'user_roles',
+          column_name: 'granted_at',
+          udt_name: 'timestamptz',
+          type: EntityPropertyType.DateTimeLocal
+        })
+      ];
+
+      const result = (service as any).detectJunctionTables(tables, props);
+      // Should not detect user_roles as a junction table (has extra business columns)
+      expect(result.size).toBe(0);
+    });
+
+    it('should accept id column as metadata (for backwards compatibility)', () => {
+      const tables = [createMockEntity({ table_name: 'issue_tags' })];
+      const props = [
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'id',
+          udt_name: 'int4',
+          is_identity: true,
+          type: EntityPropertyType.IntegerNumber
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'issue_id',
+          udt_name: 'int8',
+          join_schema: 'public',
+          join_table: 'Issue',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'tag_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'tags',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        })
+      ];
+
+      const result = (service as any).detectJunctionTables(tables, props);
+      // Should detect issue_tags as a junction table (id column is allowed metadata)
+      expect(result.size).toBeGreaterThan(0);
+      expect(result.has('Issue') || result.has('tags')).toBe(true);
+    });
+
+    it('should generate ManyToMany property for each side of relationship', (done) => {
+      const entities: SchemaEntityTable[] = [
+        createMockEntity({ table_name: 'Issue', display_name: 'Issues' }),
+        createMockEntity({ table_name: 'tags', display_name: 'Tags' }),
+        createMockEntity({ table_name: 'issue_tags', display_name: 'Issue Tags' })
+      ];
+
+      const issueProps = [
+        createMockProperty({ table_name: 'Issue', column_name: 'id', udt_name: 'int8' }),
+        createMockProperty({ table_name: 'Issue', column_name: 'display_name', udt_name: 'varchar' })
+      ];
+
+      const tagProps = [
+        createMockProperty({ table_name: 'tags', column_name: 'id', udt_name: 'int4' }),
+        createMockProperty({ table_name: 'tags', column_name: 'display_name', udt_name: 'varchar' }),
+        createMockProperty({ table_name: 'tags', column_name: 'color', udt_name: 'varchar' })
+      ];
+
+      const junctionProps = [
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'issue_id',
+          udt_name: 'int8',
+          join_schema: 'public',
+          join_table: 'Issue',
+          join_column: 'id'
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'tag_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'tags',
+          join_column: 'id'
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'created_at',
+          udt_name: 'timestamptz',
+          is_generated: true
+        })
+      ];
+
+      const allProps = [...issueProps, ...tagProps, ...junctionProps];
+
+      // Call getPropertiesForEntity for Issue (triggers M:M enrichment)
+      service.getPropertiesForEntity(entities[0]).subscribe(props => {
+        // Find the M:M property
+        const m2mProp = props.find(p => p.type === EntityPropertyType.ManyToMany);
+
+        expect(m2mProp).toBeDefined();
+        expect(m2mProp?.column_name).toBe('issue_tags_m2m');
+        expect(m2mProp?.display_name).toBe('Tags');
+        expect(m2mProp?.many_to_many_meta).toBeDefined();
+        expect(m2mProp?.many_to_many_meta?.junctionTable).toBe('issue_tags');
+        expect(m2mProp?.many_to_many_meta?.sourceTable).toBe('Issue');
+        expect(m2mProp?.many_to_many_meta?.targetTable).toBe('tags');
+        expect(m2mProp?.many_to_many_meta?.sourceColumn).toBe('issue_id');
+        expect(m2mProp?.many_to_many_meta?.targetColumn).toBe('tag_id');
+        expect(m2mProp?.many_to_many_meta?.relatedTableHasColor).toBe(true);
+
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', allProps);
+      expectPostgrestRequest(httpMock, 'schema_entities', entities);
+    });
+
+    it('should generate bidirectional M:M properties', (done) => {
+      const entities: SchemaEntityTable[] = [
+        createMockEntity({ table_name: 'Issue', display_name: 'Issues' }),
+        createMockEntity({ table_name: 'tags', display_name: 'Tags' }),
+        createMockEntity({ table_name: 'issue_tags', display_name: 'Issue Tags' })
+      ];
+
+      const allProps = [
+        createMockProperty({ table_name: 'Issue', column_name: 'id', udt_name: 'int8' }),
+        createMockProperty({ table_name: 'tags', column_name: 'id', udt_name: 'int4' }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'issue_id',
+          udt_name: 'int8',
+          join_schema: 'public',
+          join_table: 'Issue',
+          join_column: 'id'
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'tag_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'tags',
+          join_column: 'id'
+        })
+      ];
+
+      // Get properties for tags table (triggers M:M enrichment)
+      service.getPropertiesForEntity(entities[1]).subscribe(props => {
+        const m2mProp = props.find(p => p.type === EntityPropertyType.ManyToMany);
+
+        expect(m2mProp).toBeDefined();
+        expect(m2mProp?.column_name).toBe('issue_tags_m2m');
+        expect(m2mProp?.display_name).toBe('Issues');
+        expect(m2mProp?.many_to_many_meta?.junctionTable).toBe('issue_tags');
+        expect(m2mProp?.many_to_many_meta?.sourceTable).toBe('tags');
+        expect(m2mProp?.many_to_many_meta?.targetTable).toBe('Issue');
+        expect(m2mProp?.many_to_many_meta?.sourceColumn).toBe('tag_id');
+        expect(m2mProp?.many_to_many_meta?.targetColumn).toBe('issue_id');
+
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', allProps);
+      expectPostgrestRequest(httpMock, 'schema_entities', entities);
+    });
+
+    it('should set relatedTableHasColor=true when related table has color column', (done) => {
+      const entities: SchemaEntityTable[] = [
+        createMockEntity({ table_name: 'Issue', display_name: 'Issues' }),
+        createMockEntity({ table_name: 'tags', display_name: 'Tags' }),
+        createMockEntity({ table_name: 'issue_tags', display_name: 'Issue Tags' })
+      ];
+
+      const allProps = [
+        createMockProperty({ table_name: 'Issue', column_name: 'id', udt_name: 'int8' }),
+        createMockProperty({ table_name: 'tags', column_name: 'id', udt_name: 'int4' }),
+        createMockProperty({ table_name: 'tags', column_name: 'color', udt_name: 'varchar' }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'issue_id',
+          udt_name: 'int8',
+          join_schema: 'public',
+          join_table: 'Issue',
+          join_column: 'id'
+        }),
+        createMockProperty({
+          table_name: 'issue_tags',
+          column_name: 'tag_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'tags',
+          join_column: 'id'
+        })
+      ];
+
+      service.getPropertiesForEntity(entities[0]).subscribe(props => {
+        const m2mProp = props.find(p => p.type === EntityPropertyType.ManyToMany);
+        expect(m2mProp?.many_to_many_meta?.relatedTableHasColor).toBe(true);
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', allProps);
+      expectPostgrestRequest(httpMock, 'schema_entities', entities);
+    });
+
+    it('should set relatedTableHasColor=false when related table has no color column', (done) => {
+      const entities: SchemaEntityTable[] = [
+        createMockEntity({ table_name: 'Issue', display_name: 'Issues' }),
+        createMockEntity({ table_name: 'categories', display_name: 'Categories' }),
+        createMockEntity({ table_name: 'issue_categories', display_name: 'Issue Categories' })
+      ];
+
+      const allProps = [
+        createMockProperty({ table_name: 'Issue', column_name: 'id', udt_name: 'int8' }),
+        createMockProperty({ table_name: 'categories', column_name: 'id', udt_name: 'int4' }),
+        createMockProperty({
+          table_name: 'issue_categories',
+          column_name: 'issue_id',
+          udt_name: 'int8',
+          join_schema: 'public',
+          join_table: 'Issue',
+          join_column: 'id'
+        }),
+        createMockProperty({
+          table_name: 'issue_categories',
+          column_name: 'category_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'categories',
+          join_column: 'id'
+        })
+      ];
+
+      service.getPropertiesForEntity(entities[0]).subscribe(props => {
+        const m2mProp = props.find(p => p.type === EntityPropertyType.ManyToMany);
+        expect(m2mProp?.many_to_many_meta?.relatedTableHasColor).toBe(false);
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_properties', allProps);
+      expectPostgrestRequest(httpMock, 'schema_entities', entities);
+    });
+
+    it('should build PostgREST select string for M:M properties', () => {
+      const m2mProp = createMockProperty({
+        column_name: 'tags',
+        display_name: 'Tags',
+        type: EntityPropertyType.ManyToMany,
+        many_to_many_meta: {
+          junctionTable: 'issue_tags',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        }
+      });
+
+      const result = SchemaService.propertyToSelectString(m2mProp);
+      // Format: column_name:junctionTable!sourceColumn(relatedTable!targetColumn(fields))
+      expect(result).toBe('tags:issue_tags!issue_id(tags!tag_id(id,display_name,color))');
+    });
+
+    it('should build PostgREST select string for M:M without color', () => {
+      const m2mProp = createMockProperty({
+        column_name: 'categories',
+        display_name: 'Categories',
+        type: EntityPropertyType.ManyToMany,
+        many_to_many_meta: {
+          junctionTable: 'issue_categories',
+          sourceTable: 'Issue',
+          targetTable: 'categories',
+          sourceColumn: 'issue_id',
+          targetColumn: 'category_id',
+          relatedTable: 'categories',
+          relatedTableDisplayName: 'Categories',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: false
+        }
+      });
+
+      const result = SchemaService.propertyToSelectString(m2mProp);
+      // Format: column_name:junctionTable!sourceColumn(relatedTable!targetColumn(fields))
+      expect(result).toBe('categories:issue_categories!issue_id(categories!category_id(id,display_name))');
     });
   });
 });

@@ -58,6 +58,9 @@ export interface SchemaEntityProperty {
     show_on_detail?: boolean,
 
     type: EntityPropertyType, // Calculated in Schema Service
+
+    // NEW: M:M metadata (populated when type === ManyToMany)
+    many_to_many_meta?: ManyToManyMeta;
 }
 
 export enum EntityPropertyType {
@@ -74,6 +77,7 @@ export enum EntityPropertyType {
     ForeignKeyName,
     User,
     GeoPoint,
+    ManyToMany,
 }
 
 export interface EntityData {
@@ -106,4 +110,33 @@ export interface InverseRelationshipData {
     totalCount: number;
     previewRecords: EntityData[];
     targetId: string | number;
+}
+
+/**
+ * Metadata for a many-to-many relationship.
+ * Describes one side of a bidirectional M:M relationship via junction table.
+ */
+export interface ManyToManyMeta {
+    // Junction table info
+    junctionTable: string;
+
+    // The two entities in the relationship
+    sourceTable: string;       // The entity we're viewing/editing
+    targetTable: string;       // The related entity (other side)
+
+    // Foreign key columns in junction table
+    sourceColumn: string;      // FK to source (e.g., 'issue_id')
+    targetColumn: string;      // FK to target (e.g., 'tag_id')
+
+    // Display info for the related entity
+    relatedTable: string;           // Same as targetTable (convenience)
+    relatedTableDisplayName: string; // Human-readable (e.g., 'Tags')
+
+    // Configuration
+    showOnSource: boolean;     // Show this M:M on source entity forms
+    showOnTarget: boolean;     // Show this M:M on target entity forms
+    displayOrder: number;      // Sort order in property list
+
+    // Optional fields on related table
+    relatedTableHasColor: boolean;  // Whether related table has 'color' column
 }

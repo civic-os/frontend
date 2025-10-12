@@ -29,7 +29,15 @@ INSERT INTO metadata.permissions (table_name, permission) VALUES
   ('WorkPackageStatus', 'read'),
   ('WorkPackageStatus', 'create'),
   ('WorkPackageStatus', 'update'),
-  ('WorkPackageStatus', 'delete')
+  ('WorkPackageStatus', 'delete'),
+  ('Tag', 'read'),
+  ('Tag', 'create'),
+  ('Tag', 'update'),
+  ('Tag', 'delete'),
+  ('issue_tags', 'read'),
+  ('issue_tags', 'create'),
+  ('issue_tags', 'update'),
+  ('issue_tags', 'delete')
 ON CONFLICT (table_name, permission) DO NOTHING;
 
 -- Grant read permission to all roles for all tables
@@ -37,7 +45,7 @@ INSERT INTO metadata.permission_roles (permission_id, role_id)
 SELECT p.id, r.id
 FROM metadata.permissions p
 CROSS JOIN metadata.roles r
-WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage', 'WorkPackageStatus')
+WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage', 'WorkPackageStatus', 'Tag', 'issue_tags')
   AND p.permission = 'read'
   AND r.display_name IN ('anonymous', 'user', 'editor', 'admin')
 ON CONFLICT DO NOTHING;
@@ -47,7 +55,7 @@ INSERT INTO metadata.permission_roles (permission_id, role_id)
 SELECT p.id, r.id
 FROM metadata.permissions p
 CROSS JOIN metadata.roles r
-WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage', 'WorkPackageStatus')
+WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage', 'WorkPackageStatus', 'Tag', 'issue_tags')
   AND p.permission IN ('create', 'update')
   AND r.display_name IN ('user', 'editor', 'admin')
 ON CONFLICT DO NOTHING;
@@ -57,7 +65,7 @@ INSERT INTO metadata.permission_roles (permission_id, role_id)
 SELECT p.id, r.id
 FROM metadata.permissions p
 CROSS JOIN metadata.roles r
-WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage', 'WorkPackageStatus')
+WHERE p.table_name IN ('Bid', 'Issue', 'IssueStatus', 'WorkDetail', 'WorkPackage', 'WorkPackageStatus', 'Tag', 'issue_tags')
   AND p.permission = 'delete'
   AND r.display_name IN ('editor', 'admin')
 ON CONFLICT DO NOTHING;

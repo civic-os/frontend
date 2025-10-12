@@ -25,6 +25,9 @@ import { DataService } from '../../services/data.service';
 
 import { CommonModule } from '@angular/common';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
+import { ManyToManyEditorComponent } from '../../components/many-to-many-editor/many-to-many-editor.component';
+import { Subject, startWith } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 @Component({
     selector: 'app-detail',
@@ -34,7 +37,8 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
     imports: [
     CommonModule,
     RouterModule,
-    DisplayPropertyComponent
+    DisplayPropertyComponent,
+    ManyToManyEditorComponent
 ]
 })
 export class DetailPage {
@@ -45,6 +49,9 @@ export class DetailPage {
   // Expose Math and SchemaService to template
   protected readonly Math = Math;
   protected readonly SchemaService = SchemaService;
+
+  // Refresh trigger for M:M changes
+  private refreshTrigger$ = new Subject<void>();
 
   public entityKey?: string;
   public entityId?: string;
@@ -65,12 +72,39 @@ export class DetailPage {
       return of([]);
     }
   }));
-  public data$: Observable<any> = this.properties$.pipe(mergeMap(props => {
+
+  // Separate regular properties from M:M properties
+  public regularProps$: Observable<SchemaEntityProperty[]> = this.properties$.pipe(
+    map(props => props.filter(p => p.type !== EntityPropertyType.ManyToMany))
+  );
+
+  public manyToManyProps$: Observable<SchemaEntityProperty[]> = this.properties$.pipe(
+    map(props => props.filter(p => p.type === EntityPropertyType.ManyToMany))
+  );
+
+  public data$: Observable<any> = combineLatest([this.properties$, this.refreshTrigger$.pipe(startWith(null))]).pipe(
+    mergeMap(([props, _]) => {
     if(props && props.length > 0 && this.entityKey) {
       let columns = props
         .map(x => SchemaService.propertyToSelectString(x));
       return this.data.getData({key: this.entityKey, fields: columns, entityId: this.entityId})
-        .pipe(map(x => x[0]));
+        .pipe(map(results => {
+          const data = results[0];
+
+          // Transform M:M junction data to flat arrays of related entities
+          props.forEach(p => {
+            if (p.type === EntityPropertyType.ManyToMany && p.many_to_many_meta) {
+              const dataAny = data as any;
+              const junctionData = dataAny[p.column_name] || [];
+              dataAny[p.column_name] = DataService.transformManyToManyData(
+                junctionData,
+                p.many_to_many_meta.relatedTable
+              );
+            }
+          });
+
+          return data;
+        }));
     } else {
       return of(undefined);
     }
@@ -117,4 +151,9 @@ export class DetailPage {
 
   // Threshold for showing preview vs "View all" only
   readonly LARGE_RELATIONSHIP_THRESHOLD = 20;
+
+  // Refresh data after M:M changes
+  refreshData() {
+    this.refreshTrigger$.next();
+  }
 }

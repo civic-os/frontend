@@ -699,4 +699,261 @@ describe('DataService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('Many-to-Many Relationships', () => {
+    describe('addManyToManyRelation()', () => {
+      it('should POST junction record with correct columns', (done) => {
+        const meta = {
+          junctionTable: 'issue_tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        };
+
+        service.addManyToManyRelation(5, meta, 3).subscribe(response => {
+          expect(response.success).toBe(true);
+          done();
+        });
+
+        const req = httpMock.expectOne(environment.postgrestUrl + 'issue_tags');
+        expect(req.request.method).toBe('POST');
+        expect(req.request.body).toEqual({
+          issue_id: 5,
+          tag_id: 3
+        });
+        req.flush({});
+      });
+
+      it('should handle string entity IDs', (done) => {
+        const meta = {
+          junctionTable: 'user_roles',
+          sourceColumn: 'user_id',
+          targetColumn: 'role_id',
+          sourceTable: 'civic_os_users',
+          targetTable: 'roles',
+          relatedTable: 'roles',
+          relatedTableDisplayName: 'Roles',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: false
+        };
+
+        service.addManyToManyRelation('abc-123-uuid', meta, 2).subscribe(response => {
+          expect(response.success).toBe(true);
+          done();
+        });
+
+        const req = httpMock.expectOne(environment.postgrestUrl + 'user_roles');
+        expect(req.request.body).toEqual({
+          user_id: 'abc-123-uuid',
+          role_id: 2
+        });
+        req.flush({});
+      });
+
+      it('should return success=false on duplicate key error', (done) => {
+        const meta = {
+          junctionTable: 'issue_tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        };
+
+        service.addManyToManyRelation(5, meta, 3).subscribe(response => {
+          expect(response.success).toBe(false);
+          expect(response.error).toBeDefined();
+          done();
+        });
+
+        const req = httpMock.expectOne(environment.postgrestUrl + 'issue_tags');
+        req.flush(
+          { message: 'duplicate key value violates unique constraint', code: '23505' },
+          { status: 409, statusText: 'Conflict' }
+        );
+      });
+
+      it('should handle permission errors', (done) => {
+        const meta = {
+          junctionTable: 'issue_tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        };
+
+        service.addManyToManyRelation(5, meta, 3).subscribe(response => {
+          expect(response.success).toBe(false);
+          expect(response.error).toBeDefined();
+          done();
+        });
+
+        const req = httpMock.expectOne(environment.postgrestUrl + 'issue_tags');
+        req.flush(
+          { message: 'permission denied for table issue_tags', code: '42501' },
+          { status: 403, statusText: 'Forbidden' }
+        );
+      });
+    });
+
+    describe('removeManyToManyRelation()', () => {
+      it('should DELETE junction record with composite key filter', (done) => {
+        const meta = {
+          junctionTable: 'issue_tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        };
+
+        service.removeManyToManyRelation(5, meta, 3).subscribe(response => {
+          expect(response.success).toBe(true);
+          done();
+        });
+
+        const req = httpMock.expectOne(req =>
+          req.url.includes('issue_tags?issue_id=eq.5&tag_id=eq.3')
+        );
+        expect(req.request.method).toBe('DELETE');
+        req.flush({});
+      });
+
+      it('should handle string entity IDs in filter', (done) => {
+        const meta = {
+          junctionTable: 'user_roles',
+          sourceColumn: 'user_id',
+          targetColumn: 'role_id',
+          sourceTable: 'civic_os_users',
+          targetTable: 'roles',
+          relatedTable: 'roles',
+          relatedTableDisplayName: 'Roles',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: false
+        };
+
+        service.removeManyToManyRelation('abc-123-uuid', meta, 2).subscribe(response => {
+          expect(response.success).toBe(true);
+          done();
+        });
+
+        const req = httpMock.expectOne(req =>
+          req.url.includes('user_roles?user_id=eq.abc-123-uuid&role_id=eq.2')
+        );
+        expect(req.request.method).toBe('DELETE');
+        req.flush({});
+      });
+
+      it('should return success even when no rows deleted (PostgREST behavior)', (done) => {
+        const meta = {
+          junctionTable: 'issue_tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        };
+
+        service.removeManyToManyRelation(5, meta, 999).subscribe(response => {
+          // PostgREST returns 200 even if no rows matched, which is standard REST behavior
+          expect(response.success).toBe(true);
+          done();
+        });
+
+        const req = httpMock.expectOne(req =>
+          req.url.includes('issue_tags?issue_id=eq.5&tag_id=eq.999')
+        );
+        req.flush([], { status: 200, statusText: 'OK' }); // Empty response but still success
+      });
+
+      it('should handle permission errors', (done) => {
+        const meta = {
+          junctionTable: 'issue_tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        };
+
+        service.removeManyToManyRelation(5, meta, 3).subscribe(response => {
+          expect(response.success).toBe(false);
+          expect(response.error).toBeDefined();
+          done();
+        });
+
+        const req = httpMock.expectOne(req =>
+          req.url.includes('issue_tags?issue_id=eq.5&tag_id=eq.3')
+        );
+        req.flush(
+          { message: 'permission denied for table issue_tags', code: '42501' },
+          { status: 403, statusText: 'Forbidden' }
+        );
+      });
+
+      it('should handle network errors', (done) => {
+        const meta = {
+          junctionTable: 'issue_tags',
+          sourceColumn: 'issue_id',
+          targetColumn: 'tag_id',
+          sourceTable: 'Issue',
+          targetTable: 'tags',
+          relatedTable: 'tags',
+          relatedTableDisplayName: 'Tags',
+          showOnSource: true,
+          showOnTarget: true,
+          displayOrder: 100,
+          relatedTableHasColor: true
+        };
+
+        service.removeManyToManyRelation(5, meta, 3).subscribe(response => {
+          expect(response.success).toBe(false);
+          expect(response.error).toBeDefined();
+          done();
+        });
+
+        const req = httpMock.expectOne(req =>
+          req.url.includes('issue_tags?issue_id=eq.5&tag_id=eq.3')
+        );
+        req.error(new ProgressEvent('Network error'), { status: 0 });
+      });
+    });
+  });
 });

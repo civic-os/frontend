@@ -86,12 +86,14 @@ describe('AppComponent', () => {
     themeInput.value = 'dark';
     document.body.appendChild(themeInput);
 
-    // Handle HTTP requests
-    const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
-    schemaEntitiesReqs.forEach(req => req.flush([]));
-
     // Trigger change detection to run ngAfterViewInit
     fixture.detectChanges();
+
+    // Handle HTTP requests made during component initialization
+    const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+    schemaEntitiesReqs.forEach(req => req.flush([]));
+    const schemaPropsReqs = httpMock.match(req => req.url.includes('schema_properties'));
+    schemaPropsReqs.forEach(req => req.flush([]));
 
     // Simulate theme change
     themeInput.checked = true;

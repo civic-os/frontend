@@ -28,7 +28,8 @@ describe('SchemaErdService', () => {
   let mockSchemaService: jasmine.SpyObj<SchemaService>;
 
   beforeEach(() => {
-    mockSchemaService = jasmine.createSpyObj('SchemaService', ['getEntities', 'getProperties']);
+    mockSchemaService = jasmine.createSpyObj('SchemaService', ['getEntities', 'getProperties', 'getDetectedJunctionTables']);
+    mockSchemaService.getDetectedJunctionTables.and.returnValue(of(new Set<string>()));
 
     TestBed.configureTestingModule({
       providers: [
@@ -353,7 +354,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toContain('Issue }o--|| Status : "status"');
     });
 
@@ -370,7 +371,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toBe('');
     });
 
@@ -395,7 +396,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       const count = (relationships.match(/Issue }o--\|\| Status/g) || []).length;
       expect(count).toBe(1);
     });
@@ -413,7 +414,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toContain('"assigned_user"');
       expect(relationships).not.toContain('assigned_user_id');
     });
@@ -431,7 +432,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toContain('Mytable }o--|| Othertable');
     });
 
@@ -446,7 +447,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toBe('');
     });
 
@@ -471,7 +472,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toContain('Issue }o--|| Status : "status"');
       expect(relationships).toContain('Issue }o--|| User : "assignee"');
     });
@@ -606,7 +607,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toContain('Issue }o--|| Issue : "parent"');
     });
 
@@ -631,7 +632,7 @@ describe('SchemaErdService', () => {
         })
       ];
 
-      const relationships = service['generateRelationships'](entities, props);
+      const relationships = service['generateRelationships'](entities, props, new Set<string>());
       expect(relationships).toContain('Issue }o--|| User : "created_by"');
       expect(relationships).toContain('Issue }o--|| User : "assigned_to"');
     });
