@@ -45,13 +45,14 @@ describe('ListPage', () => {
       'getPropsForList',
       'getPropsForFilter'
     ]);
-    mockDataService = jasmine.createSpyObj('DataService', ['getData']);
+    mockDataService = jasmine.createSpyObj('DataService', ['getData', 'getDataPaginated']);
 
     // Set default return values to prevent errors when component observables initialize
     mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
     mockSchemaService.getPropsForList.and.returnValue(of([]));
     mockSchemaService.getPropsForFilter.and.returnValue(of([]));
     mockDataService.getData.and.returnValue(of([]));
+    mockDataService.getDataPaginated.and.returnValue(of({ data: [], totalCount: 0 }));
 
     await TestBed.configureTestingModule({
       imports: [ListPage],
@@ -145,26 +146,27 @@ describe('ListPage', () => {
         MOCK_PROPERTIES.foreignKey
       ];
       const mockData = [
-        { id: 1, name: 'Issue 1', status_id: { id: 1, display_name: 'Open' } },
-        { id: 2, name: 'Issue 2', status_id: { id: 2, display_name: 'Closed' } }
+        { id: 1, name: 'Issue 1', status_id: { id: 1, display_name: 'Open' }, created_at: '', updated_at: '', display_name: 'Issue 1' },
+        { id: 2, name: 'Issue 2', status_id: { id: 2, display_name: 'Closed' }, created_at: '', updated_at: '', display_name: 'Issue 2' }
       ];
 
       mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
       mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
-      mockDataService.getData.and.returnValue(of(mockData as any));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: mockData as any, totalCount: mockData.length }));
 
       // Trigger new route params to force data$ to re-emit
       routeParams.next({ entityKey: 'Issue' });
 
       // Wait for async operations to complete
       setTimeout(() => {
-        expect(mockDataService.getData).toHaveBeenCalledWith({
+        expect(mockDataService.getDataPaginated).toHaveBeenCalledWith({
           key: 'Issue',
           fields: ['name', 'status_id:Status(id,display_name)'],
           searchQuery: undefined,
           orderField: undefined,
           orderDirection: undefined,
-          filters: undefined
+          filters: undefined,
+          pagination: { page: 1, pageSize: 25 }
         });
         expect(component.dataSignal()).toEqual(mockData);
         done();
@@ -178,19 +180,20 @@ describe('ListPage', () => {
 
       mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
       mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
-      mockDataService.getData.and.returnValue(of([] as any));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: [], totalCount: 0 }));
 
       // Trigger new route params to force data$ to re-emit
       routeParams.next({ entityKey: 'Issue' });
 
       setTimeout(() => {
-        expect(mockDataService.getData).toHaveBeenCalledWith({
+        expect(mockDataService.getDataPaginated).toHaveBeenCalledWith({
           key: 'Issue',
           fields: ['location:location_text'],
           searchQuery: undefined,
           orderField: undefined,
           orderDirection: undefined,
-          filters: undefined
+          filters: undefined,
+          pagination: { page: 1, pageSize: 25 }
         });
         done();
       }, 50);
@@ -199,21 +202,21 @@ describe('ListPage', () => {
     it('should return empty observable when properties are empty', (done) => {
       mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
       mockSchemaService.getPropsForList.and.returnValue(of([]));
-      mockDataService.getData.and.returnValue(of([] as any));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: [], totalCount: 0 }));
 
       component.data$.subscribe(data => {
-        expect(data).toEqual([]);
+        expect(data).toEqual({ data: [], totalCount: 0 });
         done();
       });
     });
 
     it('should return empty observable when entityKey is undefined', (done) => {
-      mockDataService.getData.calls.reset();
+      mockDataService.getDataPaginated.calls.reset();
       mockSchemaService.getEntity.and.returnValue(of(undefined));
       routeParams.next({});
 
       setTimeout(() => {
-        expect(mockDataService.getData).not.toHaveBeenCalled();
+        expect(mockDataService.getDataPaginated).not.toHaveBeenCalled();
         done();
       }, 50);
     });
@@ -259,14 +262,14 @@ describe('ListPage', () => {
 
       mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
       mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
-      mockDataService.getData.and.returnValue(of([] as any));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: [], totalCount: 0 }));
 
       // Trigger new route params to force data$ to re-emit
       routeParams.next({ entityKey: 'Issue' });
 
       setTimeout(() => {
-        expect(mockDataService.getData).toHaveBeenCalled();
-        const callArgs = mockDataService.getData.calls.mostRecent().args[0];
+        expect(mockDataService.getDataPaginated).toHaveBeenCalled();
+        const callArgs = mockDataService.getDataPaginated.calls.mostRecent().args[0];
         expect(callArgs.fields).toContain('name'); // TextShort
         expect(callArgs.fields).toContain('count'); // Integer
         expect(callArgs.fields).toContain('is_active'); // Boolean

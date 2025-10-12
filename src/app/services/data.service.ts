@@ -20,7 +20,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, filter, forkJoin, map, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { EntityData, InverseRelationshipMeta, InverseRelationshipData, ManyToManyMeta } from '../interfaces/entity';
-import { DataQuery } from '../interfaces/query';
+import { DataQuery, PaginatedResponse } from '../interfaces/query';
 import { ApiError, ApiResponse } from '../interfaces/api';
 import { ErrorService } from './error.service';
 
@@ -62,6 +62,82 @@ export class DataService {
     }
     let url = query.key + '?' + args.join('&');
     return this.get(url);
+  }
+
+  /**
+   * Get paginated data with total count.
+   * Uses PostgREST Range headers for pagination and Content-Range for total count.
+   *
+   * @param query Data query including pagination params
+   * @returns Observable of paginated response with data and total count
+   */
+  public getDataPaginated(query: DataQuery): Observable<PaginatedResponse<EntityData>> {
+    let args: string[] = [];
+    if(query.fields) {
+      if(!query.fields.includes('id')) {
+        query.fields.push('id');
+      }
+      args.push('select=' + query.fields.join(','));
+    }
+    if(query.searchQuery && query.searchQuery.trim()) {
+      // Use wfts (websearch full-text search) for natural query syntax
+      args.push('civic_os_text_search=wfts.' + encodeURIComponent(query.searchQuery.trim()));
+      // When searching, order by relevance (no explicit order needed, PostgREST defaults to relevance)
+    } else if(query.orderField) {
+      args.push('order='+query.orderField+'.'+(query.orderDirection ?? 'asc'))
+    }
+    if(query.entityId) {
+      args.push('id=eq.' + query.entityId);
+    }
+    // Process filters
+    if(query.filters && query.filters.length > 0) {
+      query.filters.forEach(filter => {
+        if (filter.value !== null && filter.value !== undefined && filter.value !== '') {
+          args.push(`${filter.column}=${filter.operator}.${filter.value}`);
+        }
+      });
+    }
+
+    const url = query.key + '?' + args.join('&');
+
+    // Calculate range for pagination
+    const pagination = query.pagination || { page: 1, pageSize: 25 };
+    const offset = (pagination.page - 1) * pagination.pageSize;
+    const rangeEnd = offset + pagination.pageSize - 1;
+
+    return this.http.get<EntityData[]>(environment.postgrestUrl + url, {
+      observe: 'response',
+      headers: {
+        'Range-Unit': 'items',
+        'Range': `${offset}-${rangeEnd}`,
+        'Prefer': 'count=exact'
+      }
+    }).pipe(
+      map(response => {
+        const data = response.body || [];
+
+        // Parse count from Content-Range header: "0-24/237" -> 237
+        const contentRange = response.headers.get('Content-Range');
+        let totalCount = 0;
+        if (contentRange) {
+          const match = contentRange.match(/\/(\d+|\*)$/);
+          if (match && match[1] !== '*') {
+            totalCount = parseInt(match[1], 10);
+          } else {
+            // If count is unknown (*), use data length as fallback
+            totalCount = data.length;
+          }
+        } else {
+          totalCount = data.length;
+        }
+
+        return { data, totalCount };
+      }),
+      catchError(err => {
+        console.error('Error fetching paginated data:', err);
+        return of({ data: [], totalCount: 0 });
+      })
+    );
   }
 
   public createData(entity: string, data: any): Observable<ApiResponse> {

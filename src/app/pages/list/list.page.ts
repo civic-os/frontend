@@ -27,6 +27,7 @@ import { DataService } from '../../services/data.service';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 import { FilterBarComponent } from '../../components/filter-bar/filter-bar.component';
+import { PaginationComponent } from '../../components/pagination/pagination.component';
 import { FilterCriteria } from '../../interfaces/query';
 
 interface FilterChip {
@@ -47,7 +48,8 @@ interface FilterChip {
     RouterModule,
     ReactiveFormsModule,
     DisplayPropertyComponent,
-    FilterBarComponent
+    FilterBarComponent,
+    PaginationComponent
 ]
 })
 export class ListPage implements OnInit {
@@ -55,6 +57,10 @@ export class ListPage implements OnInit {
   private router = inject(Router);
   private schema = inject(SchemaService);
   private data = inject(DataService);
+
+  // Pagination constants
+  private readonly PAGE_SIZE_STORAGE_KEY = 'civic_os_list_page_size';
+  private readonly DEFAULT_PAGE_SIZE = 25;
 
   public entityKey?: string;
   public searchControl = new FormControl('');
@@ -118,6 +124,14 @@ export class ListPage implements OnInit {
     map(params => params['q'] || '')
   );
 
+  // Derive pagination from URL query params
+  public pagination$: Observable<{ page: number, pageSize: number }> = this.route.queryParams.pipe(
+    map(params => ({
+      page: params['page'] ? parseInt(params['page'], 10) : 1,
+      pageSize: params['pageSize'] ? parseInt(params['pageSize'], 10) : this.getStoredPageSize()
+    }))
+  );
+
   public data$: Observable<any> = this.route.params.pipe(
     // switchMap cancels previous subscription when params change
     switchMap(p => {
@@ -152,10 +166,27 @@ export class ListPage implements OnInit {
         ),
         this.searchQuery$,
         this.sortState$,
-        this.filters$
+        this.filters$,
+        this.pagination$
       ]).pipe(
+        // Batch synchronous emissions during initialization
+        debounceTime(0),
+        // Skip emissions when values haven't actually changed
+        distinctUntilChanged((prev, curr) => {
+          const [prevEntity, prevProps, prevSearch, prevSort, prevFilters, prevPagination] = prev;
+          const [currEntity, currProps, currSearch, currSort, currFilters, currPagination] = curr;
+
+          return prevEntity?.table_name === currEntity?.table_name &&
+                 prevProps?.length === currProps?.length &&
+                 prevSearch === currSearch &&
+                 prevSort?.column === currSort?.column &&
+                 prevSort?.direction === currSort?.direction &&
+                 JSON.stringify(prevFilters) === JSON.stringify(currFilters) &&
+                 prevPagination?.page === currPagination?.page &&
+                 prevPagination?.pageSize === currPagination?.pageSize;
+        }),
         tap(() => this.isLoading.set(true)),
-        switchMap(([entity, props, search, sortState, filters]) => {
+        switchMap(([entity, props, search, sortState, filters, pagination]) => {
           if (props && props.length > 0 && p['entityKey']) {
             let columns = props
               .map(x => SchemaService.propertyToSelectString(x));
@@ -178,16 +209,17 @@ export class ListPage implements OnInit {
               ? search
               : undefined;
 
-            return this.data.getData({
+            return this.data.getDataPaginated({
               key: p['entityKey'],
               fields: columns,
               searchQuery: validSearch || undefined,
               orderField: orderField,
               orderDirection: sortState.direction || undefined,
-              filters: validFilters && validFilters.length > 0 ? validFilters : undefined
+              filters: validFilters && validFilters.length > 0 ? validFilters : undefined,
+              pagination: pagination
             });
           } else {
-            return of([]);
+            return of({ data: [], totalCount: 0 });
           }
         }),
         tap(() => this.isLoading.set(false))
@@ -197,7 +229,11 @@ export class ListPage implements OnInit {
   );
 
   // Convert data$ observable to signal for use in computed
-  public dataSignal = toSignal(this.data$, { initialValue: [] });
+  private dataWithCount = toSignal(this.data$, { initialValue: { data: [], totalCount: 0 } });
+
+  // Derive data and pagination state from observables
+  public dataSignal = computed(() => this.dataWithCount().data);
+  public totalCount = computed(() => this.dataWithCount().totalCount);
 
   // Convert observables to signals for template use
   public sortStateSignal = toSignal(this.sortState$, {
@@ -205,6 +241,13 @@ export class ListPage implements OnInit {
   });
 
   public filtersSignal = toSignal(this.filters$, { initialValue: [] });
+
+  // Derive pagination signals from pagination$ observable
+  private paginationState = toSignal(this.pagination$, {
+    initialValue: { page: 1, pageSize: this.getStoredPageSize() }
+  });
+  public currentPage = computed(() => this.paginationState().page);
+  public pageSize = computed(() => this.paginationState().pageSize);
 
   // Signal for filterable properties (used in filter preservation logic)
   private filterablePropertiesSignal = toSignal(this.filterProperties$, { initialValue: [] });
@@ -224,8 +267,8 @@ export class ListPage implements OnInit {
   );
   public isFiltered = toSignal(this.isFiltered$, { initialValue: false });
 
-  // Count of search results
-  public resultCount = computed(() => this.dataSignal().length);
+  // Count of search results (use totalCount for paginated results)
+  public resultCount = computed(() => this.totalCount());
 
   // Build filter chips with human-readable labels
   public filterChips$: Observable<FilterChip[]> = combineLatest([
@@ -332,14 +375,14 @@ export class ListPage implements OnInit {
       }
     });
 
-    // searchControl → URL (debounced)
+    // searchControl → URL (debounced, reset to page 1)
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged())
       .subscribe(value => {
-        // Navigate to update URL with new search value
+        // Navigate to update URL with new search value (reset to page 1)
         this.router.navigate([], {
           relativeTo: this.route,
-          queryParams: { q: value || null },
+          queryParams: { q: value || null, page: 1 },
           queryParamsHandling: 'merge',
           replaceUrl: true
         });
@@ -389,6 +432,9 @@ export class ListPage implements OnInit {
       filterParams[`f${index}_val`] = filter.value;
     });
 
+    // Reset to page 1 when filters change
+    filterParams['page'] = 1;
+
     // Navigate with new filter params (preserves search and sort)
     this.router.navigate([], {
       relativeTo: this.route,
@@ -406,7 +452,7 @@ export class ListPage implements OnInit {
   public clearSearch() {
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { q: null },
+      queryParams: { q: null, page: 1 },
       queryParamsHandling: 'merge',
       replaceUrl: true
     });
@@ -433,6 +479,9 @@ export class ListPage implements OnInit {
       filterParams[`f${index}_op`] = filter.operator;
       filterParams[`f${index}_val`] = filter.value;
     });
+
+    // Reset to page 1 when filters change
+    filterParams['page'] = 1;
 
     // Navigate with new filter params (preserves search and sort)
     this.router.navigate([], {
@@ -496,15 +545,68 @@ export class ListPage implements OnInit {
       }
     }
 
-    // Navigate with new sort params
+    // Navigate with new sort params (reset to page 1)
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {
         sort: newSort,
-        dir: newDir
+        dir: newDir,
+        page: 1
       },
       queryParamsHandling: 'merge',
       replaceUrl: true
     });
+  }
+
+  /**
+   * Handle page change from pagination component
+   */
+  public onPageChange(page: number) {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { page },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+
+    // Scroll to top of page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /**
+   * Handle page size change from pagination component
+   */
+  public onPageSizeChange(pageSize: number) {
+    // Store preference
+    this.storePageSize(pageSize);
+
+    // Navigate with new page size (will be reset to page 1 by pagination component)
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { pageSize, page: 1 },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  /**
+   * Get stored page size from localStorage
+   */
+  private getStoredPageSize(): number {
+    const stored = localStorage.getItem(this.PAGE_SIZE_STORAGE_KEY);
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return this.DEFAULT_PAGE_SIZE;
+  }
+
+  /**
+   * Store page size to localStorage
+   */
+  private storePageSize(pageSize: number) {
+    localStorage.setItem(this.PAGE_SIZE_STORAGE_KEY, pageSize.toString());
   }
 }

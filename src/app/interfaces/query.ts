@@ -21,6 +21,11 @@ export interface FilterCriteria {
     value: any;
 }
 
+export interface PaginationParams {
+    page: number;
+    pageSize: number;
+}
+
 export interface DataQuery {
     key: string;
     fields: string[];
@@ -29,4 +34,10 @@ export interface DataQuery {
     orderDirection?: string;
     searchQuery?: string;
     filters?: FilterCriteria[];
+    pagination?: PaginationParams;
+}
+
+export interface PaginatedResponse<T> {
+    data: T[];
+    totalCount: number;
 }

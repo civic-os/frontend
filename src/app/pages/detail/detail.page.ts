@@ -17,7 +17,7 @@
 
 
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
-import { Observable, map, mergeMap, of, combineLatest } from 'rxjs';
+import { Observable, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType, InverseRelationshipData } from '../../interfaces/entity';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
@@ -83,6 +83,14 @@ export class DetailPage {
   );
 
   public data$: Observable<any> = combineLatest([this.properties$, this.refreshTrigger$.pipe(startWith(null))]).pipe(
+    // Batch synchronous emissions during initialization
+    debounceTime(0),
+    // Skip emissions when properties haven't changed (ignore refresh trigger changes)
+    distinctUntilChanged((prev, curr) => {
+      const [prevProps, _] = prev;
+      const [currProps, __] = curr;
+      return prevProps?.length === currProps?.length;
+    }),
     mergeMap(([props, _]) => {
     if(props && props.length > 0 && this.entityKey) {
       let columns = props
@@ -116,6 +124,13 @@ export class DetailPage {
       this.entity$,
       this.data$
     ]).pipe(
+      // Batch synchronous emissions during initialization
+      debounceTime(0),
+      // Skip emissions when entity or data ID haven't changed
+      distinctUntilChanged((prev, curr) => {
+        return prev[0]?.table_name === curr[0]?.table_name &&
+               prev[1]?.id === curr[1]?.id;
+      }),
       mergeMap(([entity, data]) => {
         if (!entity || !data) return of([]);
 

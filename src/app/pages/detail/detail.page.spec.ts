@@ -226,12 +226,23 @@ describe('DetailPage', () => {
       let callCount = 0;
 
       mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
-      mockSchemaService.getPropsForDetail.and.returnValue(of([MOCK_PROPERTIES.textShort]));
+
+      // Return different property arrays to trigger distinctUntilChanged
+      // The distinctUntilChanged operator compares properties array length, so we need different lengths
+      mockSchemaService.getPropsForDetail.and.callFake(() => {
+        if (callCount === 0) {
+          return of([MOCK_PROPERTIES.textShort]);
+        } else {
+          // Return different properties array (different length) to bypass distinctUntilChanged
+          return of([MOCK_PROPERTIES.textShort, MOCK_PROPERTIES.integer]);
+        }
+      });
+
       mockDataService.getData.and.callFake((params: any) => {
         if (params.entityId === '42') {
           return of([{ id: 42, name: 'Issue 42', created_at: '', updated_at: '', display_name: 'Issue 42' }]);
         } else {
-          return of([{ id: 99, name: 'Issue 99', created_at: '', updated_at: '', display_name: 'Issue 99' }]);
+          return of([{ id: 99, name: 'Issue 99', count: 1, created_at: '', updated_at: '', display_name: 'Issue 99' }]);
         }
       });
 

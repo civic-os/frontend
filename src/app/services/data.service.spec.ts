@@ -214,6 +214,576 @@ describe('DataService', () => {
     });
   });
 
+  describe('getDataPaginated() - Request Construction', () => {
+    it('should construct paginated GET request with Range headers', (done) => {
+      const mockData = [
+        { id: 1, name: 'Test 1', created_at: '', updated_at: '', display_name: 'Test 1' },
+        { id: 2, name: 'Test 2', created_at: '', updated_at: '', display_name: 'Test 2' }
+      ];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: ['name'],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.method).toBe('GET');
+      expect(req.request.headers.get('Range-Unit')).toBe('items');
+      expect(req.request.headers.get('Range')).toBe('0-24');
+      expect(req.request.headers.get('Prefer')).toBe('count=exact');
+
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-1/237' }
+      });
+      done();
+    });
+
+    it('should use default pagination when not specified', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: []
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('0-24'); // Default: page 1, pageSize 25
+      req.flush([], { headers: { 'Content-Range': '0-0/0' } });
+      done();
+    });
+
+    it('should calculate Range header for page 1', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('0-24'); // offset 0, end 24
+      req.flush([], { headers: { 'Content-Range': '0-24/100' } });
+      done();
+    });
+
+    it('should calculate Range header for page 5', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 5, pageSize: 25 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('100-124'); // offset 100, end 124
+      req.flush([], { headers: { 'Content-Range': '100-124/237' } });
+      done();
+    });
+
+    it('should calculate Range header with pageSize 50', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 3, pageSize: 50 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('100-149'); // (3-1)*50 = 100, end = 149
+      req.flush([], { headers: { 'Content-Range': '100-149/500' } });
+      done();
+    });
+
+    it('should calculate Range header with pageSize 100', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 2, pageSize: 100 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('100-199'); // (2-1)*100 = 100, end = 199
+      req.flush([], { headers: { 'Content-Range': '100-199/350' } });
+      done();
+    });
+  });
+
+  describe('getDataPaginated() - Content-Range Parsing', () => {
+    it('should parse Content-Range header correctly', (done) => {
+      const mockData = [{ id: 1, name: 'Test', created_at: '', updated_at: '', display_name: 'Test' }];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual(mockData);
+        expect(response.totalCount).toBe(237);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-24/237' }
+      });
+    });
+
+    it('should parse Content-Range with single result', (done) => {
+      const mockData = [{ id: 5, name: 'Single' }];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.totalCount).toBe(1);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-0/1' }
+      });
+    });
+
+    it('should parse Content-Range for middle page', (done) => {
+      const mockData = Array(25).fill(null).map((_, i) => ({ id: i + 101, name: `Test ${i}` }));
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 5, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.totalCount).toBe(10000);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '100-124/10000' }
+      });
+    });
+
+    it('should parse Content-Range for last partial page', (done) => {
+      const mockData = Array(12).fill(null).map((_, i) => ({ id: i + 226, name: `Test ${i}` }));
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 10, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data.length).toBe(12);
+        expect(response.totalCount).toBe(237);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '225-236/237' }
+      });
+    });
+
+    it('should handle missing Content-Range header', (done) => {
+      const mockData = [{ id: 1, name: 'Test' }];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.totalCount).toBe(1); // Fallback to data.length
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData); // No Content-Range header
+    });
+
+    it('should handle Content-Range with wildcard total (*)', (done) => {
+      const mockData = [{ id: 1, name: 'Test' }];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.totalCount).toBe(1); // Fallback to data.length when wildcard
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-0/*' }
+      });
+    });
+
+    it('should handle empty results', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual([]);
+        expect(response.totalCount).toBe(0);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush([], {
+        headers: { 'Content-Range': '0-0/0' }
+      });
+    });
+  });
+
+  describe('getDataPaginated() - Query Integration', () => {
+    it('should combine pagination with select fields', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: ['name', 'status_id', 'created_at'],
+        pagination: { page: 2, pageSize: 50 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => {
+        const url = req.url;
+        return url.includes('select=name,status_id,created_at,id') &&
+               req.headers.get('Range') === '50-99';
+      });
+      expect(req.request.url).toContain('select=');
+      req.flush([], { headers: { 'Content-Range': '50-99/237' } });
+      done();
+    });
+
+    it('should combine pagination with order parameters', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        orderField: 'created_at',
+        orderDirection: 'desc',
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => {
+        const url = req.url;
+        return url.includes('order=created_at.desc') &&
+               req.headers.get('Range') === '0-24';
+      });
+      expect(req.request.url).toContain('order=created_at.desc');
+      req.flush([], { headers: { 'Content-Range': '0-24/100' } });
+      done();
+    });
+
+    it('should combine pagination with entityId filter', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        entityId: '42',
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => {
+        const url = req.url;
+        return url.includes('id=eq.42') &&
+               req.headers.get('Range') === '0-24';
+      });
+      expect(req.request.url).toContain('id=eq.42');
+      req.flush([], { headers: { 'Content-Range': '0-0/1' } });
+      done();
+    });
+
+    it('should combine pagination with search query', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        searchQuery: 'test search',
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => {
+        const url = req.url;
+        return url.includes('civic_os_text_search=') &&
+               req.headers.get('Range') === '0-24';
+      });
+      expect(req.request.url).toContain('civic_os_text_search=');
+      req.flush([], { headers: { 'Content-Range': '0-10/11' } });
+      done();
+    });
+
+    it('should combine pagination with filters', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        filters: [
+          { column: 'status_id', operator: 'eq', value: '2' }
+        ],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => {
+        const url = req.url;
+        return url.includes('status_id=eq.2') &&
+               req.headers.get('Range') === '0-24';
+      });
+      expect(req.request.url).toContain('status_id=eq.2');
+      req.flush([], { headers: { 'Content-Range': '0-15/16' } });
+      done();
+    });
+
+    it('should combine all query parameters with pagination', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: ['name', 'status_id'],
+        searchQuery: 'pothole',
+        filters: [
+          { column: 'status_id', operator: 'eq', value: '1' }
+        ],
+        pagination: { page: 3, pageSize: 50 }
+      }).subscribe();
+
+      const req = httpMock.expectOne(req => {
+        const url = req.url;
+        return url.includes('Issue') &&
+               url.includes('select=name,status_id,id') &&
+               url.includes('civic_os_text_search=') &&
+               url.includes('status_id=eq.1') &&
+               req.headers.get('Range') === '100-149';
+      });
+
+      expect(req.request.url).toContain('&');
+      req.flush([], { headers: { 'Content-Range': '100-125/126' } });
+      done();
+    });
+  });
+
+  describe('getDataPaginated() - Response Structure', () => {
+    it('should return PaginatedResponse with data and totalCount', (done) => {
+      const mockData = [
+        { id: 1, name: 'Test 1' },
+        { id: 2, name: 'Test 2' }
+      ];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response).toBeDefined();
+        expect(response.data).toBeDefined();
+        expect(response.totalCount).toBeDefined();
+        expect(Array.isArray(response.data)).toBe(true);
+        expect(typeof response.totalCount).toBe('number');
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-1/237' }
+      });
+    });
+
+    it('should preserve data array structure', (done) => {
+      const mockData = [
+        { id: 1, name: 'Test 1', status_id: 2, created_at: '2024-01-01', updated_at: '2024-01-01', display_name: 'Test 1' },
+        { id: 2, name: 'Test 2', status_id: 3, created_at: '2024-01-02', updated_at: '2024-01-02', display_name: 'Test 2' }
+      ];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: ['name', 'status_id', 'created_at'],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual(mockData);
+        expect(response.data.length).toBe(2);
+        expect((response.data[0] as any).name).toBe('Test 1');
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-1/2' }
+      });
+    });
+  });
+
+  describe('getDataPaginated() - Error Handling', () => {
+    it('should handle HTTP errors gracefully', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual([]);
+        expect(response.totalCount).toBe(0);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(
+        { message: 'Internal server error' },
+        { status: 500, statusText: 'Internal Server Error' }
+      );
+    });
+
+    it('should handle network errors', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual([]);
+        expect(response.totalCount).toBe(0);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.error(new ProgressEvent('Network error'), { status: 0 });
+    });
+
+    it('should handle permission errors', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual([]);
+        expect(response.totalCount).toBe(0);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(
+        { message: 'permission denied for table Issue', code: '42501' },
+        { status: 403, statusText: 'Forbidden' }
+      );
+    });
+
+    it('should handle null response body', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual([]);
+        expect(response.totalCount).toBe(0);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(null, {
+        headers: { 'Content-Range': '0-0/0' }
+      });
+    });
+  });
+
+  describe('getDataPaginated() - Edge Cases', () => {
+    it('should handle page beyond available data', (done) => {
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 100, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data).toEqual([]);
+        expect(response.totalCount).toBe(237);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('2475-2499'); // (100-1)*25 = 2475
+      req.flush([], {
+        headers: { 'Content-Range': '*/237' } // PostgREST format for out-of-range
+      });
+    });
+
+    it('should handle very large page sizes', (done) => {
+      const mockData = Array(200).fill(null).map((_, i) => ({ id: i + 1, name: `Test ${i}` }));
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 200 }
+      }).subscribe(response => {
+        expect(response.data.length).toBe(200);
+        expect(response.totalCount).toBe(237);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('0-199');
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-199/237' }
+      });
+    });
+
+    it('should handle page size 10 (minimum)', (done) => {
+      const mockData = Array(10).fill(null).map((_, i) => ({ id: i + 1, name: `Test ${i}` }));
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 10 }
+      }).subscribe(response => {
+        expect(response.data.length).toBe(10);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      expect(req.request.headers.get('Range')).toBe('0-9');
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-9/237' }
+      });
+    });
+
+    it('should handle single record total', (done) => {
+      const mockData = [{ id: 1, name: 'Only One' }];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.data.length).toBe(1);
+        expect(response.totalCount).toBe(1);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-0/1' }
+      });
+    });
+
+    it('should handle large datasets (10000+ records)', (done) => {
+      const mockData = Array(25).fill(null).map((_, i) => ({ id: i + 1, name: `Test ${i}` }));
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.totalCount).toBe(10537);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': '0-24/10537' }
+      });
+    });
+
+    it('should handle malformed Content-Range header gracefully', (done) => {
+      const mockData = [{ id: 1, name: 'Test' }];
+
+      service.getDataPaginated({
+        key: 'Issue',
+        fields: [],
+        pagination: { page: 1, pageSize: 25 }
+      }).subscribe(response => {
+        expect(response.totalCount).toBe(1); // Fallback to data.length
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue'));
+      req.flush(mockData, {
+        headers: { 'Content-Range': 'invalid-format' }
+      });
+    });
+  });
+
   describe('createData()', () => {
     it('should POST data to correct endpoint', (done) => {
       const newData = { name: 'New Issue', status_id: 1 };

@@ -60,6 +60,18 @@
       }
     }
 
+    <!-- Pagination controls (top) -->
+    <div class="not-prose mb-4">
+      <app-pagination
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize()"
+        [totalCount]="totalCount()"
+        [loading]="isLoading()"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)">
+      </app-pagination>
+    </div>
+
     <div class="overflow-x-auto">
       @if (entity.insert) {
         <button class="btn btn-primary" [routerLink]="'/create/' + entityKey">
@@ -90,8 +102,8 @@
               }
             </tr>
           </thead>
-          @if (data$ | async; as data) {
-            <tbody>
+          <tbody>
+            @if (dataSignal(); as data) {
               @if (data?.length) {
                 @for (row of data; track row) {
                   <tr [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
@@ -112,10 +124,22 @@
                   <td colspan="100%" class="text-center border-spacing-4">No Entries</td>
                 </tr>
               }
-            </tbody>
-          }
+            }
+          </tbody>
         }
       </table>
+    </div>
+
+    <!-- Pagination controls (bottom) -->
+    <div class="not-prose mt-6">
+      <app-pagination
+        [currentPage]="currentPage()"
+        [pageSize]="pageSize()"
+        [totalCount]="totalCount()"
+        [loading]="isLoading()"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)">
+      </app-pagination>
     </div>
   }
 </div>
