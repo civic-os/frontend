@@ -271,6 +271,7 @@ export class ListPage implements OnInit {
   public resultCount = computed(() => this.totalCount());
 
   // Build filter chips with compact format
+  // Range filters (gte+lte pairs) are merged into single chips
   public filterChips$: Observable<FilterChip[]> = combineLatest([
     this.filters$,
     this.properties$
@@ -278,47 +279,99 @@ export class ListPage implements OnInit {
     map(([filters, props]) => {
       if (filters.length === 0) return [];
 
-      // Build chips for each filter
-      return filters.map(filter => {
-        const prop = props.find(p => p.column_name === filter.column);
-        const columnLabel = prop?.display_name || filter.column;
+      // Group filters by column
+      const columnGroups = new Map<string, FilterCriteria[]>();
+      filters.forEach(filter => {
+        if (!columnGroups.has(filter.column)) {
+          columnGroups.set(filter.column, []);
+        }
+        columnGroups.get(filter.column)!.push(filter);
+      });
 
-        // For FK and User filters with 'in' operator, show count
-        if ((prop?.type === EntityPropertyType.ForeignKeyName || prop?.type === EntityPropertyType.User)
-            && filter.operator === 'in') {
-          // Parse "(1,2,3)" format to count items
-          const match = filter.value.match(/\(([^)]+)\)/);
-          const count = match ? match[1].split(',').length : 1;
-          const displayValue = count === 1 ? '1 selected' : `${count} selected`;
+      // Build chips, merging range filters
+      const chips: FilterChip[] = [];
 
-          return {
-            column: filter.column,
+      columnGroups.forEach((filtersForColumn, column) => {
+        const prop = props.find(p => p.column_name === column);
+        const columnLabel = prop?.display_name || column;
+
+        // Check if this is a range filter (has gte and/or lte)
+        const gteFilter = filtersForColumn.find(f => f.operator === 'gte');
+        const lteFilter = filtersForColumn.find(f => f.operator === 'lte');
+
+        if (gteFilter && lteFilter) {
+          // Both min and max - show as range
+          const displayValue = `${gteFilter.value} - ${lteFilter.value}`;
+          chips.push({
+            column,
             columnLabel,
-            operator: filter.operator,
-            value: filter.value,
+            operator: 'range',
+            value: { min: gteFilter.value, max: lteFilter.value },
             displayValue
-          };
-        } else if (prop?.type === EntityPropertyType.Boolean) {
-          // Format boolean values
-          const displayValue = filter.value === 'true' ? 'Yes' : 'No';
-          return {
-            column: filter.column,
+          });
+        } else if (gteFilter) {
+          // Min only
+          const displayValue = `≥ ${gteFilter.value}`;
+          chips.push({
+            column,
             columnLabel,
-            operator: filter.operator,
-            value: filter.value,
+            operator: 'gte',
+            value: gteFilter.value,
             displayValue
-          };
+          });
+        } else if (lteFilter) {
+          // Max only
+          const displayValue = `≤ ${lteFilter.value}`;
+          chips.push({
+            column,
+            columnLabel,
+            operator: 'lte',
+            value: lteFilter.value,
+            displayValue
+          });
         } else {
-          // For other types, use the raw value
-          return {
-            column: filter.column,
-            columnLabel,
-            operator: filter.operator,
-            value: filter.value,
-            displayValue: String(filter.value)
-          };
+          // Not range filters - handle each individually
+          filtersForColumn.forEach(filter => {
+            // For FK and User filters with 'in' operator, show count
+            if ((prop?.type === EntityPropertyType.ForeignKeyName || prop?.type === EntityPropertyType.User)
+                && filter.operator === 'in') {
+              // Parse "(1,2,3)" format to count items
+              const match = filter.value.match(/\(([^)]+)\)/);
+              const count = match ? match[1].split(',').length : 1;
+              const displayValue = count === 1 ? '1 selected' : `${count} selected`;
+
+              chips.push({
+                column: filter.column,
+                columnLabel,
+                operator: filter.operator,
+                value: filter.value,
+                displayValue
+              });
+            } else if (prop?.type === EntityPropertyType.Boolean) {
+              // Format boolean values
+              const displayValue = filter.value === 'true' ? 'Yes' : 'No';
+              chips.push({
+                column: filter.column,
+                columnLabel,
+                operator: filter.operator,
+                value: filter.value,
+                displayValue
+              });
+            } else {
+              // For other types, use the raw value
+              chips.push({
+                column: filter.column,
+                columnLabel,
+                operator: filter.operator,
+                value: filter.value,
+                displayValue: String(filter.value)
+              });
+            }
+          });
         }
       });
+
+      return chips;
     })
   );
 

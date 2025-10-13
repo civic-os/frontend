@@ -1,76 +1,76 @@
-@if (showPagination()) {
+@if (showResultCount()) {
   <div class="pagination-container">
     <!-- Single compact row with all pagination controls -->
     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-      <!-- Results summary -->
+      <!-- Results summary (always shown when there are results) -->
       <div class="text-sm flex items-center gap-2">
-        @if (totalCountSignal() > 0) {
-          <span class="font-medium">Showing {{ startItem() }}-{{ endItem() }} of {{ totalCountSignal() }} results</span>
-        } @else {
-          <span class="font-medium">No results</span>
-        }
+        <span class="font-medium">Showing {{ startItem() }}-{{ endItem() }} of {{ totalCountSignal() }} results</span>
         @if (loading) {
           <span class="loading loading-spinner loading-sm"></span>
         }
       </div>
 
-      <!-- Pagination controls -->
-      <div class="join">
-        <!-- Previous button -->
-        <button
-          class="join-item btn btn-sm"
-          [disabled]="isFirstPage() || loading"
-          (click)="goToPrevious()"
-          type="button"
-          aria-label="Previous page">
-          <span class="material-symbols-outlined text-base">chevron_left</span>
-          <span class="hidden sm:inline">Previous</span>
-        </button>
+      <!-- Pagination controls (only shown when multiple pages exist) -->
+      @if (showNavigationControls()) {
+        <div class="join">
+          <!-- Previous button -->
+          <button
+            class="join-item btn btn-sm"
+            [disabled]="isFirstPage() || loading"
+            (click)="goToPrevious()"
+            type="button"
+            aria-label="Previous page">
+            <span class="material-symbols-outlined text-base">chevron_left</span>
+            <span class="hidden sm:inline">Previous</span>
+          </button>
 
-        <!-- Page number buttons -->
-        @for (page of visiblePages(); track $index) {
-          @if (page === 'ellipsis') {
-            <button class="join-item btn btn-sm btn-disabled" type="button" aria-label="More pages">...</button>
-          } @else {
-            <button
-              class="join-item btn btn-sm"
-              [class.btn-active]="page === currentPageSignal()"
-              [disabled]="loading"
-              (click)="goToPage(page)"
-              type="button"
-              [attr.aria-label]="'Page ' + page"
-              [attr.aria-current]="page === currentPageSignal() ? 'page' : null">
-              {{ page }}
-            </button>
+          <!-- Page number buttons -->
+          @for (page of visiblePages(); track $index) {
+            @if (page === 'ellipsis') {
+              <button class="join-item btn btn-sm btn-disabled" type="button" aria-label="More pages">...</button>
+            } @else {
+              <button
+                class="join-item btn btn-sm"
+                [class.btn-active]="page === currentPageSignal()"
+                [disabled]="loading"
+                (click)="goToPage(page)"
+                type="button"
+                [attr.aria-label]="'Page ' + page"
+                [attr.aria-current]="page === currentPageSignal() ? 'page' : null">
+                {{ page }}
+              </button>
+            }
           }
-        }
 
-        <!-- Next button -->
-        <button
-          class="join-item btn btn-sm"
-          [disabled]="isLastPage() || loading"
-          (click)="goToNext()"
-          type="button"
-          aria-label="Next page">
-          <span class="hidden sm:inline">Next</span>
-          <span class="material-symbols-outlined text-base">chevron_right</span>
-        </button>
-      </div>
+          <!-- Next button -->
+          <button
+            class="join-item btn btn-sm"
+            [disabled]="isLastPage() || loading"
+            (click)="goToNext()"
+            type="button"
+            aria-label="Next page">
+            <span class="hidden sm:inline">Next</span>
+            <span class="material-symbols-outlined text-base">chevron_right</span>
+          </button>
+        </div>
+      }
 
-      <!-- Page size selector -->
-      <div class="flex items-center gap-2">
-        <label for="pageSize" class="text-sm font-medium whitespace-nowrap">Items per page:</label>
-        <select
-          id="pageSize"
-          class="select select-bordered select-sm"
-          [ngModel]="pageSizeSignal()"
-          (ngModelChange)="onPageSizeChange($event)"
-          [disabled]="loading">
-          @for (option of pageSizeOptions; track option) {
-            <option [value]="option">{{ option }}</option>
-          }
-        </select>
-      </div>
+      <!-- Page size selector (only shown when > 10 results) -->
+      @if (showPageSizeSelector()) {
+        <div class="flex items-center gap-2">
+          <label for="pageSize" class="text-sm font-medium whitespace-nowrap">Items per page:</label>
+          <select
+            id="pageSize"
+            class="select select-bordered select-sm"
+            [ngModel]="pageSizeSignal()"
+            (ngModelChange)="onPageSizeChange($event)"
+            [disabled]="loading">
+            @for (option of pageSizeOptions; track option) {
+              <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        </div>
+      }
     </div>
   </div>
 }

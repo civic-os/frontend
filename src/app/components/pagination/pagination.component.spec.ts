@@ -185,25 +185,67 @@ describe('PaginationComponent', () => {
     });
   });
 
-  describe('showPagination computed', () => {
-    it('should return false when totalCount is 10 or less', () => {
+  describe('showResultCount computed', () => {
+    it('should return false when totalCount is 0', () => {
+      component.totalCount = 0;
+      expect(component.showResultCount()).toBe(false);
+    });
+
+    it('should return true when totalCount is 1', () => {
+      component.totalCount = 1;
+      expect(component.showResultCount()).toBe(true);
+    });
+
+    it('should return true when totalCount is 10', () => {
       component.totalCount = 10;
-      expect(component.showPagination()).toBe(false);
-    });
-
-    it('should return false when totalCount is 5', () => {
-      component.totalCount = 5;
-      expect(component.showPagination()).toBe(false);
-    });
-
-    it('should return true when totalCount is 11', () => {
-      component.totalCount = 11;
-      expect(component.showPagination()).toBe(true);
+      expect(component.showResultCount()).toBe(true);
     });
 
     it('should return true when totalCount is large', () => {
       component.totalCount = 237;
-      expect(component.showPagination()).toBe(true);
+      expect(component.showResultCount()).toBe(true);
+    });
+  });
+
+  describe('showNavigationControls computed', () => {
+    it('should return false when only 1 page', () => {
+      component.pageSize = 25;
+      component.totalCount = 10; // 1 page
+      expect(component.showNavigationControls()).toBe(false);
+    });
+
+    it('should return true when multiple pages exist', () => {
+      component.pageSize = 25;
+      component.totalCount = 50; // 2 pages
+      expect(component.showNavigationControls()).toBe(true);
+    });
+
+    it('should return true when many pages exist', () => {
+      component.pageSize = 25;
+      component.totalCount = 237; // 10 pages
+      expect(component.showNavigationControls()).toBe(true);
+    });
+  });
+
+  describe('showPageSizeSelector computed', () => {
+    it('should return false when totalCount is 10 or less', () => {
+      component.totalCount = 10;
+      expect(component.showPageSizeSelector()).toBe(false);
+    });
+
+    it('should return false when totalCount is 5', () => {
+      component.totalCount = 5;
+      expect(component.showPageSizeSelector()).toBe(false);
+    });
+
+    it('should return true when totalCount is 11', () => {
+      component.totalCount = 11;
+      expect(component.showPageSizeSelector()).toBe(true);
+    });
+
+    it('should return true when totalCount is large', () => {
+      component.totalCount = 237;
+      expect(component.showPageSizeSelector()).toBe(true);
     });
   });
 
@@ -431,7 +473,7 @@ describe('PaginationComponent', () => {
       expect(component.totalPages()).toBe(0);
       expect(component.startItem()).toBe(0);
       expect(component.endItem()).toBe(0);
-      expect(component.showPagination()).toBe(false);
+      expect(component.showResultCount()).toBe(false);
     });
 
     it('should handle large datasets', () => {

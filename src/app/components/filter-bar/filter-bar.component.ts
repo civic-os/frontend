@@ -56,12 +56,44 @@ export class FilterBarComponent {
   public EntityPropertyType = EntityPropertyType;
 
   // Count active filters that match filterable columns
+  // Range filters (gte+lte pairs) count as one filter
   public activeFilterCount = computed(() => {
     const filters = this.currentFilters();
     const filterableColumns = new Set(this.properties().map(p => p.column_name));
 
-    // Count filters that match filterable columns
-    return filters.filter(f => filterableColumns.has(f.column)).length;
+    // Filter to only filterable columns
+    const relevantFilters = filters.filter(f => filterableColumns.has(f.column));
+
+    // Group filters by column name
+    const columnGroups = new Map<string, FilterCriteria[]>();
+    relevantFilters.forEach(filter => {
+      if (!columnGroups.has(filter.column)) {
+        columnGroups.set(filter.column, []);
+      }
+      columnGroups.get(filter.column)!.push(filter);
+    });
+
+    // Count: range pairs (gte+lte together) count as 1
+    let count = 0;
+    columnGroups.forEach(filtersForColumn => {
+      const operators = filtersForColumn.map(f => f.operator);
+      const hasGte = operators.includes('gte');
+      const hasLte = operators.includes('lte');
+
+      if (hasGte && hasLte) {
+        // This column has both gte and lte - that's a range filter
+        // Count it as 1, plus any other filters on this column
+        count += 1;
+        if (filtersForColumn.length > 2) {
+          count += filtersForColumn.length - 2;
+        }
+      } else {
+        // No range pair - count all filters normally
+        count += filtersForColumn.length;
+      }
+    });
+
+    return count;
   });
 
   // Calculate max width based on number of filterable properties
@@ -111,6 +143,72 @@ export class FilterBarComponent {
 
     // Track the current key for next comparison
     this.previousEntityKey = key;
+  });
+
+  // Sync currentFilters input → filterState (for URL loading/external changes)
+  // This is the reverse transformation of onFilterChange()
+  private _syncFiltersToState = effect(() => {
+    const filters = this.currentFilters();
+    const props = this.properties();
+
+    if (!props || props.length === 0) {
+      return; // Wait for properties to load
+    }
+
+    // Build new filter state from criteria
+    const newState: FilterState = {};
+
+    filters.forEach(filter => {
+      const prop = props.find(p => p.column_name === filter.column);
+      if (!prop) return; // Skip filters for unknown columns
+
+      switch (prop.type) {
+        case EntityPropertyType.IntegerNumber:
+        case EntityPropertyType.Money:
+          // Reverse transformation: gte → column_min, lte → column_max
+          if (filter.operator === 'gte') {
+            newState[`${filter.column}_min`] = filter.value;
+          } else if (filter.operator === 'lte') {
+            newState[`${filter.column}_max`] = filter.value;
+          }
+          break;
+
+        case EntityPropertyType.DateTime:
+        case EntityPropertyType.DateTimeLocal:
+        case EntityPropertyType.Date:
+          // Reverse transformation: gte → column_start, lte → column_end
+          if (filter.operator === 'gte') {
+            newState[`${filter.column}_start`] = filter.value;
+          } else if (filter.operator === 'lte') {
+            newState[`${filter.column}_end`] = filter.value;
+          }
+          break;
+
+        case EntityPropertyType.ForeignKeyName:
+        case EntityPropertyType.User:
+          // Reverse transformation: in:(1,2,3) → [1, 2, 3] or ["uuid1", "uuid2"]
+          if (filter.operator === 'in') {
+            const match = filter.value.match(/\(([^)]+)\)/);
+            if (match) {
+              const ids = match[1].split(',');
+              // For FK, convert to numbers; for User (UUID), keep as strings
+              newState[filter.column] = prop.type === EntityPropertyType.ForeignKeyName
+                ? ids.map((id: string) => Number(id.trim()))
+                : ids.map((id: string) => id.trim());
+            }
+          }
+          break;
+
+        case EntityPropertyType.Boolean:
+          // Reverse transformation: is:true → 'true', is:false → 'false'
+          if (filter.operator === 'is') {
+            newState[filter.column] = filter.value;
+          }
+          break;
+      }
+    });
+
+    this.filterState.set(newState);
   });
 
   private loadFilterOptions(columnName: string, tableName: string) {

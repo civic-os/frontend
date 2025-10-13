@@ -76,8 +76,14 @@ export class PaginationComponent {
   public isFirstPage = computed(() => this.currentPageSignal() === 1);
   public isLastPage = computed(() => this.currentPageSignal() >= this.totalPages());
 
-  // Show pagination controls if there are more than 10 records (minimum page size option)
-  public showPagination = computed(() => this.totalCountSignal() > 10);
+  // Always show result count if there are any results
+  public showResultCount = computed(() => this.totalCountSignal() > 0);
+
+  // Show page navigation controls if there are multiple pages
+  public showNavigationControls = computed(() => this.totalPages() > 1);
+
+  // Show page size selector if there are more than 10 records (minimum page size option)
+  public showPageSizeSelector = computed(() => this.totalCountSignal() > 10);
 
   /**
    * Get array of page numbers to display with ellipsis support.
