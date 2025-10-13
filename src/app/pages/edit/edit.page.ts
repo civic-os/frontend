@@ -20,7 +20,7 @@ import { Component, inject, ViewChild, signal, ChangeDetectionStrategy } from '@
 import { SchemaService } from '../../services/schema.service';
 import { Observable, map, mergeMap, of, tap } from 'rxjs';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DataService } from '../../services/data.service';
 import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
 import { DialogComponent } from '../../components/dialog/dialog.component';
@@ -35,7 +35,8 @@ import { CommonModule } from '@angular/common';
     EditPropertyComponent,
     CommonModule,
     ReactiveFormsModule,
-    DialogComponent
+    DialogComponent,
+    RouterModule
 ],
     templateUrl: './edit.page.html',
     styleUrl: './edit.page.css'

@@ -19,7 +19,7 @@
 import { Component, inject, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { Observable, mergeMap, of, tap, map } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 
 import { EditPropertyComponent } from "../../components/edit-property/edit-property.component";
@@ -37,7 +37,8 @@ import { DialogComponent } from "../../components/dialog/dialog.component";
     EditPropertyComponent,
     CommonModule,
     ReactiveFormsModule,
-    DialogComponent
+    DialogComponent,
+    RouterModule
 ]
 })
 export class CreatePage {

@@ -2,14 +2,19 @@
   @if (entity$ | async; as entity) {
     @if (properties$ | async; as props) {
       @if (data$ | async; as data) {
-        <h1>
-          {{ entity.display_name }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub>
-          @if (entity.description) {
-            <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
-              <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
-            </div>
-          }
-        </h1>
+        <div class="flex items-center gap-4 mb-4">
+          <button class="btn btn-ghost btn-circle" [routerLink]="'/view/' + entity.table_name + '/' + entityId" type="button">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <h1 class="mb-0">
+            {{ entity.display_name }}: {{ data.display_name }} <sub>(Id: {{entityId}})</sub>
+            @if (entity.description) {
+              <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
+                <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
+              </div>
+            }
+          </h1>
+        </div>
         @if (loading()) {
           <div class="flex justify-center my-8">
             <span class="loading loading-spinner loading-lg"></span>

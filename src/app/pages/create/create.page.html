@@ -1,14 +1,19 @@
 <div class="prose">
   @if (entity$ | async; as entity) {
     @if (properties$ | async; as props) {
-      <h1>
-        New {{ entity.display_name }}
-        @if (entity.description) {
-          <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
-            <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
-          </div>
-        }
-      </h1>
+      <div class="flex items-center gap-4 mb-4">
+        <button class="btn btn-ghost btn-circle" [routerLink]="'/view/' + entity.table_name" type="button">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <h1 class="mb-0">
+          New {{ entity.display_name }}
+          @if (entity.description) {
+            <div class="tooltip tooltip-right inline-block" [attr.data-tip]="entity.description">
+              <span class="material-symbols-outlined text-info cursor-help ml-2 text-xl align-middle">help_outline</span>
+            </div>
+          }
+        </h1>
+      </div>
       @if (createForm) {
         <form [formGroup]="createForm" (ngSubmit)="submitForm($event)">
           @if (showValidationError) {

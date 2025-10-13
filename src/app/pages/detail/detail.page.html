@@ -2,13 +2,18 @@
   @if (entity$ | async; as entity) {
     @if (regularProps$ | async; as regularProps) {
       @if (data$ | async; as data) {
-        <h1 class="mt-4">{{ entity.display_name }}: {{ data.display_name }}
-          @if (entity.update) {
-            <button class="btn btn-accent ml-8" [routerLink]="'/edit/' + entityKey + '/' + data.id">
-              <span class="material-symbols-outlined">edit</span> Edit {{data.display_name}}
-            </button>
-          }
-        </h1>
+        <div class="flex items-center gap-4 mb-4 mt-4">
+          <button class="btn btn-ghost btn-circle" [routerLink]="'/view/' + entity.table_name" type="button">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <h1 class="mb-0 flex-1">{{ entity.display_name }}: {{ data.display_name }}
+            @if (entity.update) {
+              <button class="btn btn-accent ml-8" [routerLink]="'/edit/' + entityKey + '/' + data.id">
+                <span class="material-symbols-outlined">edit</span> Edit {{data.display_name}}
+              </button>
+            }
+          </h1>
+        </div>
         <h2 class="text-2xl font-bold mt-6 mb-4">Details</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 2xl:grid-cols-8 gap-6">
           @for (prop of regularProps; track prop) {
