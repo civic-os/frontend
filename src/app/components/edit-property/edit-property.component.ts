@@ -73,6 +73,28 @@ export class EditPropertyComponent {
       }));
     }
 
+    // Load User options
+    // Fetch both public and private display names (private only visible if user has permission)
+    if(this.propType() == EntityPropertyType.User) {
+      this.selectOptions$ = this.data.getData({
+        key: 'civic_os_users',
+        fields: ['id', 'display_name', 'private:civic_os_users_private(display_name,phone,email)'],
+        orderField: 'display_name',
+        orderDirection: 'asc'
+      })
+      .pipe(map(data => {
+        return data.map(d => {
+          // Prefer private display name (full name) if available, otherwise use public (shortened)
+          // Using bracket notation because 'private' is a dynamic property not in EntityData interface
+          const displayName = (d as any)['private']?.display_name || d.display_name;
+          return {
+            id: d.id,
+            text: displayName,
+          }
+        });
+      }));
+    }
+
     // Note: Value transformation for datetime-local and money inputs
     // is now handled in edit.page.ts when creating FormControls.
     // This ensures transformation happens when data arrives, not when component initializes.

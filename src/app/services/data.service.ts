@@ -374,13 +374,8 @@ export class DataService {
       return representation;
     }
 
-    console.log('[DATA VALIDATION] Checking edit result');
-    console.log('[DATA VALIDATION] Input data:', input);
-    console.log('[DATA VALIDATION] Response data:', representation?.body?.[0]);
-
     let identical: boolean;
     if(representation?.body?.[0] === undefined) {
-      console.log('[DATA VALIDATION] No response body - validation failed');
       identical = false;
     } else {
       identical = (representation !== undefined) && Object.keys(input).every(key => {
@@ -416,18 +411,8 @@ export class DataService {
           }
         }
 
-        if (!match) {
-          console.log(`[DATA VALIDATION] Field "${key}" mismatch:`, { input: inputValue, response: responseValue });
-        }
-
         return match;
       });
-    }
-
-    if (identical) {
-      console.log('[DATA VALIDATION] Validation passed - data matches');
-    } else {
-      console.log('[DATA VALIDATION] Validation failed - data mismatch');
     }
 
     if (identical) {

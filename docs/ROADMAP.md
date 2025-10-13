@@ -19,8 +19,6 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] Advanced Form Validation by use of RPCs
 - [ ] Add File/Image data types (Priority 1: Unlocks many use cases)
 
-- [ ] Add "back" navigation arrows to edit, create, and detail pages.
-- [ ] Add user select dropdown
 - [ ] Prevent duplicate/cancelled dropdown queries (not changed)
 - [ ] Hash Schema on backend and check the hash periodically (persisted view?)
 
