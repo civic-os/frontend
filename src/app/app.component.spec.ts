@@ -61,6 +61,13 @@ describe('AppComponent', () => {
     const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
     schemaEntitiesReqs.forEach(req => req.flush([]));
 
+    // Handle version check request (VersionService.init())
+    const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+    versionReqs.forEach(req => req.flush([
+      { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+      { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+    ]));
+
     expect(app).toBeTruthy();
   });
 
@@ -71,6 +78,13 @@ describe('AppComponent', () => {
     // Handle HTTP requests made during component initialization (may be multiple)
     const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
     schemaEntitiesReqs.forEach(req => req.flush([]));
+
+    // Handle version check request (VersionService.init())
+    const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+    versionReqs.forEach(req => req.flush([
+      { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+      { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+    ]));
 
     expect(app.title).toEqual('frontend');
   });
@@ -94,6 +108,13 @@ describe('AppComponent', () => {
     schemaEntitiesReqs.forEach(req => req.flush([]));
     const schemaPropsReqs = httpMock.match(req => req.url.includes('schema_properties'));
     schemaPropsReqs.forEach(req => req.flush([]));
+
+    // Handle version check request (VersionService.init())
+    const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+    versionReqs.forEach(req => req.flush([
+      { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+      { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+    ]));
 
     // Simulate theme change
     themeInput.checked = true;

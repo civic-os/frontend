@@ -19,6 +19,7 @@ import { Component, inject, ViewChild, AfterViewInit } from '@angular/core';
 
 import { Router, RouterOutlet } from '@angular/router';
 import { SchemaService } from './services/schema.service';
+import { VersionService } from './services/version.service';
 import { Observable } from 'rxjs';
 import { OpenAPIV2 } from 'openapi-types';
 import { CommonModule } from '@angular/common';
@@ -38,14 +39,16 @@ import { AuthService } from './services/auth.service';
 })
 export class AppComponent implements AfterViewInit {
   private schema = inject(SchemaService);
+  private version = inject(VersionService);
   private router = inject(Router);
   public auth = inject(AuthService);
 
   public drawerOpen: boolean = false;
   title = 'frontend';
 
-  // Initialize schema on app startup
+  // Initialize schema and version tracking on app startup
   private _schemaInit = this.schema.init();
+  private _versionInit = this.version.init().subscribe();
 
   // Menu items exclude detected junction tables (accessible via direct URL)
   public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntitiesForMenu();

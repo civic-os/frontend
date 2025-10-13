@@ -58,6 +58,25 @@ export class SchemaService {
     this.getProperties().subscribe();
   }
 
+  /**
+   * Refresh only the entities cache.
+   * Use when metadata.entities, metadata.permissions, or metadata.roles change.
+   */
+  public refreshEntitiesCache(): void {
+    this.getSchema().subscribe();
+  }
+
+  /**
+   * Refresh only the properties cache.
+   * Use when metadata.properties or metadata.validations change.
+   */
+  public refreshPropertiesCache(): void {
+    // Clear cached properties to force re-fetch
+    this.properties = undefined;
+    // Trigger fetch - will re-enrich with M:M data
+    this.getProperties().subscribe();
+  }
+
   public getEntities(): Observable<SchemaEntityTable[]> {
     // If no data yet, trigger a fetch in the background
     if (!this.tables()) {

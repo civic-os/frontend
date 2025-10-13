@@ -18,9 +18,9 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
 - [ ] Advanced Form Validation by use of RPCs
 - [ ] Add File/Image data types (Priority 1: Unlocks many use cases)
+- [x] Live update page as Schema is updated
 
 - [ ] Prevent duplicate/cancelled dropdown queries (not changed)
-- [ ] Hash Schema on backend and check the hash periodically (persisted view?)
 
 #### List Pages
 - [ ] Add List page configuration on top of Properties Management page
@@ -55,7 +55,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 
 ### Schema
 - [x] Build automatic generation of Entity Relationship Diagrams showing how schema works
-- [ ] Permit other relationship types (one-to-one, many-to-many)
+- [x] Permit other relationship types (one-to-one, many-to-many)
 
 ### Workflow
 - [ ] Build automatic generation of Workflow diagrams showing how workflows operate

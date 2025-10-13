@@ -727,6 +727,33 @@ describe('SchemaService', () => {
     });
   });
 
+  describe('refreshEntitiesCache()', () => {
+    it('should trigger background refresh of schema entities only', () => {
+      service.refreshEntitiesCache();
+
+      // refreshEntitiesCache() only calls getSchema()
+      const req = httpMock.expectOne(req => req.url.includes('schema_entities'));
+      req.flush([]);
+
+      // Should NOT make properties request
+      httpMock.expectNone(req => req.url.includes('schema_properties'));
+    });
+  });
+
+  describe('refreshPropertiesCache()', () => {
+    it('should clear properties cache and trigger refresh', () => {
+      service.refreshPropertiesCache();
+
+      // refreshPropertiesCache() calls getProperties()
+      // which internally calls getEntities()
+      const entitiesReq = httpMock.expectOne(req => req.url.includes('schema_entities'));
+      const propsReq = httpMock.expectOne(req => req.url.includes('schema_properties'));
+
+      entitiesReq.flush([]);
+      propsReq.flush([]);
+    });
+  });
+
   describe('Many-to-Many Detection', () => {
     it('should detect junction table with exactly 2 FKs and only metadata columns', () => {
       const tables = [createMockEntity({ table_name: 'issue_tags' })];

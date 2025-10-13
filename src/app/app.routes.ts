@@ -24,38 +24,47 @@ import { PermissionsPage } from './pages/permissions/permissions.page';
 import { EntityManagementPage } from './pages/entity-management/entity-management.page';
 import { PropertyManagementPage } from './pages/property-management/property-management.page';
 import { SchemaErdPage } from './pages/schema-erd/schema-erd.page';
+import { schemaVersionGuard } from './guards/schema-version.guard';
 
 export const routes: Routes = [
     {
         path: 'schema-erd',
-        component: SchemaErdPage
+        component: SchemaErdPage,
+        canActivate: [schemaVersionGuard]
     },
     {
         path: 'permissions',
-        component: PermissionsPage
+        component: PermissionsPage,
+        canActivate: [schemaVersionGuard]
     },
     {
         path: 'entity-management',
-        component: EntityManagementPage
+        component: EntityManagementPage,
+        canActivate: [schemaVersionGuard]
     },
     {
         path: 'property-management',
-        component: PropertyManagementPage
+        component: PropertyManagementPage,
+        canActivate: [schemaVersionGuard]
     },
     {
         path: 'view/:entityKey',
-        component: ListPage
+        component: ListPage,
+        canActivate: [schemaVersionGuard]
     },
     {
         path: 'view/:entityKey/:entityId',
-        component: DetailPage
+        component: DetailPage,
+        canActivate: [schemaVersionGuard]
     },
     {
         path: 'create/:entityKey',
-        component: CreatePage
+        component: CreatePage,
+        canActivate: [schemaVersionGuard]
     },
     {
         path: 'edit/:entityKey/:entityId',
-        component: EditPage
+        component: EditPage,
+        canActivate: [schemaVersionGuard]
     },
 ];
