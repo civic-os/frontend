@@ -261,6 +261,69 @@ export class DataService {
   }
 
   /**
+   * Compares datetime values, handling timezone differences.
+   * Input: "2025-10-31T17:00:00" (may or may not have seconds)
+   * Response: "2025-10-31T17:00:00+00:00" (PostgreSQL always includes timezone)
+   */
+  private compareDateTimeValues(inputValue: any, responseValue: any): { isDateTime: boolean, matches: boolean } {
+    if (typeof inputValue !== 'string' || typeof responseValue !== 'string') {
+      return { isDateTime: false, matches: false };
+    }
+
+    // Check if values look like ISO 8601 datetime strings
+    const dateTimePattern = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+    if (!dateTimePattern.test(inputValue) || !dateTimePattern.test(responseValue)) {
+      return { isDateTime: false, matches: false };
+    }
+
+    try {
+      // Normalize both to just date+time, strip timezone and milliseconds
+      // Input:    "2025-10-31T17:00:00"
+      // Response: "2025-10-31T17:00:00+00:00" or "2025-10-31T17:00:00.000Z"
+      const normalizeDateTime = (dt: string) => {
+        // Strip timezone suffix and milliseconds, take first 19 chars (YYYY-MM-DDTHH:mm:ss)
+        return dt.replace(/(\.\d{3})?([+-]\d{2}:\d{2}|Z)$/, '').substring(0, 19);
+      };
+
+      const normalizedInput = normalizeDateTime(inputValue);
+      const normalizedResponse = normalizeDateTime(responseValue);
+
+      return { isDateTime: true, matches: normalizedInput === normalizedResponse };
+    } catch (error) {
+      return { isDateTime: false, matches: false };
+    }
+  }
+
+  /**
+   * Compares money values.
+   * Input: 100 (number) or "100" (string)
+   * Response: "$100.00" (formatted string from PostgreSQL)
+   */
+  private compareMoneyValues(inputValue: any, responseValue: any): { isMoney: boolean, matches: boolean } {
+    // Response must be a formatted money string (starts with $ or currency symbol)
+    if (typeof responseValue !== 'string' || !responseValue.match(/^[\$€£¥]/)) {
+      return { isMoney: false, matches: false };
+    }
+
+    try {
+      // Parse both to numeric values for comparison
+      const inputNumeric = typeof inputValue === 'number' ? inputValue : parseFloat(String(inputValue).replace(/[^0-9.-]/g, ''));
+      const responseNumeric = parseFloat(responseValue.replace(/[^0-9.-]/g, ''));
+
+      if (isNaN(inputNumeric) || isNaN(responseNumeric)) {
+        return { isMoney: false, matches: false };
+      }
+
+      // Compare with small epsilon for floating point precision
+      const matches = Math.abs(inputNumeric - responseNumeric) < 0.01;
+
+      return { isMoney: true, matches };
+    } catch (error) {
+      return { isMoney: false, matches: false };
+    }
+  }
+
+  /**
    * Compares geography/geometry fields by converting EWKB to EWKT.
    * Input: EWKT format like "SRID=4326;POINT(-83 43)"
    * Response: EWKB hex format like "0101000020E6100000..."
@@ -311,8 +374,13 @@ export class DataService {
       return representation;
     }
 
+    console.log('[DATA VALIDATION] Checking edit result');
+    console.log('[DATA VALIDATION] Input data:', input);
+    console.log('[DATA VALIDATION] Response data:', representation?.body?.[0]);
+
     let identical: boolean;
     if(representation?.body?.[0] === undefined) {
+      console.log('[DATA VALIDATION] No response body - validation failed');
       identical = false;
     } else {
       identical = (representation !== undefined) && Object.keys(input).every(key => {
@@ -331,13 +399,35 @@ export class DataService {
           if (geoComparison.isGeography) {
             match = geoComparison.matches;
           } else {
-            // Primitive value - use loose equality to handle string vs number (e.g., "4" vs 4)
-            match = inputValue == responseValue;  // Use == for type coercion
+            // Check if this is a datetime field and compare properly
+            const dateTimeComparison = this.compareDateTimeValues(inputValue, responseValue);
+            if (dateTimeComparison.isDateTime) {
+              match = dateTimeComparison.matches;
+            } else {
+              // Check if this is a money field and compare properly
+              const moneyComparison = this.compareMoneyValues(inputValue, responseValue);
+              if (moneyComparison.isMoney) {
+                match = moneyComparison.matches;
+              } else {
+                // Primitive value - use loose equality to handle string vs number (e.g., "4" vs 4)
+                match = inputValue == responseValue;  // Use == for type coercion
+              }
+            }
           }
+        }
+
+        if (!match) {
+          console.log(`[DATA VALIDATION] Field "${key}" mismatch:`, { input: inputValue, response: responseValue });
         }
 
         return match;
       });
+    }
+
+    if (identical) {
+      console.log('[DATA VALIDATION] Validation passed - data matches');
+    } else {
+      console.log('[DATA VALIDATION] Validation failed - data mismatch');
     }
 
     if (identical) {

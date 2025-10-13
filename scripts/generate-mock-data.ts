@@ -46,6 +46,15 @@ interface SchemaEntityProperty {
   show_on_detail?: boolean;
 }
 
+interface ValidationRule {
+  table_name: string;
+  column_name: string;
+  validation_type: string;
+  validation_value: string | null;
+  error_message: string;
+  sort_order: number;
+}
+
 const EntityPropertyType = {
   Unknown: 0,
   TextShort: 1,
@@ -89,8 +98,8 @@ const DEFAULT_CONFIG: MockDataConfig = {
     maxLng: -82.90,
   },
   excludeTables: ['civic_os_users', 'civic_os_users_private', 'IssueStatus', 'WorkPackageStatus'],
-  outputFormat: 'sql',
-  outputPath: './example/init-scripts/03_mock_data.sql',
+  outputFormat: 'insert',
+  outputPath: './example/init-scripts/05_mock_data.sql.deprecated',
   generateUsers: false,
   userCount: 10,
 };
@@ -100,6 +109,8 @@ class MockDataGenerator {
   private client?: Client;
   private entities: SchemaEntityTable[] = [];
   private properties: SchemaEntityProperty[] = [];
+  private validationRules: ValidationRule[] = [];
+  private validationRulesMap: Map<string, ValidationRule[]> = new Map();
   private generatedData: Map<string, any[]> = new Map();
   private sqlStatements: string[] = [];
 
@@ -139,7 +150,27 @@ class MockDataGenerator {
     );
     this.properties = propertiesResult.rows;
 
-    console.log(`Fetched ${this.entities.length} entities and ${this.properties.length} properties`);
+    // Fetch validation rules
+    const validationResult = await this.client.query<ValidationRule>(
+      'SELECT table_name, column_name, validation_type, validation_value, error_message, sort_order FROM metadata.validations ORDER BY table_name, column_name, sort_order'
+    );
+    this.validationRules = validationResult.rows;
+
+    // Build validation rules lookup map (key: "table_name.column_name")
+    for (const rule of this.validationRules) {
+      const key = `${rule.table_name}.${rule.column_name}`;
+      if (!this.validationRulesMap.has(key)) {
+        this.validationRulesMap.set(key, []);
+      }
+      this.validationRulesMap.get(key)!.push(rule);
+    }
+
+    console.log(`Fetched ${this.entities.length} entities, ${this.properties.length} properties, and ${this.validationRules.length} validation rules`);
+  }
+
+  private getValidationRules(tableName: string, columnName: string): ValidationRule[] {
+    const key = `${tableName}.${columnName}`;
+    return this.validationRulesMap.get(key) || [];
   }
 
   private getPropertyType(prop: SchemaEntityProperty): EntityPropertyType {
@@ -375,18 +406,75 @@ class MockDataGenerator {
       return null;
     }
 
+    // Get validation rules for this property
+    const validationRules = this.getValidationRules(prop.table_name, prop.column_name);
+    const minRule = validationRules.find(r => r.validation_type === 'min');
+    const maxRule = validationRules.find(r => r.validation_type === 'max');
+    const minLengthRule = validationRules.find(r => r.validation_type === 'minLength');
+    const maxLengthRule = validationRules.find(r => r.validation_type === 'maxLength');
+    const patternRule = validationRules.find(r => r.validation_type === 'pattern');
+
     switch (type) {
       case EntityPropertyType.TextShort:
         if (prop.column_name === 'display_name') {
-          return this.generateDisplayName(prop.table_name);
+          let displayName = this.generateDisplayName(prop.table_name);
+          // Apply maxLength constraint if present
+          if (maxLengthRule && maxLengthRule.validation_value) {
+            const maxLen = parseInt(maxLengthRule.validation_value);
+            if (displayName.length > maxLen) {
+              displayName = displayName.substring(0, maxLen);
+            }
+          }
+          return displayName;
         }
-        return faker.lorem.words(3);
+
+        // Handle pattern validation for common patterns
+        if (patternRule && patternRule.validation_value) {
+          const pattern = patternRule.validation_value;
+          // Phone number pattern: ^\d{10}$
+          if (pattern === '^\\d{10}$' || pattern === '^\\d{10}') {
+            return faker.string.numeric(10);
+          }
+          // Otherwise generate text and hope for the best
+          return faker.lorem.words(3);
+        }
+
+        // Apply minLength/maxLength constraints
+        let shortText = faker.lorem.words(3);
+        if (minLengthRule && minLengthRule.validation_value) {
+          const minLen = parseInt(minLengthRule.validation_value);
+          while (shortText.length < minLen) {
+            shortText += ' ' + faker.lorem.word();
+          }
+        }
+        if (maxLengthRule && maxLengthRule.validation_value) {
+          const maxLen = parseInt(maxLengthRule.validation_value);
+          if (shortText.length > maxLen) {
+            shortText = shortText.substring(0, maxLen);
+          }
+        }
+        return shortText;
 
       case EntityPropertyType.TextLong:
         if (prop.column_name === 'display_name') {
           return this.generateDisplayName(prop.table_name);
         }
-        return faker.lorem.paragraph();
+
+        // Apply minLength/maxLength constraints
+        let longText = faker.lorem.paragraph();
+        if (minLengthRule && minLengthRule.validation_value) {
+          const minLen = parseInt(minLengthRule.validation_value);
+          while (longText.length < minLen) {
+            longText += ' ' + faker.lorem.sentence();
+          }
+        }
+        if (maxLengthRule && maxLengthRule.validation_value) {
+          const maxLen = parseInt(maxLengthRule.validation_value);
+          if (longText.length > maxLen) {
+            longText = longText.substring(0, maxLen);
+          }
+        }
+        return longText;
 
       case EntityPropertyType.Boolean:
         return faker.datatype.boolean();
@@ -405,10 +493,28 @@ class MockDataGenerator {
         return faker.date.recent({ days: 30 }).toISOString();
 
       case EntityPropertyType.Money:
-        return faker.commerce.price({ min: 10000, max: 100000, dec: 2 });
+        // Apply min/max constraints for money
+        let minMoney = 10000;
+        let maxMoney = 100000;
+        if (minRule && minRule.validation_value) {
+          minMoney = parseFloat(minRule.validation_value);
+        }
+        if (maxRule && maxRule.validation_value) {
+          maxMoney = parseFloat(maxRule.validation_value);
+        }
+        return faker.commerce.price({ min: minMoney, max: maxMoney, dec: 2 });
 
       case EntityPropertyType.IntegerNumber:
-        return faker.number.int({ min: 1, max: 1000 });
+        // Apply min/max constraints for integers
+        let minInt = 1;
+        let maxInt = 1000;
+        if (minRule && minRule.validation_value) {
+          minInt = parseInt(minRule.validation_value);
+        }
+        if (maxRule && maxRule.validation_value) {
+          maxInt = parseInt(maxRule.validation_value);
+        }
+        return faker.number.int({ min: minInt, max: maxInt });
 
       case EntityPropertyType.ForeignKeyName:
         if (relatedIds && relatedIds.length > 0) {
@@ -777,7 +883,7 @@ class MockDataGenerator {
 // Main execution
 async function main() {
   const args = process.argv.slice(2);
-  const outputFormat = args.includes('--insert') ? 'insert' : 'sql';
+  const outputFormat = args.includes('--sql') ? 'sql' : 'insert';
 
   // Load config if exists
   let userConfig: Partial<MockDataConfig> = {};

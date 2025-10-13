@@ -5,11 +5,12 @@ This directory contains the Civic OS mock data generator, a TypeScript tool that
 ## Overview
 
 The mock data generator:
-- Reads your database schema from PostgREST API
+- Reads your database schema and validation rules from PostgreSQL
+- **Validation-aware**: Generates data that complies with min/max, minLength/maxLength, and pattern constraints
 - Automatically generates appropriate fake data based on property types
 - Handles foreign key dependencies (inserts in correct order)
 - Supports all Civic OS property types including geography points
-- Outputs SQL files or inserts directly via database connection
+- Inserts directly to database (recommended) or outputs SQL files (legacy)
 
 ## Quick Start
 
@@ -26,29 +27,32 @@ docker-compose up -d
 
 The script needs database credentials to connect. Use one of these approaches:
 
-**Option A: Generate SQL File** (recommended)
+**Option A: Insert Directly into Database** (RECOMMENDED)
 
 ```bash
 # Load and export environment variables, then run generator
 set -a && source example/.env && set +a && npm run generate:mock
 ```
 
-Or manually specify the password:
+Or use the seed alias:
 ```bash
-POSTGRES_PASSWORD=your_password npm run generate:mock
-```
-
-This creates `example/init-scripts/03_mock_data.sql` which you can:
-- Review before applying
-- Include in Docker init scripts for automatic setup
-- Commit to version control for consistent test data
-
-**Option B: Insert Directly into Database**
-
-```bash
-# Load and export environment variables, then run generator
 set -a && source example/.env && set +a && npm run generate:seed
 ```
+
+This approach:
+- Inserts data directly to the database
+- Allows schema changes to flow smoothly without static SQL file conflicts
+- Generates validation-compliant data every time
+- Can be run repeatedly to refresh test data
+
+**Option B: Generate SQL File** (legacy, for reference only)
+
+```bash
+# Load and export environment variables, then run generator with --sql flag
+set -a && source example/.env && set +a && npm run generate:mock -- --sql
+```
+
+This creates `example/init-scripts/05_mock_data.sql.deprecated` which you can review. However, static SQL files are no longer used in init scripts because they become stale when the schema changes.
 
 **Why the `set -a` approach?**
 - `source` alone doesn't export variables to child processes
@@ -137,6 +141,12 @@ npm run generate:mock
 The generator connects to your database and fetches:
 - `schema_entities` - List of all tables
 - `schema_properties` - All columns with metadata
+- `metadata.validations` - Validation rules (min, max, minLength, maxLength, pattern)
+
+The validation rules are used to generate compliant data. For example:
+- If `Issue.severity_level` has min=1 and max=5, the generator produces integers between 1-5
+- If `Tag.display_name` has maxLength=50, the generator produces strings ≤50 characters
+- If `Issue.contact_phone` has pattern=`^\d{10}$`, the generator produces 10-digit phone numbers
 
 ### 2. User Generation (Optional)
 

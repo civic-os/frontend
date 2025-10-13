@@ -271,6 +271,27 @@ CREATE TABLE metadata.permission_roles (
   FOREIGN KEY (role_id) REFERENCES metadata.roles (id)
 );
 
+-- Validation rules table
+CREATE TABLE metadata.validations (
+  id SERIAL PRIMARY KEY,
+  table_name NAME NOT NULL,
+  column_name NAME NOT NULL,
+  validation_type TEXT NOT NULL,  -- 'required', 'min', 'max', 'minLength', 'maxLength', 'pattern'
+  validation_value TEXT,           -- e.g., '0', '100', '^\d{5}$'
+  error_message TEXT NOT NULL,     -- User-friendly: "Age must be at least 18"
+  sort_order INT DEFAULT 0,
+  UNIQUE(table_name, column_name, validation_type)
+);
+
+-- CHECK constraint error message mapping
+CREATE TABLE metadata.constraint_messages (
+  id SERIAL PRIMARY KEY,
+  constraint_name NAME NOT NULL UNIQUE,
+  table_name NAME NOT NULL,
+  column_name NAME,                -- NULL for multi-column constraints
+  error_message TEXT NOT NULL
+);
+
 -- Grant permissions on metadata schema
 GRANT USAGE ON SCHEMA metadata TO web_anon, authenticated;
 GRANT SELECT ON metadata.entities TO web_anon, authenticated;
@@ -279,6 +300,8 @@ GRANT SELECT ON metadata.properties TO web_anon, authenticated;
 GRANT SELECT ON metadata.permissions TO web_anon, authenticated;
 GRANT SELECT ON metadata.roles TO web_anon, authenticated;
 GRANT SELECT ON metadata.permission_roles TO web_anon, authenticated;
+GRANT SELECT ON metadata.validations TO web_anon, authenticated;
+GRANT SELECT ON metadata.constraint_messages TO web_anon, authenticated;
 
 -- =====================================================
 -- Schema Relations Function
@@ -411,7 +434,12 @@ SELECT
         FROM '\(([A-Za-z]+)'
       )
     ELSE NULL
-  END AS geography_type
+  END AS geography_type,
+  -- Validation rules as JSONB array
+  COALESCE(
+    validation_rules_agg.validation_rules,
+    '[]'::jsonb
+  ) AS validation_rules
 FROM information_schema.columns
 LEFT JOIN (
   SELECT
@@ -454,6 +482,23 @@ LEFT JOIN (
 ) pg_type_info
   ON pg_type_info.table_name = columns.table_name::name
   AND pg_type_info.column_name = columns.column_name::name
+LEFT JOIN (
+  SELECT
+    table_name,
+    column_name,
+    jsonb_agg(
+      jsonb_build_object(
+        'type', validation_type,
+        'value', validation_value,
+        'message', error_message
+      )
+      ORDER BY sort_order
+    ) AS validation_rules
+  FROM metadata.validations
+  GROUP BY table_name, column_name
+) validation_rules_agg
+  ON validation_rules_agg.table_name = columns.table_name::name
+  AND validation_rules_agg.column_name = columns.column_name::name
 WHERE columns.table_schema::name = 'public'::name
   AND columns.table_name::name IN (
     SELECT schema_entities.table_name FROM schema_entities

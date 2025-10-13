@@ -21,7 +21,7 @@ INSERT INTO "public"."WorkPackageStatus" ("id", "created_at", "display_name") VA
   ('5', '2024-12-14 21:30:53.014772+00', 'Not Selected');
 
 -- Seed Tag data (for many-to-many relationship example)
-INSERT INTO public."Tag" (name, color, description) VALUES
+INSERT INTO public."Tag" (display_name, color, description) VALUES
   ('Urgent', '#EF4444', 'Requires immediate attention'),
   ('Intersection', '#F59E0B', 'Located at an intersection'),
   ('School Zone', '#EAB308', 'Near a school'),

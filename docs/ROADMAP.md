@@ -11,17 +11,22 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Show related Entities (inverse relationships)
 - [x] Allow one-to-many and many-to-many Properties
 - [x] Build scheme for editable Properties, default values, etc.
-- [ ] Add Form Validation Messages (Priority 2: Critical for UX)
+- [x] Add Form Validation Messages
 - [x] Allow sorting/layout of Property Views/Lists
 - [ ] Add User Profile and management
 - [x] Add Login/Logout Screens (uses Keycloak Auth)
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
-- [ ] Expand Form Validation by use of `CHECK` statements
-- [ ] Add File/Image data types (Priority 3: Unlocks many use cases)
+- [ ] Advanced Form Validation by use of RPCs
+- [ ] Add File/Image data types (Priority 1: Unlocks many use cases)
+
+- [ ] Add "back" navigation arrows to edit, create, and detail pages.
+- [ ] Add user select dropdown
+- [ ] Prevent duplicate/cancelled dropdown queries (not changed)
+- [ ] Hash Schema on backend and check the hash periodically (persisted view?)
 
 #### List Pages
 - [ ] Add List page configuration on top of Properties Management page
-- [ ] Add pagination (Priority 1: Essential for scalability)
+- [X] Add pagination
 - [x] Add text search as an indexed column and toggle-able search box
 - [ ] Add Map view for List pages
 - [x] Add Sortable columns and default sort

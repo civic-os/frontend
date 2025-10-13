@@ -250,9 +250,70 @@ export class SchemaService {
   public static getFormValidatorsForProperty(prop: SchemaEntityProperty): ValidatorFn[] {
     let validators:ValidatorFn[] = [];
 
+    console.log(`[VALIDATORS] Building validators for ${prop.table_name}.${prop.column_name}:`);
+    console.log(`  - is_nullable: ${prop.is_nullable}`);
+    console.log(`  - validation_rules exists:`, prop.validation_rules !== undefined && prop.validation_rules !== null);
+    console.log(`  - validation_rules type:`, typeof prop.validation_rules);
+    console.log(`  - validation_rules length:`, prop.validation_rules?.length);
+    console.log(`  - validation_rules content:`, JSON.stringify(prop.validation_rules, null, 2));
+
+    // First, check is_nullable for backwards compatibility
     if(!prop.is_nullable) {
       validators.push(Validators.required);
+      console.log(`  - Added: Validators.required (from is_nullable)`);
     }
+
+    // Then, add validators from validation_rules metadata
+    if(prop.validation_rules && prop.validation_rules.length > 0) {
+      prop.validation_rules.forEach(rule => {
+        switch(rule.type) {
+          case 'required':
+            validators.push(Validators.required);
+            console.log(`  - Added: Validators.required (from validation_rules)`);
+            break;
+          case 'min':
+            if(rule.value) {
+              const minValue = Number(rule.value);
+              validators.push(Validators.min(minValue));
+              console.log(`  - Added: Validators.min(${minValue})`);
+            }
+            break;
+          case 'max':
+            if(rule.value) {
+              const maxValue = Number(rule.value);
+              validators.push(Validators.max(maxValue));
+              console.log(`  - Added: Validators.max(${maxValue})`);
+            }
+            break;
+          case 'minLength':
+            if(rule.value) {
+              const minLen = Number(rule.value);
+              validators.push(Validators.minLength(minLen));
+              console.log(`  - Added: Validators.minLength(${minLen})`);
+            }
+            break;
+          case 'maxLength':
+            console.log(`  - [DEBUG] maxLength case hit! rule.value:`, rule.value);
+            if(rule.value) {
+              const maxLen = Number(rule.value);
+              console.log(`  - [DEBUG] Parsed maxLen:`, maxLen, `(type: ${typeof maxLen})`);
+              validators.push(Validators.maxLength(maxLen));
+              console.log(`  - Added: Validators.maxLength(${maxLen})`);
+            } else {
+              console.log(`  - [DEBUG] maxLength rule.value is falsy, skipping`);
+            }
+            break;
+          case 'pattern':
+            if(rule.value) {
+              validators.push(Validators.pattern(rule.value));
+              console.log(`  - Added: Validators.pattern(${rule.value})`);
+            }
+            break;
+        }
+      });
+    }
+
+    console.log(`  - Total validators: ${validators.length}`);
     return validators;
   }
   public static getDefaultValueForProperty(prop: SchemaEntityProperty): any {

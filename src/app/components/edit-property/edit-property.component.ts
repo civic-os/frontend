@@ -72,6 +72,10 @@ export class EditPropertyComponent {
         });
       }));
     }
+
+    // Note: Value transformation for datetime-local and money inputs
+    // is now handled in edit.page.ts when creating FormControls.
+    // This ensures transformation happens when data arrives, not when component initializes.
   }
 
   public onMapValueChange(ewkt: string) {

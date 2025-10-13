@@ -11,6 +11,12 @@
       </h1>
       @if (createForm) {
         <form [formGroup]="createForm" (ngSubmit)="submitForm($event)">
+          @if (showValidationError) {
+            <div role="alert" class="alert alert-error mb-4">
+              <span class="material-symbols-outlined">error</span>
+              <span>Please fix the errors highlighted below before saving.</span>
+            </div>
+          }
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 2xl:grid-cols-8 gap-6">
             @for (prop of props; track prop) {
               <div [class]="'col-span-full sm:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 3) + ' lg:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 6) + ' 2xl:col-span-' + SchemaService.getColumnSpan(prop)">
@@ -19,7 +25,7 @@
             }
           </div>
           <div class="divider"></div>
-          <button class="btn btn-accent" [disabled]="createForm.invalid">
+          <button type="submit" class="btn btn-accent">
             <span class="material-symbols-outlined">save</span> Save
           </button>
         </form>

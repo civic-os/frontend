@@ -14,7 +14,7 @@
     <input type="date" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.DateTime) {
-    <input type="datetime" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
+    <input type="datetime-local" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
   }
   @if (propType() == EntityPropertyType.DateTimeLocal) {
     <input type="datetime-local" placeholder="Type here" class="input w-full" [id]="prop().column_name" [formControlName]="prop().column_name" />
@@ -62,11 +62,83 @@
 
   @if (form().controls[prop().column_name]; as ctl) {
     @if (ctl.invalid && (ctl.dirty || ctl.touched)) {
-      <div
-        class="text-error mt-1">
+      <div class="text-error text-sm mt-1">
         @if (ctl.errors?.['required']) {
           <div>
-            {{ prop().display_name }} is required.
+            @if (prop().validation_rules) {
+              @for (rule of prop().validation_rules; track rule.type) {
+                @if (rule.type === 'required') {
+                  {{ rule.message }}
+                }
+              }
+            } @else {
+              {{ prop().display_name }} is required.
+            }
+          </div>
+        }
+        @if (ctl.errors?.['min']) {
+          <div>
+            @if (prop().validation_rules) {
+              @for (rule of prop().validation_rules; track rule.type) {
+                @if (rule.type === 'min') {
+                  {{ rule.message }}
+                }
+              }
+            } @else {
+              Value must be at least {{ ctl.errors?.['min'].min }}.
+            }
+          </div>
+        }
+        @if (ctl.errors?.['max']) {
+          <div>
+            @if (prop().validation_rules) {
+              @for (rule of prop().validation_rules; track rule.type) {
+                @if (rule.type === 'max') {
+                  {{ rule.message }}
+                }
+              }
+            } @else {
+              Value must be no more than {{ ctl.errors?.['max'].max }}.
+            }
+          </div>
+        }
+        @if (ctl.errors?.['minlength']) {
+          <div>
+            @if (prop().validation_rules) {
+              @for (rule of prop().validation_rules; track rule.type) {
+                @if (rule.type === 'minLength') {
+                  {{ rule.message }}
+                }
+              }
+            } @else {
+              Must be at least {{ ctl.errors?.['minlength'].requiredLength }} characters.
+            }
+          </div>
+        }
+        @if (ctl.errors?.['maxlength']) {
+          <div>
+            @if (prop().validation_rules) {
+              @for (rule of prop().validation_rules; track rule.type) {
+                @if (rule.type === 'maxLength') {
+                  {{ rule.message }}
+                }
+              }
+            } @else {
+              Must be no more than {{ ctl.errors?.['maxlength'].requiredLength }} characters.
+            }
+          </div>
+        }
+        @if (ctl.errors?.['pattern']) {
+          <div>
+            @if (prop().validation_rules) {
+              @for (rule of prop().validation_rules; track rule.type) {
+                @if (rule.type === 'pattern') {
+                  {{ rule.message }}
+                }
+              }
+            } @else {
+              Invalid format.
+            }
           </div>
         }
       </div>

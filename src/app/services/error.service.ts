@@ -28,6 +28,18 @@ export class ErrorService {
       return "Permissions error";
     } else if(err.code == '23505') {
       return "Record must be unique";
+    } else if(err.code == '23514') {
+      // CHECK constraint violation
+      // Try to extract constraint name from details or message
+      // PostgreSQL format: 'new row for relation "table_name" violates check constraint "constraint_name"'
+      const constraintMatch = err.details?.match(/constraint "([^"]+)"/) || err.message?.match(/constraint "([^"]+)"/);
+      if (constraintMatch && constraintMatch[1]) {
+        const constraintName = constraintMatch[1];
+        // TODO: In a real implementation, we would look up the constraint_name in metadata.constraint_messages
+        // For now, return a generic message with the constraint name
+        return `Validation failed: ${constraintName}`;
+      }
+      return "Validation failed";
     } else if(err.httpCode == 404) {
       return "Resource not found";
     }

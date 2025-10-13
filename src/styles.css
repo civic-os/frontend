@@ -6,3 +6,21 @@
 body {
     margin-bottom: 24px;
 }
+
+/* Explicit validation styling for Firefox compatibility */
+/* Firefox doesn't always apply :invalid styling to datetime-local inputs */
+input.ng-invalid.ng-touched,
+textarea.ng-invalid.ng-touched,
+select.ng-invalid.ng-touched {
+    border-color: #ef4444 !important; /* Tailwind red-500 */
+    border-width: 2px !important;
+}
+
+/* Focus state for invalid fields */
+input.ng-invalid.ng-touched:focus,
+textarea.ng-invalid.ng-touched:focus,
+select.ng-invalid.ng-touched:focus {
+    outline: 2px solid #ef4444 !important;
+    outline-offset: 2px !important;
+    border-color: #ef4444 !important;
+}

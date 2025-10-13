@@ -181,7 +181,7 @@ describe('EditPropertyComponent', () => {
       component.ngOnInit();
       fixture.detectChanges();
 
-      const input = fixture.debugElement.query(By.css('input[type="datetime"]'));
+      const input = fixture.debugElement.query(By.css('input[type="datetime-local"]'));
       expect(input).toBeTruthy();
     });
   });

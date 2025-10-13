@@ -27,6 +27,12 @@ export interface SchemaEntityTable {
     delete: boolean,
 }
 
+export interface ValidationRule {
+    type: 'required' | 'min' | 'max' | 'minLength' | 'maxLength' | 'pattern';
+    value?: string;
+    message: string;
+}
+
 export interface SchemaEntityProperty {
     table_catalog: string,
     table_schema: string,
@@ -59,8 +65,11 @@ export interface SchemaEntityProperty {
 
     type: EntityPropertyType, // Calculated in Schema Service
 
-    // NEW: M:M metadata (populated when type === ManyToMany)
+    // M:M metadata (populated when type === ManyToMany)
     many_to_many_meta?: ManyToManyMeta;
+
+    // Validation rules from metadata
+    validation_rules?: ValidationRule[];
 }
 
 export enum EntityPropertyType {

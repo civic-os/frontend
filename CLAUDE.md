@@ -43,6 +43,23 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 
 **Geography (GeoPoint) Type**: When adding a geography column, you must create a paired computed field function `<column_name>_text` that returns `ST_AsText()`. PostgREST exposes this as a virtual field. Data format: Insert/Update uses EWKT `"SRID=4326;POINT(lng lat)"`, Read receives WKT `"POINT(lng lat)"`.
 
+**DateTime vs DateTimeLocal - Timezone Handling**:
+
+These two timestamp types have fundamentally different timezone behaviors:
+
+- **DateTime** (`timestamp without time zone`): Stores "wall clock" time with NO timezone context
+  - Database stores exactly what user enters (e.g., "10:30 AM" → "10:30 AM")
+  - No timezone conversion on load or submit
+  - Use for: Scheduled events, business hours, appointment slots (where timezone doesn't matter)
+
+- **DateTimeLocal** (`timestamptz`): Stores absolute point in time in UTC
+  - User enters time in THEIR local timezone (e.g., "5:30 PM EST")
+  - Frontend converts to UTC before sending to database (e.g., "10:30 PM UTC")
+  - On load, converts UTC back to user's local timezone for display
+  - Use for: Created/updated timestamps, events tied to specific moments in time
+
+**CRITICAL**: The transformation logic in `EditPage.transformValueForControl()`, `EditPage.transformValuesForApi()`, and `CreatePage.transformValuesForApi()` handles these conversions. Modifying this code can cause data integrity issues. See extensive inline comments and tests for implementation details.
+
 **Many-to-Many Relationships**: Automatically detected from junction tables with foreign keys. Junction tables MUST use composite primary keys (NOT surrogate IDs) to prevent duplicate key errors. The system detects M:M relationships via metadata analysis and renders them with `ManyToManyEditorComponent` on Detail pages only (not Create/Edit). Changes are saved immediately using direct REST operations (POST/DELETE). Junction table structure:
 ```sql
 CREATE TABLE issue_tags (
@@ -93,7 +110,17 @@ ng generate component pages/page-name --type=page  # Use "page" suffix by conven
 ```
 
 **Mock Data Generation:**
-Configure `scripts/mock-data-config.json`, then run `set -a && source example/.env && set +a && npm run generate:mock`. See `scripts/README.md` for details.
+```bash
+# Generate and insert mock data directly to database (RECOMMENDED)
+set -a && source example/.env && set +a && npm run generate:mock
+
+# Or generate SQL file (legacy, use only for reference)
+set -a && source example/.env && set +a && npm run generate:mock -- --sql
+```
+
+The mock data generator is **validation-aware**: it fetches validation rules from `metadata.validations` and generates compliant data (respects min/max, minLength/maxLength, pattern constraints). Configure `scripts/mock-data-config.json` to control record counts and geography bounds. See `scripts/README.md` for details.
+
+**Important**: Mock data should be generated AFTER database initialization (after `docker-compose up`), not during init scripts. This allows schema changes to flow smoothly without being blocked by stale static SQL files. The deprecated `example/init-scripts/05_mock_data.sql.deprecated` file is kept only as reference.
 
 ## Database Setup
 
@@ -165,6 +192,55 @@ Override `metadata.properties.display_name` to change labels. Set `sort_order` t
 2. Update `SchemaService.getPropertyType()` to detect the type
 3. Add rendering logic to `DisplayPropertyComponent`
 4. Add input control to `EditPropertyComponent`
+
+### Form Validation
+
+Civic OS provides a flexible validation system with **dual enforcement**: frontend validation for UX and backend CHECK constraints for security.
+
+**Supported Validation Types**: `required`, `min`, `max`, `minLength`, `maxLength`, `pattern`
+
+**Adding Validation to a Property:**
+
+```sql
+-- 1. Add CHECK constraint (backend enforcement)
+ALTER TABLE products
+  ADD CONSTRAINT price_positive CHECK (price > 0);
+
+-- 2. Add validation metadata (frontend UX)
+INSERT INTO metadata.validations (table_name, column_name, validation_type, validation_value, error_message, sort_order)
+VALUES ('products', 'price', 'min', '0.01', 'Price must be greater than zero', 1);
+
+-- 3. Map CHECK constraint to friendly error message (for when frontend is bypassed)
+INSERT INTO metadata.constraint_messages (constraint_name, table_name, column_name, error_message)
+VALUES ('price_positive', 'products', 'price', 'Price must be greater than zero');
+```
+
+**How It Works:**
+- `metadata.validations` → Frontend validators (Angular `Validators.min()`, `.max()`, `.pattern()`, etc.)
+- `schema_properties` view → Aggregates validation rules as JSONB array
+- `SchemaService.getFormValidatorsForProperty()` → Maps rules to Angular validators
+- `EditPropertyComponent` → Displays custom error messages in real-time
+- `ErrorService.parseToHuman()` → Translates CHECK constraint errors (code '23514') to friendly messages
+
+**Example Validation Patterns:**
+```sql
+-- Numeric range (1-5 scale)
+INSERT INTO metadata.validations VALUES
+  ('issues', 'severity', 'min', '1', 'Severity must be between 1 and 5', 1),
+  ('issues', 'severity', 'max', '5', 'Severity must be between 1 and 5', 2);
+
+-- String length
+INSERT INTO metadata.validations VALUES
+  ('issues', 'description', 'minLength', '10', 'Description must be at least 10 characters', 1);
+
+-- Pattern validation (phone number)
+INSERT INTO metadata.validations VALUES
+  ('users', 'phone', 'pattern', '^\d{10}$', 'Phone must be 10 digits (no dashes)', 1);
+```
+
+**See Also:** `example/init-scripts/02_validation_examples.sql` for complete examples in the Pot Hole domain.
+
+**Future Enhancement:** Async/RPC validators for database lookups (uniqueness checks, cross-field validation). See `docs/development/ADVANCED_VALIDATION.md`.
 
 ## Angular 20 Critical Patterns
 

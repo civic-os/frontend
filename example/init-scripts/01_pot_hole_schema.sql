@@ -53,7 +53,8 @@ CREATE TABLE "public"."WorkPackage" (
 	"updated_at" TIMESTAMP WITH TIME ZONE,
 	"display_name" CHARACTER VARYING NOT NULL,
 	"quote_due_date" TIMESTAMP WITH TIME ZONE NOT NULL,
-	"status" BIGINT
+	"status" BIGINT,
+	"cost" MONEY
 );
 
 -- WorkPackageStatus table
@@ -66,12 +67,11 @@ CREATE TABLE "public"."WorkPackageStatus" (
 -- Tag table (for M:M relationship example)
 CREATE TABLE "public"."Tag" (
 	"id" SERIAL PRIMARY KEY,
-	"name" VARCHAR(50) NOT NULL UNIQUE,
+	"display_name" VARCHAR(50) NOT NULL UNIQUE,
 	"color" VARCHAR(7) DEFAULT '#3B82F6',
 	"description" TEXT,
 	"created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-	"updated_at" TIMESTAMPTZ,
-	"display_name" TEXT GENERATED ALWAYS AS (name) STORED
+	"updated_at" TIMESTAMPTZ
 );
 
 -- Issue_Tags junction table (many-to-many)

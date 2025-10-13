@@ -266,6 +266,83 @@ describe('CreatePage', () => {
     });
   });
 
+  describe('Form Validation UX', () => {
+    beforeEach(() => {
+      mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+      mockSchemaService.getPropsForCreate.and.returnValue(of([
+        createMockProperty({ ...MOCK_PROPERTIES.textShort, is_nullable: false })
+      ]));
+
+      fixture.detectChanges();
+    });
+
+    it('should not submit when form is invalid', (done) => {
+      mockDataService.createData.and.returnValue(of({ success: true, body: {} }));
+
+      component.properties$.subscribe(() => {
+        // Leave form empty (required field not filled)
+        component.submitForm({});
+
+        expect(mockDataService.createData).not.toHaveBeenCalled();
+        done();
+      });
+    });
+
+    it('should set showValidationError flag when submitting invalid form', (done) => {
+      component.properties$.subscribe(() => {
+        expect(component.showValidationError).toBe(false);
+
+        // Submit invalid form
+        component.submitForm({});
+
+        expect(component.showValidationError).toBe(true);
+        done();
+      });
+    });
+
+    it('should mark all controls as touched when submitting invalid form', (done) => {
+      component.properties$.subscribe(() => {
+        const nameControl = component.createForm?.get('name');
+        expect(nameControl?.touched).toBe(false);
+
+        // Submit invalid form
+        component.submitForm({});
+
+        expect(nameControl?.touched).toBe(true);
+        done();
+      });
+    });
+
+    it('should hide error banner when form becomes valid', (done) => {
+      component.properties$.subscribe(() => {
+        // Submit invalid form to show error
+        component.submitForm({});
+        expect(component.showValidationError).toBe(true);
+
+        // Make form valid
+        component.createForm?.patchValue({ name: 'Valid Name' });
+
+        // Wait for statusChanges observable to trigger
+        setTimeout(() => {
+          expect(component.showValidationError).toBe(false);
+          done();
+        }, 50);
+      });
+    });
+
+    it('should call scrollToFirstError when form is invalid', (done) => {
+      component.properties$.subscribe(() => {
+        spyOn<any>(component, 'scrollToFirstError');
+
+        // Submit invalid form
+        component.submitForm({});
+
+        expect((component as any).scrollToFirstError).toHaveBeenCalled();
+        done();
+      });
+    });
+  });
+
   describe('navToList()', () => {
     it('should navigate to current entity list', () => {
       component.entityKey = 'Issue';

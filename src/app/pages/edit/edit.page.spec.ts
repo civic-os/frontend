@@ -152,9 +152,9 @@ describe('EditPage', () => {
       mockDataService.getData.and.returnValue(of([{ id: 42, name: 'Test', count: 5 }] as any));
 
       component.data$.subscribe(() => {
-        expect(component.editForm()).toBeDefined();
-        expect(component.editForm()?.get('name')).toBeDefined();
-        expect(component.editForm()?.get('count')).toBeDefined();
+        expect(component.editForm).toBeDefined();
+        expect(component.editForm?.get('name')).toBeDefined();
+        expect(component.editForm?.get('count')).toBeDefined();
         done();
       });
     });
@@ -172,9 +172,9 @@ describe('EditPage', () => {
       mockDataService.getData.and.returnValue(of(mockData as any));
 
       component.data$.subscribe(() => {
-        expect(component.editForm()?.get('name')?.value).toBe('Test Issue');
-        expect(component.editForm()?.get('count')?.value).toBe(10);
-        expect(component.editForm()?.get('is_active')?.value).toBe(true);
+        expect(component.editForm?.get('name')?.value).toBe('Test Issue');
+        expect(component.editForm?.get('count')?.value).toBe(10);
+        expect(component.editForm?.get('is_active')?.value).toBe(true);
         done();
       });
     });
@@ -189,7 +189,7 @@ describe('EditPage', () => {
 
       component.data$.subscribe(() => {
         // Note: FormGroup.get returns null for non-existent controls, not undefined
-        expect(component.editForm()?.get('id')).toBeNull();
+        expect(component.editForm?.get('id')).toBeNull();
         done();
       });
     });
@@ -205,7 +205,7 @@ describe('EditPage', () => {
       mockDataService.getData.and.returnValue(of(mockData as any));
 
       component.data$.subscribe(() => {
-        const nameControl = component.editForm()?.get('name');
+        const nameControl = component.editForm?.get('name');
         nameControl?.setValue('');
         expect(nameControl?.hasError('required')).toBe(true);
         done();
@@ -231,7 +231,7 @@ describe('EditPage', () => {
       mockDataService.editData.and.returnValue(of({ success: true }));
 
       component.data$.subscribe(() => {
-        component.editForm()?.patchValue({ name: 'Updated Name' });
+        component.editForm?.patchValue({ name: 'Updated Name' });
         component.submitForm({});
 
         setTimeout(() => {
@@ -299,10 +299,93 @@ describe('EditPage', () => {
     it('should not submit when editForm is undefined', () => {
       component.entityKey = 'Issue';
       component.entityId = '42';
-      component.editForm.set(undefined);
+      component.editForm = undefined;
       component.submitForm({});
 
       expect(mockDataService.editData).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Form Validation UX', () => {
+    beforeEach(() => {
+      mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+      mockSchemaService.getPropsForEdit.and.returnValue(of([
+        createMockProperty({ ...MOCK_PROPERTIES.textShort, is_nullable: false })
+      ]));
+      mockDataService.getData.and.returnValue(of([{ id: 42, name: '' }] as any));
+
+      fixture.detectChanges();
+    });
+
+    it('should not submit when form is invalid', (done) => {
+      mockDataService.editData.and.returnValue(of({ success: true }));
+
+      component.data$.subscribe(() => {
+        // Clear required field to make form invalid
+        component.editForm?.patchValue({ name: '' });
+        component.submitForm({});
+
+        expect(mockDataService.editData).not.toHaveBeenCalled();
+        done();
+      });
+    });
+
+    it('should set showValidationError flag when submitting invalid form', (done) => {
+      component.data$.subscribe(() => {
+        expect(component.showValidationError()).toBe(false);
+
+        // Clear required field and submit
+        component.editForm?.patchValue({ name: '' });
+        component.submitForm({});
+
+        expect(component.showValidationError()).toBe(true);
+        done();
+      });
+    });
+
+    it('should mark all controls as touched when submitting invalid form', (done) => {
+      component.data$.subscribe(() => {
+        const nameControl = component.editForm?.get('name');
+        expect(nameControl?.touched).toBe(false);
+
+        // Clear required field and submit
+        component.editForm?.patchValue({ name: '' });
+        component.submitForm({});
+
+        expect(nameControl?.touched).toBe(true);
+        done();
+      });
+    });
+
+    it('should hide error banner when form becomes valid', (done) => {
+      component.data$.subscribe(() => {
+        // Make form invalid and submit to show error
+        component.editForm?.patchValue({ name: '' });
+        component.submitForm({});
+        expect(component.showValidationError()).toBe(true);
+
+        // Make form valid
+        component.editForm?.patchValue({ name: 'Valid Name' });
+
+        // Wait for statusChanges observable to trigger
+        setTimeout(() => {
+          expect(component.showValidationError()).toBe(false);
+          done();
+        }, 50);
+      });
+    });
+
+    it('should call scrollToFirstError when form is invalid', (done) => {
+      component.data$.subscribe(() => {
+        spyOn<any>(component, 'scrollToFirstError');
+
+        // Clear required field and submit
+        component.editForm?.patchValue({ name: '' });
+        component.submitForm({});
+
+        expect((component as any).scrollToFirstError).toHaveBeenCalled();
+        done();
+      });
     });
   });
 
@@ -348,7 +431,7 @@ describe('EditPage', () => {
         callCount++;
         if (callCount === 1) {
           expect(data.id).toBe(42);
-          expect(component.editForm()?.get('name')?.value).toBe('Issue 42');
+          expect(component.editForm?.get('name')?.value).toBe('Issue 42');
 
           // Trigger route change to different record
           routeParams.next({ entityKey: 'Issue', entityId: '99' });
@@ -357,7 +440,7 @@ describe('EditPage', () => {
           expect(component.entityId).toBe('99');
           // Form should be repopulated with new data
           setTimeout(() => {
-            expect(component.editForm()?.get('name')?.value).toBe('Issue 99');
+            expect(component.editForm?.get('name')?.value).toBe('Issue 99');
             done();
           }, 10);
         }
@@ -379,12 +462,12 @@ describe('EditPage', () => {
         callCount++;
         if (callCount === 1) {
           expect(component.entityKey).toBe('Issue');
-          expect(component.editForm()).toBeDefined();
+          expect(component.editForm).toBeDefined();
 
           routeParams.next({ entityKey: 'Status', entityId: '5' });
         } else if (callCount === 2) {
           expect(component.entityKey).toBe('Status');
-          expect(component.editForm()).toBeDefined();
+          expect(component.editForm).toBeDefined();
           done();
         }
       });
@@ -456,6 +539,262 @@ describe('EditPage', () => {
       component.entity$.subscribe(entity => {
         expect(entity?.description).toBeNull();
         done();
+      });
+    });
+  });
+
+  describe('Value Transformation', () => {
+    /**
+     * TIMEZONE-AWARE TESTS
+     *
+     * These tests verify correct handling of DateTime (naive) vs DateTimeLocal (timezone-aware) fields.
+     *
+     * IMPORTANT: DateTimeLocal tests depend on the test runner's timezone setting.
+     * The expected values shown here assume the tests run in UTC timezone.
+     * If tests run in a different timezone (e.g., EST, PST), the expected output
+     * will be different. This is CORRECT and EXPECTED behavior.
+     *
+     * Example: Database has "2025-01-15T10:30:00Z" (10:30 UTC)
+     * - In UTC timezone: Display "2025-01-15T10:30" ✓
+     * - In EST (UTC-5): Display "2025-01-15T05:30" ✓
+     * - In PST (UTC-8): Display "2025-01-15T02:30" ✓
+     */
+    describe('transformValueForControl() - Load-time transformations', () => {
+      it('should format DateTime field for input (timezone-naive)', (done) => {
+        // DateTime fields (timestamp without time zone) are timezone-naive
+        const mockProps = [MOCK_PROPERTIES.dateTime];
+        const mockData = [{ id: 42, created_at: '2025-01-15T10:30:00' }];
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+
+        component.data$.subscribe(() => {
+          const controlValue = component.editForm?.get('created_at')?.value;
+          // Should show exactly what's stored (no timezone conversion)
+          expect(controlValue).toBe('2025-01-15T10:30');
+          done();
+        });
+      });
+
+      it('should convert DateTimeLocal UTC to user local time', (done) => {
+        // DateTimeLocal fields (timestamptz) are timezone-aware
+        const mockProps = [MOCK_PROPERTIES.dateTimeLocal];
+        const mockData = [{ id: 42, updated_at: '2025-01-15T10:30:00.000Z' }]; // 10:30 UTC
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+
+        component.data$.subscribe(() => {
+          const controlValue = component.editForm?.get('updated_at')?.value;
+          // Should convert UTC to local timezone
+          // The exact value depends on test runner's timezone
+          const utcDate = new Date('2025-01-15T10:30:00.000Z');
+          const expectedValue = `${utcDate.getFullYear()}-${String(utcDate.getMonth() + 1).padStart(2, '0')}-${String(utcDate.getDate()).padStart(2, '0')}T${String(utcDate.getHours()).padStart(2, '0')}:${String(utcDate.getMinutes()).padStart(2, '0')}`;
+          expect(controlValue).toBe(expectedValue);
+          done();
+        });
+      });
+
+      it('should parse money string to number', (done) => {
+        const mockProps = [MOCK_PROPERTIES.money];
+        const mockData = [{ id: 42, amount: '$1,234.56' }];
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+
+        component.data$.subscribe(() => {
+          const controlValue = component.editForm?.get('amount')?.value;
+          expect(controlValue).toBe(1234.56);
+          expect(typeof controlValue).toBe('number');
+          done();
+        });
+      });
+
+      it('should handle null values without transformation', (done) => {
+        const mockProps = [MOCK_PROPERTIES.dateTime, MOCK_PROPERTIES.money];
+        const mockData = [{ id: 42, created_at: null, amount: null }];
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+
+        component.data$.subscribe(() => {
+          expect(component.editForm?.get('created_at')?.value).toBeNull();
+          expect(component.editForm?.get('amount')?.value).toBeNull();
+          done();
+        });
+      });
+    });
+
+    describe('transformValuesForApi() - Submit-time transformations', () => {
+      /**
+       * These tests verify correct transformation of form values back to database format.
+       *
+       * DateTime (timestamp without time zone):
+       * - Input: "2025-01-15T10:30" (naive time from datetime-local input)
+       * - Output: "2025-01-15T10:30:00" (add seconds, no timezone)
+       *
+       * DateTimeLocal (timestamptz):
+       * - Input: "2025-01-15T17:30" (user's local time from datetime-local input)
+       * - Output: "2025-01-15T22:30:00.000Z" (convert to UTC ISO format)
+       * - Test expectations are timezone-aware (calculated values match test runner TZ)
+       */
+
+      it('should add seconds to DateTime value on submit (timezone-naive)', (done) => {
+        const mockProps = [MOCK_PROPERTIES.dateTime];
+        const mockData = [{ id: 42, created_at: '2025-01-15T10:30:00' }];
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+        mockDataService.editData.and.returnValue(of({ success: true }));
+
+        fixture.detectChanges();
+
+        component.data$.subscribe(() => {
+          spyOn(component.successDialog, 'open');
+          spyOn(component.errorDialog, 'open');
+
+          // Form receives '2025-01-15T10:30' from transformValueForControl
+          // User edits to '2025-01-15T11:45' (naive time, no timezone)
+          component.editForm?.patchValue({ created_at: '2025-01-15T11:45' });
+          component.submitForm({});
+
+          setTimeout(() => {
+            // Should add ':00' seconds for API (no timezone conversion)
+            expect(mockDataService.editData).toHaveBeenCalledWith(
+              'Issue',
+              '42',
+              { created_at: '2025-01-15T11:45:00' }
+            );
+            done();
+          }, 10);
+        });
+      });
+
+      it('should convert DateTimeLocal local time to UTC on submit', (done) => {
+        const mockProps = [MOCK_PROPERTIES.dateTimeLocal];
+        const mockData = [{ id: 42, updated_at: '2025-01-15T10:30:00.000Z' }];
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+        mockDataService.editData.and.returnValue(of({ success: true }));
+
+        fixture.detectChanges();
+
+        component.data$.subscribe(() => {
+          spyOn(component.successDialog, 'open');
+          spyOn(component.errorDialog, 'open');
+
+          // User enters time in their local timezone (e.g., "5:30 PM" shows as "17:30")
+          const localTimeInput = '2025-01-15T17:30';
+          component.editForm?.patchValue({ updated_at: localTimeInput });
+          component.submitForm({});
+
+          setTimeout(() => {
+            // Should convert to UTC ISO format with .000Z suffix
+            // The exact UTC time depends on test runner's timezone
+            const localDate = new Date(localTimeInput);
+            const expectedUTC = localDate.toISOString(); // e.g., "2025-01-15T22:30:00.000Z" in EST
+
+            expect(mockDataService.editData).toHaveBeenCalledWith(
+              'Issue',
+              '42',
+              { updated_at: expectedUTC }
+            );
+            done();
+          }, 10);
+        });
+      });
+
+      it('should keep money value as number on submit', (done) => {
+        const mockProps = [MOCK_PROPERTIES.money];
+        const mockData = [{ id: 42, amount: '$100.00' }];
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+        mockDataService.editData.and.returnValue(of({ success: true }));
+
+        fixture.detectChanges();
+
+        component.data$.subscribe(() => {
+          spyOn(component.successDialog, 'open');
+          spyOn(component.errorDialog, 'open');
+
+          // Form receives 100 (number) from transformValueForControl
+          // User edits to 250.75
+          component.editForm?.patchValue({ amount: 250.75 });
+          component.submitForm({});
+
+          setTimeout(() => {
+            const callArgs = mockDataService.editData.calls.argsFor(0)[2];
+            expect(callArgs.amount).toBe(250.75);
+            expect(typeof callArgs.amount).toBe('number');
+            done();
+          }, 10);
+        });
+      });
+
+      it('should handle mixed property types correctly (DateTime + DateTimeLocal + Money)', (done) => {
+        const mockProps = [
+          MOCK_PROPERTIES.textShort,
+          MOCK_PROPERTIES.dateTime,
+          MOCK_PROPERTIES.dateTimeLocal,
+          MOCK_PROPERTIES.money
+        ];
+        const mockData = [{
+          id: 42,
+          name: 'Test',
+          created_at: '2025-01-15T10:30:00', // DateTime (naive)
+          updated_at: '2025-01-15T10:30:00.000Z', // DateTimeLocal (UTC)
+          amount: '$100.00'
+        }];
+
+        mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+        mockSchemaService.getPropsForEdit.and.returnValue(of(mockProps));
+        mockDataService.getData.and.returnValue(of(mockData as any));
+        mockDataService.editData.and.returnValue(of({ success: true }));
+
+        fixture.detectChanges();
+
+        component.data$.subscribe(() => {
+          spyOn(component.successDialog, 'open');
+          spyOn(component.errorDialog, 'open');
+
+          const dateTimeInput = '2025-01-20T14:30'; // Naive time
+          const dateTimeLocalInput = '2025-01-20T18:00'; // Local time
+
+          component.editForm?.patchValue({
+            name: 'Updated Name',
+            created_at: dateTimeInput,
+            updated_at: dateTimeLocalInput,
+            amount: 500
+          });
+          component.submitForm({});
+
+          setTimeout(() => {
+            // DateTime: Just add seconds (naive)
+            // DateTimeLocal: Convert to UTC ISO format
+            const expectedDateTimeLocal = new Date(dateTimeLocalInput).toISOString();
+
+            expect(mockDataService.editData).toHaveBeenCalledWith(
+              'Issue',
+              '42',
+              {
+                name: 'Updated Name',
+                created_at: '2025-01-20T14:30:00', // DateTime with seconds
+                updated_at: expectedDateTimeLocal, // DateTimeLocal as UTC ISO
+                amount: 500
+              }
+            );
+            done();
+          }, 10);
+        });
       });
     });
   });
