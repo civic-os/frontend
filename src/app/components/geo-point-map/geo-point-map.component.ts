@@ -64,6 +64,7 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   private currentLng?: number;
   public mapId = 'geo-map-' + Math.random().toString(36).substring(2, 9);
   private pendingAnimations: number[] = []; // Track setTimeout IDs for cleanup
+  private pendingFrames: number[] = []; // Track requestAnimationFrame IDs for cleanup
   private tileLayer?: L.TileLayer; // Track current tile layer for theme switching
   private themeSubscription?: Subscription; // Track theme changes
 
@@ -97,6 +98,10 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     // Cancel pending animations to prevent errors when destroying during tests
     this.pendingAnimations.forEach(id => clearTimeout(id));
     this.pendingAnimations = [];
+
+    // Cancel pending animation frames to prevent errors when destroying during tests
+    this.pendingFrames.forEach(id => cancelAnimationFrame(id));
+    this.pendingFrames = [];
 
     // Unsubscribe from theme changes
     if (this.themeSubscription) {
@@ -206,9 +211,10 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     // Subscribe to theme changes to update tile layer
     this.themeSubscription = this.themeService.theme$.subscribe(() => {
       // Wait for CSS recalculation before updating tiles
-      requestAnimationFrame(() => {
+      const frameId = requestAnimationFrame(() => {
         this.updateTileLayer();
       });
+      this.pendingFrames.push(frameId);
     });
 
     // Add existing marker if coordinates exist
@@ -248,6 +254,12 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
    */
   private updateTileLayer(): void {
     if (!this.map || !this.tileLayer) {
+      return;
+    }
+
+    // Verify the map container still exists in the DOM before attempting tile operations
+    const mapContainer = document.getElementById(this.mapId);
+    if (!mapContainer) {
       return;
     }
 

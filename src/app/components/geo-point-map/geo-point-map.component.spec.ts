@@ -694,12 +694,20 @@ describe('GeoPointMapComponent', () => {
       };
       component['tileLayer'] = mockOldLayer as any;
 
+      // Create DOM element for map container (required by defensive guard)
+      const mapDiv = document.createElement('div');
+      mapDiv.id = component.mapId;
+      document.body.appendChild(mapDiv);
+
       // Mock addTileLayer to prevent actual Leaflet operations
       spyOn<any>(component, 'addTileLayer');
 
       component['updateTileLayer']();
 
       expect(component['map']!.removeLayer).toHaveBeenCalledWith(jasmine.any(Object));
+
+      // Cleanup DOM
+      document.body.removeChild(mapDiv);
     });
 
     it('should not error if map is not initialized during updateTileLayer', () => {
@@ -764,6 +772,11 @@ describe('GeoPointMapComponent', () => {
       const oldTileLayer = { remove: jasmine.createSpy('remove') } as any;
       component['tileLayer'] = oldTileLayer;
 
+      // Create DOM element for map container (required by defensive guard)
+      const mapDiv = document.createElement('div');
+      mapDiv.id = component.mapId;
+      document.body.appendChild(mapDiv);
+
       component['updateTileLayer']();
 
       // Should remove old layer
@@ -772,6 +785,9 @@ describe('GeoPointMapComponent', () => {
       expect(component['tileLayer']).toBeDefined();
       // The new tile layer should be different from the old one
       expect(component['tileLayer']).not.toBe(oldTileLayer);
+
+      // Cleanup DOM
+      document.body.removeChild(mapDiv);
     });
   });
 });
