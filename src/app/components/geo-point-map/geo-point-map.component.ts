@@ -15,9 +15,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStrategy, effect } from '@angular/core';
+import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStrategy, effect, inject } from '@angular/core';
 import * as L from 'leaflet';
 import { environment } from '../../../environments/environment';
+import { ThemeService } from '../../services/theme.service';
+import { Subscription } from 'rxjs';
 
 export interface MapMarker {
   id: number;
@@ -62,6 +64,10 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   private currentLng?: number;
   public mapId = 'geo-map-' + Math.random().toString(36).substring(2, 9);
   private pendingAnimations: number[] = []; // Track setTimeout IDs for cleanup
+  private tileLayer?: L.TileLayer; // Track current tile layer for theme switching
+  private themeSubscription?: Subscription; // Track theme changes
+
+  private themeService = inject(ThemeService);
 
   constructor() {
     // Watch for markers array changes
@@ -91,6 +97,11 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     // Cancel pending animations to prevent errors when destroying during tests
     this.pendingAnimations.forEach(id => clearTimeout(id));
     this.pendingAnimations = [];
+
+    // Unsubscribe from theme changes
+    if (this.themeSubscription) {
+      this.themeSubscription.unsubscribe();
+    }
 
     if (this.map) {
       this.map.remove();
@@ -189,9 +200,16 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
 
     this.map = L.map(this.mapId, mapOptions);
 
-    L.tileLayer(environment.map.tileUrl, {
-      attribution: environment.map.attribution
-    }).addTo(this.map);
+    // Add theme-aware tile layer
+    this.addTileLayer();
+
+    // Subscribe to theme changes to update tile layer
+    this.themeSubscription = this.themeService.theme$.subscribe(() => {
+      // Wait for CSS recalculation before updating tiles
+      requestAnimationFrame(() => {
+        this.updateTileLayer();
+      });
+    });
 
     // Add existing marker if coordinates exist
     if (this.currentLat !== undefined && this.currentLng !== undefined) {
@@ -209,6 +227,38 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
         this.setLocation(adjustedLatLng.lat, adjustedLatLng.lng);
       });
     }
+  }
+
+  /**
+   * Adds the initial tile layer based on current theme
+   */
+  private addTileLayer(): void {
+    if (!this.map) {
+      return;
+    }
+
+    const tileConfig = this.themeService.getMapTileConfig();
+    this.tileLayer = L.tileLayer(tileConfig.tileUrl, {
+      attribution: tileConfig.attribution
+    }).addTo(this.map);
+  }
+
+  /**
+   * Updates the tile layer when theme changes
+   */
+  private updateTileLayer(): void {
+    if (!this.map || !this.tileLayer) {
+      return;
+    }
+
+    // Remove current tile layer
+    this.map.removeLayer(this.tileLayer);
+
+    // Add new tile layer with updated theme
+    const tileConfig = this.themeService.getMapTileConfig();
+    this.tileLayer = L.tileLayer(tileConfig.tileUrl, {
+      attribution: tileConfig.attribution
+    }).addTo(this.map);
   }
 
   private createMarker(lat: number, lng: number) {

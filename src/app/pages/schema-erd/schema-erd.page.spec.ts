@@ -20,12 +20,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, PLATFORM_ID, ElementRef } from '@angular/core';
 import { SchemaErdPage } from './schema-erd.page';
 import { SchemaErdService } from '../../services/schema-erd.service';
+import { ThemeService } from '../../services/theme.service';
 import { of, throwError, EMPTY } from 'rxjs';
 
 describe('SchemaErdPage', () => {
   let component: SchemaErdPage;
   let fixture: ComponentFixture<SchemaErdPage>;
   let mockErdService: jasmine.SpyObj<SchemaErdService>;
+  let mockThemeService: jasmine.SpyObj<ThemeService>;
 
   const mockMermaidSyntax = `erDiagram
   Issue {
@@ -35,12 +37,17 @@ describe('SchemaErdPage', () => {
 
   beforeEach(async () => {
     mockErdService = jasmine.createSpyObj('SchemaErdService', ['generateMermaidSyntax']);
+    mockThemeService = jasmine.createSpyObj('ThemeService', ['isDarkTheme']);
+
+    // Default to light theme
+    mockThemeService.isDarkTheme.and.returnValue(false);
 
     await TestBed.configureTestingModule({
       imports: [SchemaErdPage],
       providers: [
         provideZonelessChangeDetection(),
         { provide: SchemaErdService, useValue: mockErdService },
+        { provide: ThemeService, useValue: mockThemeService },
         { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     }).compileComponents();
@@ -128,16 +135,15 @@ describe('SchemaErdPage', () => {
 
   describe('Mermaid Initialization', () => {
     it('should initialize Mermaid only in browser platform', () => {
-      const consoleLogSpy = spyOn(console, 'log');
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        '[SchemaErdPage] Mermaid initialized with theme:',
-        jasmine.any(String)
-      );
+      // Verify theme detection was called during initialization
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // Verify currentTheme signal was set
+      expect(component['currentTheme']()).toBeDefined();
     });
 
     it('should not initialize Mermaid on server platform', () => {
@@ -168,7 +174,7 @@ describe('SchemaErdPage', () => {
       delete (document as any).documentElement;
     });
 
-    it('should map dark theme to Mermaid dark', () => {
+    it('should use ThemeService for dark theme detection', () => {
       const mockHtmlElement = document.createElement('html');
       mockHtmlElement.setAttribute('data-theme', 'dark');
       Object.defineProperty(document, 'documentElement', {
@@ -176,16 +182,18 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
+      mockThemeService.isDarkTheme.and.returnValue(true);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(theme).toBe('dark');
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      expect(theme).toBe('neutral');
     });
 
-    it('should map nord theme to Mermaid neutral', () => {
+    it('should use ThemeService for nord theme detection', () => {
       const mockHtmlElement = document.createElement('html');
       mockHtmlElement.setAttribute('data-theme', 'nord');
       Object.defineProperty(document, 'documentElement', {
@@ -193,16 +201,18 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
+      mockThemeService.isDarkTheme.and.returnValue(true);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
       expect(theme).toBe('neutral');
     });
 
-    it('should map corporate theme to Mermaid neutral', () => {
+    it('should use ThemeService for corporate theme detection', () => {
       const mockHtmlElement = document.createElement('html');
       mockHtmlElement.setAttribute('data-theme', 'corporate');
       Object.defineProperty(document, 'documentElement', {
@@ -210,16 +220,18 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
+      mockThemeService.isDarkTheme.and.returnValue(false);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(theme).toBe('neutral');
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      expect(theme).toBe('default');
     });
 
-    it('should map light theme to Mermaid default', () => {
+    it('should use ThemeService for light theme detection', () => {
       const mockHtmlElement = document.createElement('html');
       mockHtmlElement.setAttribute('data-theme', 'light');
       Object.defineProperty(document, 'documentElement', {
@@ -227,16 +239,18 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
+      mockThemeService.isDarkTheme.and.returnValue(false);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
       expect(theme).toBe('default');
     });
 
-    it('should map emerald theme to Mermaid forest', () => {
+    it('should map emerald theme to Mermaid forest (aesthetic mapping)', () => {
       const mockHtmlElement = document.createElement('html');
       mockHtmlElement.setAttribute('data-theme', 'emerald');
       Object.defineProperty(document, 'documentElement', {
@@ -251,22 +265,64 @@ describe('SchemaErdPage', () => {
 
       const theme = component['detectTheme']();
       expect(theme).toBe('forest');
+      // Should NOT call ThemeService for emerald (aesthetic mapping takes precedence)
+      expect(mockThemeService.isDarkTheme).not.toHaveBeenCalled();
     });
 
-    it('should default to Mermaid default when no theme is set', () => {
+    it('should use ThemeService when no theme is set', () => {
       const mockHtmlElement = document.createElement('html');
       Object.defineProperty(document, 'documentElement', {
         configurable: true,
         get: () => mockHtmlElement
       });
 
+      mockThemeService.isDarkTheme.and.returnValue(false);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
       expect(theme).toBe('default');
+    });
+
+    it('should use ThemeService for custom themes (light)', () => {
+      const mockHtmlElement = document.createElement('html');
+      mockHtmlElement.setAttribute('data-theme', 'custom-light-theme');
+      Object.defineProperty(document, 'documentElement', {
+        configurable: true,
+        get: () => mockHtmlElement
+      });
+
+      mockThemeService.isDarkTheme.and.returnValue(false);
+      mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
+
+      fixture = TestBed.createComponent(SchemaErdPage);
+      component = fixture.componentInstance;
+
+      const theme = component['detectTheme']();
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      expect(theme).toBe('default');
+    });
+
+    it('should use ThemeService for custom themes (dark)', () => {
+      const mockHtmlElement = document.createElement('html');
+      mockHtmlElement.setAttribute('data-theme', 'custom-dark-theme');
+      Object.defineProperty(document, 'documentElement', {
+        configurable: true,
+        get: () => mockHtmlElement
+      });
+
+      mockThemeService.isDarkTheme.and.returnValue(true);
+      mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
+
+      fixture = TestBed.createComponent(SchemaErdPage);
+      component = fixture.componentInstance;
+
+      const theme = component['detectTheme']();
+      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      expect(theme).toBe('neutral');
     });
   });
 
@@ -383,21 +439,6 @@ describe('SchemaErdPage', () => {
       // detectTheme returns 'default' when no theme is set
       const theme = component['detectTheme']();
       expect(theme).toBe('default');
-    });
-  });
-
-  describe('Logging', () => {
-    it('should log detected theme', () => {
-      const consoleLogSpy = spyOn(console, 'log');
-      mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
-
-      fixture = TestBed.createComponent(SchemaErdPage);
-      component = fixture.componentInstance;
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        '[SchemaErdPage] Initial theme detected:',
-        jasmine.any(String)
-      );
     });
   });
 

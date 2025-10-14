@@ -18,6 +18,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { GeoPointMapComponent } from './geo-point-map.component';
+import { ThemeService } from '../../services/theme.service';
+import { BehaviorSubject } from 'rxjs';
 
 // Mock factory functions for Leaflet objects
 function createMockMap(): any {
@@ -25,6 +27,7 @@ function createMockMap(): any {
     setView: jasmine.createSpy('setView').and.returnValue({} as any),
     getZoom: jasmine.createSpy('getZoom').and.returnValue(13),
     addLayer: jasmine.createSpy('addLayer'),
+    removeLayer: jasmine.createSpy('removeLayer'),
     on: jasmine.createSpy('on'),
     remove: jasmine.createSpy('remove')
   };
@@ -665,6 +668,110 @@ describe('GeoPointMapComponent', () => {
       fixture.componentRef.setInput('highlightedMarkerId', null);
 
       expect(component.highlightedMarkerId()).toBeNull();
+    });
+  });
+
+  describe('Theme Integration', () => {
+    it('should inject ThemeService', () => {
+      expect(component['themeService']).toBeDefined();
+    });
+
+    it('should get map tile config from ThemeService', () => {
+      const config = component['themeService'].getMapTileConfig();
+
+      expect(config).toBeDefined();
+      expect(config.tileUrl).toBeDefined();
+      expect(config.attribution).toBeDefined();
+      // Should be either light or dark tile config
+      const isValid = config.tileUrl.includes('openstreetmap') || config.tileUrl.includes('arcgisonline');
+      expect(isValid).toBe(true);
+    });
+
+    it('should remove old tile layer before adding new one', () => {
+      component['map'] = createMockMap();
+      const mockOldLayer = {
+        remove: jasmine.createSpy('remove')
+      };
+      component['tileLayer'] = mockOldLayer as any;
+
+      // Mock addTileLayer to prevent actual Leaflet operations
+      spyOn<any>(component, 'addTileLayer');
+
+      component['updateTileLayer']();
+
+      expect(component['map']!.removeLayer).toHaveBeenCalledWith(jasmine.any(Object));
+    });
+
+    it('should not error if map is not initialized during updateTileLayer', () => {
+      component['map'] = undefined;
+      component['tileLayer'] = undefined;
+
+      expect(() => component['updateTileLayer']()).not.toThrow();
+    });
+
+    it('should not error if tileLayer is not initialized during updateTileLayer', () => {
+      component['map'] = createMockMap();
+      component['tileLayer'] = undefined;
+
+      expect(() => component['updateTileLayer']()).not.toThrow();
+    });
+
+    it('should unsubscribe from theme changes on destroy', () => {
+      // Create mock subscription
+      const mockSubscription = {
+        unsubscribe: jasmine.createSpy('unsubscribe')
+      };
+      component['themeSubscription'] = mockSubscription as any;
+
+      component.ngOnDestroy();
+
+      expect(mockSubscription.unsubscribe).toHaveBeenCalled();
+    });
+
+    it('should not error if themeSubscription is undefined on destroy', () => {
+      component['themeSubscription'] = undefined;
+
+      expect(() => component.ngOnDestroy()).not.toThrow();
+    });
+
+    it('should call getMapTileConfig when addTileLayer is called', () => {
+      component['map'] = createMockMap();
+      const getConfigSpy = spyOn(component['themeService'], 'getMapTileConfig').and.returnValue({
+        tileUrl: 'https://test.example.com/{z}/{x}/{y}.png',
+        attribution: 'Test Attribution'
+      });
+
+      component['addTileLayer']();
+
+      expect(getConfigSpy).toHaveBeenCalled();
+    });
+
+    it('should store tile layer reference when addTileLayer is called', () => {
+      component['map'] = createMockMap();
+      spyOn(component['themeService'], 'getMapTileConfig').and.returnValue({
+        tileUrl: 'https://test.example.com/{z}/{x}/{y}.png',
+        attribution: 'Test'
+      });
+
+      component['addTileLayer']();
+
+      expect(component['tileLayer']).toBeDefined();
+    });
+
+    it('should replace tile layer in updateTileLayer', () => {
+      const mockMap = createMockMap();
+      component['map'] = mockMap;
+      const oldTileLayer = { remove: jasmine.createSpy('remove') } as any;
+      component['tileLayer'] = oldTileLayer;
+
+      component['updateTileLayer']();
+
+      // Should remove old layer
+      expect(mockMap.removeLayer).toHaveBeenCalledWith(jasmine.any(Object));
+      // Should create new tile layer (verified by checking tileLayer was updated)
+      expect(component['tileLayer']).toBeDefined();
+      // The new tile layer should be different from the old one
+      expect(component['tileLayer']).not.toBe(oldTileLayer);
     });
   });
 });

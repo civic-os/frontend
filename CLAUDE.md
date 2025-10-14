@@ -43,6 +43,8 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 
 **Geography (GeoPoint) Type**: When adding a geography column, you must create a paired computed field function `<column_name>_text` that returns `ST_AsText()`. PostgREST exposes this as a virtual field. Data format: Insert/Update uses EWKT `"SRID=4326;POINT(lng lat)"`, Read receives WKT `"POINT(lng lat)"`.
 
+**Map Dark Mode**: Maps automatically switch between light and dark tile layers based on the current DaisyUI theme. The `ThemeService` (`src/app/services/theme.service.ts`) **dynamically calculates theme luminance** by reading the `--b1` CSS variable (base background color) and applying the YIQ brightness formula. This works with **any DaisyUI theme** (including custom themes) without hardcoded theme names. Light themes use OpenStreetMap tiles; dark themes use ESRI World Dark Gray tiles. `GeoPointMapComponent` subscribes to theme changes via MutationObserver on the `data-theme` attribute and swaps tile layers dynamically without page reload.
+
 **DateTime vs DateTimeLocal - Timezone Handling**:
 
 These two timestamp types have fundamentally different timezone behaviors:
