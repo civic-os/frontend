@@ -130,6 +130,24 @@ describe('PropertyManagementPage', () => {
   });
 
   describe('Admin Access Check', () => {
+    it('should set adminLoading to false after admin check completes', (done) => {
+      mockPropertyManagementService.isAdmin.and.returnValue(of(true));
+      mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
+      mockSchemaService.getPropertiesForEntityFresh.and.returnValue(of(mockProperties));
+
+      fixture = TestBed.createComponent(PropertyManagementPage);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      setTimeout(() => {
+        // After admin check completes, adminLoading should be false
+        expect(component.adminLoading()).toBe(false);
+        expect(component.isAdmin()).toBe(true);
+        expect(component.adminError()).toBeUndefined();
+        done();
+      }, 100);
+    });
+
     it('should allow access when user is admin', (done) => {
       mockPropertyManagementService.isAdmin.and.returnValue(of(true));
       mockSchemaService.getEntitiesForMenu.and.returnValue(of(mockEntities));
@@ -169,7 +187,9 @@ describe('PropertyManagementPage', () => {
       fixture.detectChanges();
 
       setTimeout(() => {
-        expect(component.error()).toBe('Failed to verify admin access');
+        expect(component.adminError()).toBe('Failed to verify admin access');
+        expect(component.isAdmin()).toBe(false);
+        expect(component.adminLoading()).toBe(false);
         done();
       }, 100);
     });

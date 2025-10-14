@@ -39,6 +39,12 @@ interface PropertyData {
   error?: string;
 }
 
+interface AdminCheckData {
+  isAdmin: boolean;
+  loading: boolean;
+  error?: string;
+}
+
 @Component({
   selector: 'app-property-management',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,18 +72,24 @@ export class PropertyManagementPage {
     { initialValue: [] }
   );
 
-  // Check if user is admin
-  private adminCheck = toSignal(
+  // Check if user is admin with proper loading state
+  private adminCheckData = toSignal(
     this.propertyManagementService.isAdmin().pipe(
+      map(isAdmin => ({ isAdmin, loading: false } as AdminCheckData)),
       catchError(() => {
-        this.error.set('Failed to verify admin access');
-        return of(false);
+        return of({
+          isAdmin: false,
+          loading: false,
+          error: 'Failed to verify admin access'
+        } as AdminCheckData);
       })
     ),
-    { initialValue: false }
+    { initialValue: { isAdmin: false, loading: true } as AdminCheckData }
   );
 
-  isAdmin = computed(() => this.adminCheck());
+  isAdmin = computed(() => this.adminCheckData()?.isAdmin ?? false);
+  adminLoading = computed(() => this.adminCheckData()?.loading ?? true);
+  adminError = computed(() => this.adminCheckData()?.error);
   loading = signal(false);
 
   // Auto-select first entity when entities load

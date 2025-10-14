@@ -7,13 +7,19 @@
     </div>
   }
 
-  @if (!isAdmin()) {
-    <div class="alert alert-error mb-4">
-      <span>Admin access required</span>
+  @if (adminLoading()) {
+    <div class="flex justify-center items-center min-h-[400px]">
+      <span class="loading loading-spinner loading-lg"></span>
     </div>
   }
 
-  @if (isAdmin()) {
+  @if (!adminLoading() && !isAdmin()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ adminError() || 'Admin access required' }}</span>
+    </div>
+  }
+
+  @if (!adminLoading() && isAdmin()) {
     <!-- Entity Selector -->
     <div class="mb-6">
       <label class="label mr-2">
