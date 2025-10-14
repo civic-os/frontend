@@ -40,6 +40,16 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 - `TextShort`: `varchar` → Text input
 - `TextLong`: `text` → Textarea
 - `GeoPoint`: `geography(Point, 4326)` → Interactive map (Leaflet) with location picker
+- `Color`: `hex_color` → Color chip display with native HTML5 color picker
+
+**Color Type**: Use the `hex_color` domain for RGB color values. The domain enforces `#RRGGBB` format validation at the database level. UI displays colors as badges with colored swatches, and provides both a visual color picker and text input for editing. Example:
+```sql
+CREATE TABLE tags (
+  id SERIAL PRIMARY KEY,
+  display_name VARCHAR(50) NOT NULL,
+  color hex_color NOT NULL DEFAULT '#3B82F6'
+);
+```
 
 **Geography (GeoPoint) Type**: When adding a geography column, you must create a paired computed field function `<column_name>_text` that returns `ST_AsText()`. PostgREST exposes this as a virtual field. Data format: Insert/Update uses EWKT `"SRID=4326;POINT(lng lat)"`, Read receives WKT `"POINT(lng lat)"`.
 

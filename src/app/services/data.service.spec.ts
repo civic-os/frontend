@@ -1323,6 +1323,204 @@ describe('DataService', () => {
     });
   });
 
+  describe('Edit Data Validation - Color Fields', () => {
+    it('should validate color with case-insensitive comparison (lowercase input, uppercase response)', (done) => {
+      const updatedData = { color: '#3b82f6' };
+      const returnedData = { id: 1, color: '#3B82F6' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should validate color with case-insensitive comparison (uppercase input, lowercase response)', (done) => {
+      const updatedData = { color: '#FF5733' };
+      const returnedData = { id: 1, color: '#ff5733' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should validate color with mixed case (input and response differ in case)', (done) => {
+      const updatedData = { color: '#aAbBcC' };
+      const returnedData = { id: 1, color: '#AABBCC' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should detect color value mismatch (different colors)', (done) => {
+      const updatedData = { color: '#3b82f6' };
+      const returnedData = { id: 1, color: '#FF0000' }; // Different color
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(false);
+        expect(response.error).toBeDefined();
+        expect(response.error?.humanMessage).toBe('Could not update');
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should handle null color values', (done) => {
+      const updatedData = { color: null };
+      const returnedData = { id: 1, color: null };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should not treat non-hex-color strings as colors', (done) => {
+      const updatedData = { name: '#NOTCOLOR' }; // Not a valid hex color
+      const returnedData = { id: 1, name: '#NOTCOLOR' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should validate valid 6-digit hex colors only', (done) => {
+      const updatedData = { color: '#123' }; // Too short
+      const returnedData = { id: 1, color: '#123456' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(false); // Mismatch because #123 is not valid format
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should validate hex colors with all same digits', (done) => {
+      const updatedData = { color: '#ffffff' };
+      const returnedData = { id: 1, color: '#FFFFFF' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should validate hex colors with all zeros', (done) => {
+      const updatedData = { color: '#000000' };
+      const returnedData = { id: 1, color: '#000000' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+
+    it('should combine color validation with other fields', (done) => {
+      const updatedData = { color: '#3b82f6', display_name: 'Blue Tag' };
+      const returnedData = { id: 1, color: '#3B82F6', display_name: 'Blue Tag' };
+
+      service.editData('tags', 1, updatedData).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('tags?id=eq.1'));
+      req.flush([returnedData]);
+    });
+  });
+
+  describe('compareColorValues() - Direct Method Tests', () => {
+    it('should return isColor=true and matches=true for case-insensitive match', () => {
+      const result = (service as any).compareColorValues('#3b82f6', '#3B82F6');
+      expect(result.isColor).toBe(true);
+      expect(result.matches).toBe(true);
+    });
+
+    it('should return isColor=true and matches=false for different colors', () => {
+      const result = (service as any).compareColorValues('#3b82f6', '#FF0000');
+      expect(result.isColor).toBe(true);
+      expect(result.matches).toBe(false);
+    });
+
+    it('should return isColor=false for non-string input value', () => {
+      const result = (service as any).compareColorValues(123, '#3B82F6');
+      expect(result.isColor).toBe(false);
+      expect(result.matches).toBe(false);
+    });
+
+    it('should return isColor=false for non-string response value', () => {
+      const result = (service as any).compareColorValues('#3b82f6', 456);
+      expect(result.isColor).toBe(false);
+      expect(result.matches).toBe(false);
+    });
+
+    it('should return isColor=false for invalid hex format (too short)', () => {
+      const result = (service as any).compareColorValues('#123', '#123456');
+      expect(result.isColor).toBe(false);
+    });
+
+    it('should return isColor=false for invalid hex format (too long)', () => {
+      const result = (service as any).compareColorValues('#1234567', '#123456');
+      expect(result.isColor).toBe(false);
+    });
+
+    it('should return isColor=false for invalid hex format (missing #)', () => {
+      const result = (service as any).compareColorValues('3b82f6', '#3B82F6');
+      expect(result.isColor).toBe(false);
+    });
+
+    it('should return isColor=false for invalid hex characters', () => {
+      const result = (service as any).compareColorValues('#GGGGGG', '#3B82F6');
+      expect(result.isColor).toBe(false);
+    });
+
+    it('should handle uppercase hex colors', () => {
+      const result = (service as any).compareColorValues('#ABCDEF', '#abcdef');
+      expect(result.isColor).toBe(true);
+      expect(result.matches).toBe(true);
+    });
+
+    it('should handle lowercase hex colors', () => {
+      const result = (service as any).compareColorValues('#abcdef', '#abcdef');
+      expect(result.isColor).toBe(true);
+      expect(result.matches).toBe(true);
+    });
+
+    it('should handle mixed case hex colors', () => {
+      const result = (service as any).compareColorValues('#AbCdEf', '#aBcDeF');
+      expect(result.isColor).toBe(true);
+      expect(result.matches).toBe(true);
+    });
+  });
+
   describe('EWKB Parsing Logic', () => {
     it('should parse valid EWKB Point (Downtown Flint)', () => {
       const result = (service as any).parseEWKBPoint(EWKB_SAMPLES.downtown_flint);

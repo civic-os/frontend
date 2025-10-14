@@ -146,6 +146,7 @@ export class SchemaService {
       ['bool'].includes(val.udt_name) ? EntityPropertyType.Boolean :
       ['int4', 'int8'].includes(val.udt_name) ? EntityPropertyType.IntegerNumber :
       ['money'].includes(val.udt_name) ? EntityPropertyType.Money :
+      ['hex_color'].includes(val.udt_name) ? EntityPropertyType.Color :
       ['varchar'].includes(val.udt_name) ? EntityPropertyType.TextShort :
       ['text'].includes(val.udt_name) ? EntityPropertyType.TextLong :
       EntityPropertyType.Unknown;

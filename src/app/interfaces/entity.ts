@@ -88,6 +88,7 @@ export enum EntityPropertyType {
     ForeignKeyName,
     User,
     GeoPoint,
+    Color,
     ManyToMany,
 }
 

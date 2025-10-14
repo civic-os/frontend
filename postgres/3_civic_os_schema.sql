@@ -180,6 +180,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION public.refresh_current_user() TO authenticated;
 
 -- =====================================================
+-- Custom Domain Types
+-- =====================================================
+
+-- Hex color domain for storing RGB colors in #RRGGBB format
+CREATE DOMAIN hex_color AS VARCHAR(7)
+  CHECK (VALUE ~ '^#[0-9A-Fa-f]{6}$')
+  DEFAULT '#3B82F6';
+
+COMMENT ON DOMAIN hex_color IS 'RGB hex color in #RRGGBB format (e.g., #3B82F6)';
+
+-- =====================================================
 -- Metadata Schema (Civic OS Core)
 -- =====================================================
 
@@ -451,7 +462,7 @@ SELECT
   columns.data_type,
   columns.character_maximum_length,
   columns.udt_schema,
-  columns.udt_name,
+  COALESCE(pg_type_info.domain_name, columns.udt_name) AS udt_name,
   columns.is_self_referencing::text = 'YES'::text AS is_self_referencing,
   columns.is_identity::text = 'YES'::text AS is_identity,
   columns.is_generated::text = 'ALWAYS'::text AS is_generated,
@@ -505,10 +516,12 @@ LEFT JOIN (
   SELECT
     c.relname AS table_name,
     a.attname AS column_name,
-    format_type(a.atttypid, a.atttypmod) AS formatted_type
+    format_type(a.atttypid, a.atttypmod) AS formatted_type,
+    CASE WHEN t.typtype = 'd' THEN t.typname ELSE NULL END AS domain_name
   FROM pg_attribute a
   JOIN pg_class c ON a.attrelid = c.oid
   JOIN pg_namespace n ON c.relnamespace = n.oid
+  LEFT JOIN pg_type t ON a.atttypid = t.oid
   WHERE n.nspname = 'public'
     AND a.attnum > 0
     AND NOT a.attisdropped

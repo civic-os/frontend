@@ -339,6 +339,27 @@ export class DataService {
   }
 
   /**
+   * Compares hex color values (case-insensitive).
+   * Input: "#3b82f6" or "#3B82F6" (from HTML5 color picker)
+   * Response: "#3b82f6" or "#3B82F6" (from database)
+   */
+  private compareColorValues(inputValue: any, responseValue: any): { isColor: boolean, matches: boolean } {
+    if (typeof inputValue !== 'string' || typeof responseValue !== 'string') {
+      return { isColor: false, matches: false };
+    }
+
+    // Check if both values look like hex colors (#RRGGBB format)
+    const hexColorPattern = /^#[0-9A-Fa-f]{6}$/;
+    if (!hexColorPattern.test(inputValue) || !hexColorPattern.test(responseValue)) {
+      return { isColor: false, matches: false };
+    }
+
+    // Compare case-insensitively
+    const matches = inputValue.toUpperCase() === responseValue.toUpperCase();
+    return { isColor: true, matches };
+  }
+
+  /**
    * Compares geography/geometry fields by converting EWKB to EWKT.
    * Input: EWKT format like "SRID=4326;POINT(-83 43)"
    * Response: EWKB hex format like "0101000020E6100000..."
@@ -419,8 +440,14 @@ export class DataService {
               if (moneyComparison.isMoney) {
                 match = moneyComparison.matches;
               } else {
-                // Primitive value - use loose equality to handle string vs number (e.g., "4" vs 4)
-                match = inputValue == responseValue;  // Use == for type coercion
+                // Check if this is a hex color field and compare properly (case-insensitive)
+                const colorComparison = this.compareColorValues(inputValue, responseValue);
+                if (colorComparison.isColor) {
+                  match = colorComparison.matches;
+                } else {
+                  // Primitive value - use loose equality to handle string vs number (e.g., "4" vs 4)
+                  match = inputValue == responseValue;  // Use == for type coercion
+                }
               }
             }
           }

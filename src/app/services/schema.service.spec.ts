@@ -225,6 +225,11 @@ describe('SchemaService', () => {
       expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.GeoPoint);
     });
 
+    it('should detect Color for hex_color', () => {
+      const prop = createMockProperty({ udt_name: 'hex_color' });
+      expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.Color);
+    });
+
     it('should return Unknown for unrecognized types', () => {
       const prop = createMockProperty({ udt_name: 'unknown_type' });
       expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.Unknown);
@@ -238,6 +243,16 @@ describe('SchemaService', () => {
       // int4 with join_column should be ForeignKeyName
       const fkProp = createMockProperty({ udt_name: 'int4', join_column: 'id' });
       expect(service['getPropertyType'](fkProp)).toBe(EntityPropertyType.ForeignKeyName);
+    });
+
+    it('should prioritize Color over TextShort', () => {
+      // hex_color domain should be Color (even though it's based on varchar)
+      const colorProp = createMockProperty({ udt_name: 'hex_color' });
+      expect(service['getPropertyType'](colorProp)).toBe(EntityPropertyType.Color);
+
+      // varchar alone should be TextShort
+      const varcharProp = createMockProperty({ udt_name: 'varchar' });
+      expect(service['getPropertyType'](varcharProp)).toBe(EntityPropertyType.TextShort);
     });
   });
 

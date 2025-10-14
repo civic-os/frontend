@@ -87,6 +87,15 @@
         <em>No location set</em>
       }
     }
+    @if (propType() == EntityPropertyType.Color) {
+      <div class="badge gap-2 font-mono">
+        <span
+          class="w-5 h-5 rounded border border-base-300"
+          [style.background-color]="datum()">
+        </span>
+        {{ datum()?.toUpperCase() }}
+      </div>
+    }
     @if (propType() == EntityPropertyType.ManyToMany) {
       <div class="flex flex-wrap gap-2">
         @if (datum() && datum().length > 0) {

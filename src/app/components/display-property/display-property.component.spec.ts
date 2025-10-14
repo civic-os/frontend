@@ -277,6 +277,80 @@ describe('DisplayPropertyComponent', () => {
     });
   });
 
+  describe('Color Type', () => {
+    it('should render color badge with swatch and uppercase hex value', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        display_name: 'Color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('datum', '#3b82f6');
+      fixture.detectChanges();
+
+      const badge = fixture.debugElement.query(By.css('.badge'));
+      expect(badge).toBeTruthy();
+      expect(badge.nativeElement.classList.contains('font-mono')).toBe(true);
+
+      const colorSwatch = badge.query(By.css('span[class*="w-5"]'));
+      expect(colorSwatch).toBeTruthy();
+      expect(colorSwatch.nativeElement.style.backgroundColor).toBe('rgb(59, 130, 246)'); // Browsers convert hex to rgb
+
+      const textContent = badge.nativeElement.textContent.trim();
+      expect(textContent).toBe('#3B82F6');
+    });
+
+    it('should handle lowercase hex color input', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('datum', '#ff5733');
+      fixture.detectChanges();
+
+      const badge = fixture.debugElement.query(By.css('.badge'));
+      const textContent = badge.nativeElement.textContent.trim();
+      expect(textContent).toBe('#FF5733');
+    });
+
+    it('should show "Not Set" for null color value', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('datum', null);
+      fixture.detectChanges();
+
+      const textContent = fixture.nativeElement.textContent.trim();
+      expect(textContent).toContain('Not Set');
+    });
+
+    it('should render border around color swatch', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('datum', '#000000');
+      fixture.detectChanges();
+
+      const colorSwatch = fixture.debugElement.query(By.css('span.rounded'));
+      expect(colorSwatch).toBeTruthy();
+      expect(colorSwatch.nativeElement.classList.contains('border')).toBe(true);
+      expect(colorSwatch.nativeElement.classList.contains('border-base-300')).toBe(true);
+    });
+  });
+
   describe('Unknown Type', () => {
     it('should render raw datum value for unknown types', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.unknown);

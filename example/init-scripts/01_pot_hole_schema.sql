@@ -68,7 +68,7 @@ CREATE TABLE "public"."WorkPackageStatus" (
 CREATE TABLE "public"."Tag" (
 	"id" SERIAL PRIMARY KEY,
 	"display_name" VARCHAR(50) NOT NULL UNIQUE,
-	"color" VARCHAR(7) DEFAULT '#3B82F6',
+	"color" hex_color NOT NULL DEFAULT '#3B82F6',
 	"description" TEXT,
 	"created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	"updated_at" TIMESTAMPTZ

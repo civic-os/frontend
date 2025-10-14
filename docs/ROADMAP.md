@@ -15,10 +15,9 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Allow sorting/layout of Property Views/Lists
 - [ ] Add User Profile and management
 - [x] Add Login/Logout Screens (uses Keycloak Auth)
-- [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
 - [ ] Add File/Image data types (Priority 1: Unlocks many use cases)
 - [x] Live update page as Schema is updated
-- [ ] Add Color PropertyType
+- [x] Add Color PropertyType
 
 - [ ] Prevent duplicate/cancelled dropdown queries (not changed)
 

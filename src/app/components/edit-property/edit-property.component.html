@@ -70,6 +70,13 @@
     </app-geo-point-map>
   }
 
+  @if (propType() == EntityPropertyType.Color) {
+    <div class="flex items-center gap-4">
+      <input type="color" class="w-24 h-12 cursor-pointer" [id]="prop().column_name" [formControlName]="prop().column_name" />
+      <input type="text" placeholder="#3B82F6" class="input w-full font-mono" [formControlName]="prop().column_name" />
+    </div>
+  }
+
   @if (propType() == EntityPropertyType.Unknown) {
   }
 

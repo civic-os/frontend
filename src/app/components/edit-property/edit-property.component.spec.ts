@@ -316,6 +316,122 @@ describe('EditPropertyComponent', () => {
     });
   });
 
+  describe('Color Type', () => {
+    it('should render both color picker and text input', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        display_name: 'Color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+      const formGroup = new FormGroup({
+        color: new FormControl('#3b82f6')
+      });
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const colorInput = fixture.debugElement.query(By.css('input[type="color"]'));
+      expect(colorInput).toBeTruthy();
+      expect(colorInput.nativeElement.classList.contains('cursor-pointer')).toBe(true);
+
+      const textInput = fixture.debugElement.query(By.css('input[type="text"]'));
+      expect(textInput).toBeTruthy();
+      expect(textInput.nativeElement.classList.contains('font-mono')).toBe(true);
+      expect(textInput.nativeElement.placeholder).toBe('#3B82F6');
+    });
+
+    it('should bind both inputs to the same form control', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+      const formGroup = new FormGroup({
+        color: new FormControl('#ff5733')
+      });
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const colorInput = fixture.debugElement.query(By.css('input[type="color"]')).nativeElement;
+      const textInput = fixture.debugElement.query(By.css('input[type="text"]')).nativeElement;
+
+      expect(colorInput.value).toBe('#ff5733');
+      expect(textInput.value).toBe('#ff5733');
+    });
+
+    it('should update form control when color picker changes', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+      const formControl = new FormControl('#000000');
+      const formGroup = new FormGroup({
+        color: formControl
+      });
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const colorInput = fixture.debugElement.query(By.css('input[type="color"]')).nativeElement;
+      colorInput.value = '#3b82f6';
+      colorInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(formControl.value).toBe('#3b82f6');
+    });
+
+    it('should update form control when text input changes', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+      const formControl = new FormControl('#000000');
+      const formGroup = new FormGroup({
+        color: formControl
+      });
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const textInput = fixture.debugElement.query(By.css('input[type="text"]')).nativeElement;
+      textInput.value = '#FF6B6B';
+      textInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(formControl.value).toBe('#FF6B6B');
+    });
+
+    it('should handle null color value', () => {
+      const colorProp = createMockProperty({
+        column_name: 'color',
+        udt_name: 'hex_color',
+        type: EntityPropertyType.Color
+      });
+      const formGroup = new FormGroup({
+        color: new FormControl(null)
+      });
+      fixture.componentRef.setInput('property', colorProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const colorInput = fixture.debugElement.query(By.css('input[type="color"]'));
+      const textInput = fixture.debugElement.query(By.css('input[type="text"]'));
+
+      expect(colorInput).toBeTruthy();
+      expect(textInput).toBeTruthy();
+      // Both inputs should render even with null value
+    });
+  });
+
   describe('Unknown Type', () => {
     it('should not render any input for unknown types', () => {
       const formGroup = new FormGroup({
