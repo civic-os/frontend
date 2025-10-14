@@ -24,5 +24,10 @@ export const environment: Environment = {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         defaultCenter: [43.0125, -83.6875],  // Flint, MI
         defaultZoom: 13
+    },
+    keycloak: {
+        url: 'https://auth.civic-os.org',
+        realm: 'civic-os-dev',
+        clientId: 'myclient'
     }
 };

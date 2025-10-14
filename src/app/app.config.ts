@@ -34,9 +34,9 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideKeycloak({
       config: {
-        url: 'https://auth.civic-os.org',
-        realm: 'civic-os-dev',
-        clientId: 'myclient'
+        url: environment.keycloak.url,
+        realm: environment.keycloak.realm,
+        clientId: environment.keycloak.clientId
       },
       initOptions: {
         onLoad: 'check-sso',

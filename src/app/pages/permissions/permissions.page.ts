@@ -23,6 +23,7 @@ import { CommonModule } from '@angular/common';
 import { PermissionsService, Role, RolePermission } from '../../services/permissions.service';
 import { AuthService } from '../../services/auth.service';
 import { forkJoin, of, switchMap, map, catchError, BehaviorSubject, take } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 interface PermissionMatrix {
   tableName: string;
@@ -51,6 +52,18 @@ export class PermissionsPage {
   public auth = inject(AuthService);
 
   permissionTypes = ['create', 'read', 'update', 'delete'];
+
+  // Modal state for creating roles
+  showCreateModal = signal(false);
+  newRoleName = signal('');
+  newRoleDescription = signal('');
+  createLoading = signal(false);
+  createError = signal<string | undefined>(undefined);
+  successMessage = signal<string | undefined>(undefined);
+  newlyCreatedRoleName = signal<string | undefined>(undefined);
+
+  // Keycloak admin URL (master is the admin realm, target realm comes after the hash)
+  keycloakRolesUrl = `${environment.keycloak.url}/admin/master/console/#/${environment.keycloak.realm}/roles`;
 
   // Check if user is admin
   isAdmin = toSignal(
@@ -191,5 +204,80 @@ export class PermissionsPage {
         console.error('Failed to update permission:', err);
       }
     });
+  }
+
+  openCreateRoleModal() {
+    // Reset form state
+    this.newRoleName.set('');
+    this.newRoleDescription.set('');
+    this.createError.set(undefined);
+    this.successMessage.set(undefined);
+    this.newlyCreatedRoleName.set(undefined);
+    this.showCreateModal.set(true);
+  }
+
+  closeCreateRoleModal() {
+    this.showCreateModal.set(false);
+  }
+
+  validateRoleName(name: string): string | undefined {
+    if (!name || name.trim() === '') {
+      return 'Role name is required';
+    }
+    // Allow alphanumeric, underscore, hyphen
+    if (!/^[a-zA-Z0-9_-]+$/.test(name.trim())) {
+      return 'Role name can only contain letters, numbers, underscores, and hyphens';
+    }
+    return undefined;
+  }
+
+  submitCreateRole() {
+    const roleName = this.newRoleName().trim();
+    const description = this.newRoleDescription().trim();
+
+    // Validate
+    const validationError = this.validateRoleName(roleName);
+    if (validationError) {
+      this.createError.set(validationError);
+      return;
+    }
+
+    // Clear errors and start loading
+    this.createError.set(undefined);
+    this.createLoading.set(true);
+
+    this.permissionsService.createRole(roleName, description || undefined).subscribe({
+      next: (response) => {
+        this.createLoading.set(false);
+        if (response.success && response.roleId) {
+          // Success! Close modal and show success message
+          this.showCreateModal.set(false);
+          this.successMessage.set(`Role '${roleName}' created successfully!`);
+          this.newlyCreatedRoleName.set(roleName);
+
+          // Reload roles and auto-select the new role
+          this.permissionsService.getRoles().subscribe({
+            next: (roles) => {
+              const newRole = roles.find(r => r.id === response.roleId);
+              if (newRole) {
+                this.selectedRoleId.set(newRole.id);
+                this.selectedRoleIdSubject.next(newRole.id);
+              }
+            }
+          });
+        } else {
+          this.createError.set(response.error?.humanMessage || 'Failed to create role');
+        }
+      },
+      error: (err) => {
+        this.createLoading.set(false);
+        this.createError.set('Failed to create role. Please try again.');
+      }
+    });
+  }
+
+  dismissSuccess() {
+    this.successMessage.set(undefined);
+    this.newlyCreatedRoleName.set(undefined);
   }
 }

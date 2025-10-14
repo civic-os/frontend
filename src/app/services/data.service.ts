@@ -177,6 +177,21 @@ export class DataService {
       );
   }
 
+  public deleteData(entity: string, id: string | number): Observable<ApiResponse> {
+    return this.http.delete(environment.postgrestUrl + entity + '?id=eq.' + id)
+      .pipe(
+        catchError((err) => this.parseApiError(err)),
+        map((response) => {
+          // If it's already an error response from catchError, return as-is
+          if (response && typeof response === 'object' && 'success' in response && response.success === false) {
+            return response as ApiResponse;
+          }
+          // Otherwise, it's a successful HTTP delete
+          return <ApiResponse>{success: true, body: response};
+        }),
+      );
+  }
+
   public refreshCurrentUser(): Observable<ApiResponse> {
     return this.http.post(environment.postgrestUrl + 'rpc/refresh_current_user', {})
       .pipe(

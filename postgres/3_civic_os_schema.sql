@@ -262,6 +262,35 @@ CREATE TABLE metadata.roles (
 
 ALTER TABLE metadata.roles ENABLE ROW LEVEL SECURITY;
 
+-- Everyone can read roles
+CREATE POLICY "Everyone can read roles"
+  ON metadata.roles
+  FOR SELECT
+  TO PUBLIC
+  USING (true);
+
+-- Admins can insert roles
+CREATE POLICY "Admins can insert roles"
+  ON metadata.roles
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (public.is_admin());
+
+-- Admins can update roles
+CREATE POLICY "Admins can update roles"
+  ON metadata.roles
+  FOR UPDATE
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- Admins can delete roles
+CREATE POLICY "Admins can delete roles"
+  ON metadata.roles
+  FOR DELETE
+  TO authenticated
+  USING (public.is_admin());
+
 -- Permission-Role mapping
 CREATE TABLE metadata.permission_roles (
   permission_id INTEGER,

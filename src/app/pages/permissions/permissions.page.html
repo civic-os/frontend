@@ -1,6 +1,29 @@
 <div class="container mx-auto p-6">
   <h1 class="text-3xl font-bold mb-6">Permissions Management</h1>
 
+  @if (successMessage()) {
+    <div class="alert alert-success mb-4 relative">
+      <button
+        class="btn btn-ghost btn-sm absolute top-2 right-2"
+        (click)="dismissSuccess()">
+        ✕
+      </button>
+      <div class="flex flex-col gap-2 pr-8">
+        <span class="font-semibold">{{ successMessage() }}</span>
+        <div class="text-sm">
+          <p class="mb-2">Remember to create the role <strong>{{ newlyCreatedRoleName() }}</strong> in Keycloak for authentication to work.</p>
+          <a
+            [href]="keycloakRolesUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-sm btn-outline">
+            Open Keycloak Roles →
+          </a>
+        </div>
+      </div>
+    </div>
+  }
+
   @if (error()) {
     <div class="alert alert-error mb-4">
       <span>{{ error() }}</span>
@@ -15,22 +38,29 @@
 
   @if (!loading() && isAdmin() && !error()) {
     <div>
-      <!-- Role Selector -->
-      <div class="w-full max-w-xs mb-6">
-        <label class="label" for="role-selector">
-          <span class="font-semibold">Select Role</span>
-        </label>
-        <select
-          id="role-selector"
-          class="select"
-          [ngModel]="selectedRoleId()"
-          (ngModelChange)="onRoleChange($event)">
-          @for (role of roles(); track role) {
-            <option [value]="role.id">
-              {{ role.display_name }}
-            </option>
-          }
-        </select>
+      <!-- Role Selector with New Role Button -->
+      <div class="flex items-end gap-4 mb-6">
+        <div class="w-full max-w-xs">
+          <label class="label" for="role-selector">
+            <span class="font-semibold">Select Role</span>
+          </label>
+          <select
+            id="role-selector"
+            class="select"
+            [ngModel]="selectedRoleId()"
+            (ngModelChange)="onRoleChange($event)">
+            @for (role of roles(); track role) {
+              <option [value]="role.id">
+                {{ role.display_name }}
+              </option>
+            }
+          </select>
+        </div>
+        <button
+          class="btn btn-primary"
+          (click)="openCreateRoleModal()">
+          + New Role
+        </button>
       </div>
       <!-- Permissions Table -->
       <div class="overflow-x-auto">
@@ -80,6 +110,75 @@
             }
           </tbody>
         </table>
+      </div>
+    </div>
+  }
+
+  <!-- Create Role Modal -->
+  @if (showCreateModal()) {
+    <div class="modal modal-open">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Create New Role</h3>
+
+        <!-- Error Alert -->
+        @if (createError()) {
+          <div class="alert alert-error mb-4">
+            <span>{{ createError() }}</span>
+          </div>
+        }
+
+        <!-- Form -->
+        <div class="mb-4">
+          <label class="label" for="role-name">
+            <span class="font-semibold">Role Name *</span>
+          </label>
+          <input
+            id="role-name"
+            type="text"
+            class="input input-bordered w-full"
+            placeholder="e.g., editor, moderator, viewer"
+            [ngModel]="newRoleName()"
+            (ngModelChange)="newRoleName.set($event)"
+            [disabled]="createLoading()" />
+          <div class="text-warning text-sm mt-1">
+            Must match exactly with your Keycloak role configuration
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="label" for="role-description">
+            <span class="font-semibold">Description</span>
+          </label>
+          <textarea
+            id="role-description"
+            class="textarea textarea-bordered w-full"
+            placeholder="Optional description of this role's purpose"
+            rows="3"
+            [ngModel]="newRoleDescription()"
+            (ngModelChange)="newRoleDescription.set($event)"
+            [disabled]="createLoading()"></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="modal-action">
+          <button
+            class="btn"
+            (click)="closeCreateRoleModal()"
+            [disabled]="createLoading()">
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            (click)="submitCreateRole()"
+            [disabled]="createLoading()">
+            @if (createLoading()) {
+              <span class="loading loading-spinner loading-sm"></span>
+              Creating...
+            } @else {
+              Create Role
+            }
+          </button>
+        </div>
       </div>
     </div>
   }

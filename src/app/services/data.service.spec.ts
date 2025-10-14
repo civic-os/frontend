@@ -931,6 +931,104 @@ describe('DataService', () => {
     });
   });
 
+  describe('deleteData()', () => {
+    it('should DELETE record with id filter', (done) => {
+      service.deleteData('Issue', 5).subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req =>
+        req.url.includes('Issue?id=eq.5')
+      );
+      expect(req.request.method).toBe('DELETE');
+      req.flush({});
+    });
+
+    it('should handle string IDs', (done) => {
+      service.deleteData('Issue', 'abc-123').subscribe(response => {
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req =>
+        req.url.includes('Issue?id=eq.abc-123')
+      );
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.url).toContain('id=eq.abc-123');
+      req.flush({});
+    });
+
+    it('should handle successful deletion', (done) => {
+      service.deleteData('Issue', 1).subscribe(response => {
+        expect(response.success).toBe(true);
+        expect(response.error).toBeUndefined();
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue?id=eq.1'));
+      req.flush({});
+    });
+
+    it('should handle foreign key constraint errors', (done) => {
+      const errorResponse = {
+        message: 'update or delete on table "Issue" violates foreign key constraint',
+        details: 'Key (id)=(5) is still referenced from table "comments"',
+        hint: 'Delete the referencing rows first',
+        code: '23503'
+      };
+
+      service.deleteData('Issue', 5).subscribe(response => {
+        expect(response.success).toBe(false);
+        expect(response.error).toBeDefined();
+        expect(response.error?.code).toBe('23503');
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue?id=eq.5'));
+      req.flush(errorResponse, { status: 409, statusText: 'Conflict' });
+    });
+
+    it('should handle permission errors', (done) => {
+      const errorResponse = {
+        message: 'permission denied for table Issue',
+        code: '42501'
+      };
+
+      service.deleteData('Issue', 1).subscribe(response => {
+        expect(response.success).toBe(false);
+        expect(response.error).toBeDefined();
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue?id=eq.1'));
+      req.flush(errorResponse, { status: 403, statusText: 'Forbidden' });
+    });
+
+    it('should handle record not found (returns success per PostgREST behavior)', (done) => {
+      service.deleteData('Issue', 999).subscribe(response => {
+        // PostgREST returns 200 even if no rows deleted, which is standard REST behavior
+        expect(response.success).toBe(true);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue?id=eq.999'));
+      req.flush({}, { status: 200, statusText: 'OK' });
+    });
+
+    it('should handle network errors', (done) => {
+      service.deleteData('Issue', 1).subscribe(response => {
+        expect(response.success).toBe(false);
+        expect(response.error).toBeDefined();
+        expect(response.error?.httpCode).toBe(0);
+        done();
+      });
+
+      const req = httpMock.expectOne(req => req.url.includes('Issue?id=eq.1'));
+      req.error(new ProgressEvent('Network error'), { status: 0 });
+    });
+  });
+
   describe('refreshCurrentUser()', () => {
     it('should call RPC function', (done) => {
       service.refreshCurrentUser().subscribe(response => {

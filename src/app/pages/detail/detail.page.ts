@@ -16,10 +16,10 @@
  */
 
 
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { Observable, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType, InverseRelationshipData } from '../../interfaces/entity';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
 
@@ -43,6 +43,7 @@ import { tap } from 'rxjs/operators';
 })
 export class DetailPage {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private schema = inject(SchemaService);
   private data = inject(DataService);
 
@@ -52,6 +53,11 @@ export class DetailPage {
 
   // Refresh trigger for M:M changes
   private refreshTrigger$ = new Subject<void>();
+
+  // Delete modal state
+  showDeleteModal = signal(false);
+  deleteLoading = signal(false);
+  deleteError = signal<string | undefined>(undefined);
 
   public entityKey?: string;
   public entityId?: string;
@@ -170,5 +176,38 @@ export class DetailPage {
   // Refresh data after M:M changes
   refreshData() {
     this.refreshTrigger$.next();
+  }
+
+  // Delete modal methods
+  openDeleteModal() {
+    this.deleteError.set(undefined);
+    this.showDeleteModal.set(true);
+  }
+
+  closeDeleteModal() {
+    this.showDeleteModal.set(false);
+  }
+
+  confirmDelete() {
+    if (!this.entityKey || !this.entityId) return;
+
+    this.deleteError.set(undefined);
+    this.deleteLoading.set(true);
+
+    this.data.deleteData(this.entityKey, this.entityId).subscribe({
+      next: (response) => {
+        this.deleteLoading.set(false);
+        if (response.success) {
+          // Navigate back to list view on success
+          this.router.navigate(['/view', this.entityKey]);
+        } else {
+          this.deleteError.set(response.error?.humanMessage || 'Failed to delete record');
+        }
+      },
+      error: (err) => {
+        this.deleteLoading.set(false);
+        this.deleteError.set('Failed to delete record. Please try again.');
+      }
+    });
   }
 }

@@ -208,6 +208,58 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
+-- Create a new role (Admin-only)
+CREATE OR REPLACE FUNCTION public.create_role(
+  p_display_name TEXT,
+  p_description TEXT DEFAULT NULL
+)
+RETURNS JSON AS $$
+DECLARE
+  v_new_role_id SMALLINT;
+  v_exists BOOLEAN;
+BEGIN
+  -- Enforce admin-only access
+  IF NOT public.is_admin() THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'Admin access required'
+    );
+  END IF;
+
+  -- Validate display_name is not empty
+  IF p_display_name IS NULL OR TRIM(p_display_name) = '' THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'Role name cannot be empty'
+    );
+  END IF;
+
+  -- Check if role with this display_name already exists
+  SELECT EXISTS (
+    SELECT 1
+    FROM metadata.roles
+    WHERE display_name = TRIM(p_display_name)
+  ) INTO v_exists;
+
+  IF v_exists THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'Role with this name already exists'
+    );
+  END IF;
+
+  -- Insert the new role
+  INSERT INTO metadata.roles (display_name, description)
+  VALUES (TRIM(p_display_name), TRIM(p_description))
+  RETURNING id INTO v_new_role_id;
+
+  RETURN json_build_object(
+    'success', true,
+    'role_id', v_new_role_id
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.get_user_roles() TO web_anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.has_permission(TEXT, TEXT) TO web_anon, authenticated;
@@ -215,6 +267,7 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO web_anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_roles() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_role_permissions(SMALLINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.set_role_permission(SMALLINT, TEXT, TEXT, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_role(TEXT, TEXT) TO authenticated;
 
 -- Notify PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

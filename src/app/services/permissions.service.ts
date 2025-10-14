@@ -116,4 +116,33 @@ export class PermissionsService {
       catchError(() => of(false))
     );
   }
+
+  createRole(displayName: string, description?: string): Observable<ApiResponse & { roleId?: number }> {
+    return this.http.post<any>(
+      environment.postgrestUrl + 'rpc/create_role',
+      {
+        p_display_name: displayName,
+        p_description: description || null
+      }
+    ).pipe(
+      map((response) => {
+        if (response?.success === false) {
+          return {
+            success: false,
+            error: { message: response.error, humanMessage: response.error }
+          };
+        }
+        return {
+          success: true,
+          roleId: response.role_id
+        };
+      }),
+      catchError((error) => {
+        return of({
+          success: false,
+          error: { message: error.message, humanMessage: 'Failed to create role' }
+        });
+      })
+    );
+  }
 }

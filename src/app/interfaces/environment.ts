@@ -22,5 +22,10 @@ export interface Environment {
         attribution: string,
         defaultCenter: [number, number],  // [lat, lng]
         defaultZoom: number
+    },
+    keycloak: {
+        url: string,
+        realm: string,
+        clientId: string
     }
 }
