@@ -343,6 +343,63 @@ describe('SchemaService', () => {
       expectPostgrestRequest(httpMock, 'schema_entities', [MOCK_ENTITIES.issue]);
       expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
     });
+
+    it('should include map property even if hidden from list when map is enabled', (done) => {
+      const entityWithMap: SchemaEntityTable = {
+        ...MOCK_ENTITIES.issue,
+        show_map: true,
+        map_property_name: 'location'
+      };
+
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'name', udt_name: 'varchar', show_on_list: true }),
+        createMockProperty({
+          table_name: 'Issue',
+          column_name: 'location',
+          udt_name: 'geography',
+          geography_type: 'Point',
+          show_on_list: false  // Hidden from list view
+        })
+      ];
+
+      service.getPropsForList(entityWithMap).subscribe(props => {
+        expect(props.length).toBe(2);
+        expect(props.find(p => p.column_name === 'name')).toBeDefined();
+        expect(props.find(p => p.column_name === 'location')).toBeDefined();
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_entities', [entityWithMap]);
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
+
+    it('should not duplicate map property if already visible in list', (done) => {
+      const entityWithMap: SchemaEntityTable = {
+        ...MOCK_ENTITIES.issue,
+        show_map: true,
+        map_property_name: 'location'
+      };
+
+      const mockProps: SchemaEntityProperty[] = [
+        createMockProperty({ table_name: 'Issue', column_name: 'name', udt_name: 'varchar', show_on_list: true }),
+        createMockProperty({
+          table_name: 'Issue',
+          column_name: 'location',
+          udt_name: 'geography',
+          geography_type: 'Point',
+          show_on_list: true  // Already visible
+        })
+      ];
+
+      service.getPropsForList(entityWithMap).subscribe(props => {
+        expect(props.length).toBe(2);
+        expect(props.filter(p => p.column_name === 'location').length).toBe(1);
+        done();
+      });
+
+      expectPostgrestRequest(httpMock, 'schema_entities', [entityWithMap]);
+      expectPostgrestRequest(httpMock, 'schema_properties', mockProps);
+    });
   });
 
   describe('getPropsForCreate()', () => {

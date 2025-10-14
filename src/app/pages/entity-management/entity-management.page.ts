@@ -24,11 +24,12 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { SchemaService } from '../../services/schema.service';
 import { EntityManagementService } from '../../services/entity-management.service';
 import { SchemaEntityTable } from '../../interfaces/entity';
-import { debounceTime, Subject, switchMap, of, map, catchError } from 'rxjs';
+import { debounceTime, Subject, switchMap, of, map, catchError, forkJoin } from 'rxjs';
 
 interface EntityRow extends SchemaEntityTable {
   customDisplayName: string | null;
   customDescription: string | null;
+  geoPointProperties?: string[]; // Available GeoPoint properties for this entity
 }
 
 interface EntityData {
@@ -73,19 +74,49 @@ export class EntityManagementPage {
 
         // Use getEntitiesForMenu() to exclude junction tables
         return this.schemaService.getEntitiesForMenu().pipe(
-          map(entities => {
+          switchMap(entities => {
+            // Load properties for each entity to find GeoPoint fields
             const entityRows: EntityRow[] = (entities || []).map(e => ({
               ...e,
               customDisplayName: e.display_name !== e.table_name ? e.display_name : null,
-              customDescription: e.description
+              customDescription: e.description,
+              geoPointProperties: []
             }));
-            // Update entities signal
-            this.entities.set(entityRows);
-            return {
-              entities: entityRows,
-              loading: false,
-              isAdmin: true
-            } as EntityData;
+
+            if (entityRows.length === 0) {
+              this.entities.set(entityRows);
+              return of({
+                entities: entityRows,
+                loading: false,
+                isAdmin: true
+              } as EntityData);
+            }
+
+            // Fetch GeoPoint properties for each entity
+            const propertyObservables = entityRows.map(entity =>
+              this.schemaService.getPropertiesForEntity(entity).pipe(
+                map(properties => {
+                  const geoPoints = properties
+                    .filter(p => p.geography_type === 'Point')
+                    .map(p => p.column_name);
+                  return { ...entity, geoPointProperties: geoPoints };
+                }),
+                catchError(() => of(entity))
+              )
+            );
+
+            // Wait for all property fetches
+            return forkJoin(propertyObservables).pipe(
+              map(entityRowsWithGeoPoints => {
+                // Update entities signal
+                this.entities.set(entityRowsWithGeoPoints);
+                return {
+                  entities: entityRowsWithGeoPoints,
+                  loading: false,
+                  isAdmin: true
+                } as EntityData;
+              })
+            );
           }),
           catchError(() => {
             this.error.set('Failed to load entities');
@@ -152,6 +183,18 @@ export class EntityManagementPage {
     this.performSave(entity);
   }
 
+  onShowMapChange(entity: EntityRow) {
+    this.saveEntityMetadata(entity);
+  }
+
+  onMapPropertyChange(entity: EntityRow) {
+    this.saveEntityMetadata(entity);
+  }
+
+  hasGeoPointProperties(entity: EntityRow): boolean {
+    return (entity.geoPointProperties?.length ?? 0) > 0;
+  }
+
   private saveEntityMetadata(entity: EntityRow) {
     // Get or create debounce subject for this entity
     if (!this.saveSubjects.has(entity.table_name)) {
@@ -186,7 +229,9 @@ export class EntityManagementPage {
       entity.table_name,
       entity.customDisplayName || null,
       entity.customDescription || null,
-      entity.sort_order
+      entity.sort_order,
+      entity.show_map,
+      entity.map_property_name
     ).subscribe({
       next: (response) => {
         // Clear saving state

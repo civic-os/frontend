@@ -1,5 +1,5 @@
-<div class="prose">
-  @if (entity$ | async; as entity) {
+@if (entity$ | async; as entity) {
+  <div class="prose">
     <h1>
       {{ entity.display_name }} List
       @if (entity.description) {
@@ -9,10 +9,10 @@
       }
     </h1>
 
-    <!-- Sticky controls wrapper -->
-    <div class="sticky-controls-wrapper">
-      <!-- Search bar, Filter button, and Add button -->
-      <div class="flex gap-2 items-start mb-2 not-prose">
+  <!-- Sticky controls wrapper -->
+  <div class="sticky-controls-wrapper">
+    <!-- Search bar, Filter button, and Add button -->
+    <div class="flex gap-2 items-start mb-2">
         @if (entity.search_fields && entity.search_fields.length > 0) {
           <div class="form-control flex-1">
             <label class="input input-bordered flex items-center gap-2">
@@ -70,10 +70,10 @@
           </div>
         }
       }
-    </div>
+  </div>
 
-    <!-- Pagination controls (top) -->
-    <div class="not-prose mb-4">
+  <!-- Pagination controls (top) -->
+  <div class="not-prose mb-4">
       <app-pagination
         [currentPage]="currentPage()"
         [pageSize]="pageSize()"
@@ -84,9 +84,11 @@
       </app-pagination>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="table table-zebra table-pin-rows">
-        @if (properties$ | async; as props) {
+    <!-- Grid container for table and map -->
+    <div class="list-content-grid" [class.with-map]="showMap()">
+      <div class="overflow-x-auto">
+        <table class="table table-zebra">
+        @if (displayProperties$ | async; as props) {
           <!-- head -->
           <thead>
             <tr>
@@ -113,7 +115,13 @@
             @if (dataSignal(); as data) {
               @if (data?.length) {
                 @for (row of data; track row) {
-                  <tr [routerLink]="'/view/'+entityKey+'/'+row.id" class="pointer">
+                  <tr
+                    [routerLink]="'/view/'+entityKey+'/'+row.id"
+                    class="pointer"
+                    [class.highlighted-row]="showMap() && highlightedRecordId() === row.id"
+                    [attr.data-record-id]="row.id"
+                    (mouseenter)="onRowHover(row.id)"
+                    (mouseleave)="onRowHover(null)">
                     @for (prop of props; track prop) {
                       <td>
                         <app-display-property
@@ -137,16 +145,31 @@
       </table>
     </div>
 
-    <!-- Pagination controls (bottom) -->
-    <div class="not-prose mt-6">
-      <app-pagination
-        [currentPage]="currentPage()"
-        [pageSize]="pageSize()"
-        [totalCount]="totalCount()"
-        [loading]="isLoading()"
-        (pageChange)="onPageChange($event)"
-        (pageSizeChange)="onPageSizeChange($event)">
-      </app-pagination>
-    </div>
-  }
-</div>
+    <!-- Map View (only shown when enabled) -->
+    @if (showMap()) {
+      <div class="map-container">
+        <app-geo-point-map
+          [markers]="mapMarkers()"
+          [highlightedMarkerId]="highlightedRecordId()"
+          [width]="'100%'"
+          [height]="'600px'"
+          (markerClick)="onMarkerClick($event)"
+          (resetView)="onResetView()">
+        </app-geo-point-map>
+      </div>
+    }
+  </div>
+
+  <!-- Pagination controls (bottom) -->
+  <div class="not-prose mt-6">
+    <app-pagination
+      [currentPage]="currentPage()"
+      [pageSize]="pageSize()"
+      [totalCount]="totalCount()"
+      [loading]="isLoading()"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)">
+    </app-pagination>
+  </div>
+  </div>
+}

@@ -1,4 +1,4 @@
-<div>
+<div class="map-wrapper">
   <div [id]="mapId"
        class="leaflet-map"
        [class.display-mode]="mode() === 'display'"
@@ -7,6 +7,16 @@
        [style.height]="height()"
        [style.max-width]="maxWidth() || null">
   </div>
+
+  <!-- Floating reset button (only in multi-marker mode when a marker is highlighted) -->
+  @if (highlightedMarkerId() !== null && markers().length > 0) {
+    <button type="button"
+            class="map-reset-button"
+            (click)="onResetView()"
+            title="Reset view to show all markers">
+      <span class="material-symbols-outlined" style="font-size: 18px; line-height: 1;">home</span>
+    </button>
+  }
 
   @if (mode() === 'edit') {
     <div class="flex gap-2 mt-2">

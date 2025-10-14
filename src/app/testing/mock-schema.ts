@@ -27,6 +27,8 @@ export function createMockEntity(overrides?: Partial<SchemaEntityTable>): Schema
     sort_order: 1,
     description: null,
     search_fields: null,
+    show_map: false,
+    map_property_name: null,
     table_name: 'test_entity',
     insert: true,
     select: true,
@@ -188,7 +190,11 @@ export const MOCK_PROPERTIES = {
 /**
  * Pre-configured entity samples for common test scenarios.
  */
-export const MOCK_ENTITIES = {
+export const MOCK_ENTITIES: {
+  issue: SchemaEntityTable;
+  status: SchemaEntityTable;
+  workPackage: SchemaEntityTable;
+} = {
   issue: createMockEntity({
     table_name: 'Issue',
     display_name: 'Issues',

@@ -397,4 +397,244 @@ describe('ListPage', () => {
     });
   });
 
+  describe('Debounced Hover Events', () => {
+    beforeEach(() => {
+      component.ngOnInit();
+    });
+
+    it('should have rowHover$ Subject for debouncing', () => {
+      expect(component['rowHover$']).toBeDefined();
+      expect(typeof component['rowHover$'].next).toBe('function');
+    });
+
+    it('should push to rowHover$ Subject when onRowHover is called', () => {
+      spyOn(component['rowHover$'], 'next');
+
+      component.onRowHover(123);
+
+      expect(component['rowHover$'].next).toHaveBeenCalledWith(123);
+    });
+
+    it('should push null to rowHover$ Subject when clearing hover', () => {
+      spyOn(component['rowHover$'], 'next');
+
+      component.onRowHover(null);
+
+      expect(component['rowHover$'].next).toHaveBeenCalledWith(null);
+    });
+
+    it('should update highlightedRecordId after debounce delay', (done) => {
+      component.onRowHover(42);
+
+      // After debounce (>150ms), signal should update
+      setTimeout(() => {
+        expect(component.highlightedRecordId()).toBe(42);
+        done();
+      }, 200);
+    });
+
+    it('should handle rapid hover changes by using last value', (done) => {
+      // Push multiple values rapidly
+      component.onRowHover(1);
+      component.onRowHover(2);
+      component.onRowHover(3);
+
+      // After debounce, should have the last value
+      setTimeout(() => {
+        expect(component.highlightedRecordId()).toBe(3);
+        done();
+      }, 200);
+    });
+  });
+
+  describe('Reset View Functionality', () => {
+    beforeEach(() => {
+      component.ngOnInit();
+    });
+
+    it('should clear highlightedRecordId immediately without debounce', () => {
+      // Set highlighted record first
+      component.highlightedRecordId.set(123);
+      expect(component.highlightedRecordId()).toBe(123);
+
+      // Reset view
+      component.onResetView();
+
+      // Should clear immediately
+      expect(component.highlightedRecordId()).toBeNull();
+    });
+
+    it('should push null to rowHover$ Subject', () => {
+      spyOn(component['rowHover$'], 'next');
+
+      component.onResetView();
+
+      expect(component['rowHover$'].next).toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe('Marker Click Functionality', () => {
+    beforeEach(() => {
+      component.ngOnInit();
+    });
+
+    it('should set highlightedRecordId immediately', () => {
+      // Create a mock row element
+      const mockRow = document.createElement('tr');
+      mockRow.setAttribute('data-record-id', '456');
+      document.body.appendChild(mockRow);
+
+      component.onMarkerClick(456);
+
+      expect(component.highlightedRecordId()).toBe(456);
+
+      // Cleanup
+      document.body.removeChild(mockRow);
+    });
+
+    it('should scroll to corresponding row', () => {
+      const mockRow = document.createElement('tr');
+      mockRow.setAttribute('data-record-id', '789');
+      document.body.appendChild(mockRow);
+
+      spyOn(window, 'scrollTo');
+
+      component.onMarkerClick(789);
+
+      expect(window.scrollTo).toHaveBeenCalled();
+
+      // Cleanup
+      document.body.removeChild(mockRow);
+    });
+
+    it('should handle missing row element gracefully', () => {
+      // No row with this ID exists
+      expect(() => component.onMarkerClick(999)).not.toThrow();
+
+      // Should still set the highlighted ID even if row not found
+      expect(component.highlightedRecordId()).toBe(999);
+    });
+  });
+
+  describe('ngOnDestroy Cleanup', () => {
+    beforeEach(() => {
+      component.ngOnInit();
+    });
+
+    it('should complete rowHover$ Subject to prevent memory leaks', () => {
+      spyOn(component['rowHover$'], 'complete');
+
+      component.ngOnDestroy();
+
+      expect(component['rowHover$'].complete).toHaveBeenCalled();
+    });
+
+    it('should not error if called multiple times', () => {
+      expect(() => {
+        component.ngOnDestroy();
+        component.ngOnDestroy();
+      }).not.toThrow();
+    });
+  });
+
+  describe('Map Display Logic', () => {
+    it('should show map when entity has show_map=true', (done) => {
+      const entityWithMap = {
+        ...MOCK_ENTITIES.issue,
+        show_map: true,
+        map_property_name: 'location'
+      };
+      const mockProps = [MOCK_PROPERTIES.geoPoint];
+
+      mockSchemaService.getEntity.and.returnValue(of(entityWithMap));
+      mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: [], totalCount: 0 }));
+
+      // Trigger route params to emit with new mocked entity
+      routeParams.next({ entityKey: 'Issue' });
+
+      setTimeout(() => {
+        expect(component.showMap()).toBeTruthy();
+        done();
+      }, 50);
+    });
+
+    it('should not show map when entity has show_map=false', (done) => {
+      const entityWithoutMap = {
+        ...MOCK_ENTITIES.issue,
+        show_map: false,
+        map_property_name: null
+      };
+
+      mockSchemaService.getEntity.and.returnValue(of(entityWithoutMap));
+      mockSchemaService.getPropsForList.and.returnValue(of([]));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: [], totalCount: 0 }));
+
+      component.entity$.subscribe(() => {
+        setTimeout(() => {
+          expect(component.showMap()).toBe(false);
+          done();
+        }, 10);
+      });
+    });
+
+    it('should build map markers from data with WKT', (done) => {
+      const entityWithMap = {
+        ...MOCK_ENTITIES.issue,
+        show_map: true,
+        map_property_name: 'location'
+      };
+      const mockProps = [
+        MOCK_PROPERTIES.textShort,
+        MOCK_PROPERTIES.geoPoint
+      ];
+      const mockData = [
+        { id: 1, name: 'Issue 1', location: 'POINT(-83.5 43.0)', display_name: 'Issue 1', created_at: '', updated_at: '' },
+        { id: 2, name: 'Issue 2', location: 'POINT(-83.6 43.1)', display_name: 'Issue 2', created_at: '', updated_at: '' }
+      ];
+
+      mockSchemaService.getEntity.and.returnValue(of(entityWithMap));
+      mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: mockData as any, totalCount: 2 }));
+
+      // Trigger data load
+      routeParams.next({ entityKey: 'Issue' });
+
+      setTimeout(() => {
+        const markers = component.mapMarkers();
+        expect(markers.length).toBe(2);
+        expect(markers[0]).toEqual({ id: 1, name: 'Issue 1', wkt: 'POINT(-83.5 43.0)' });
+        expect(markers[1]).toEqual({ id: 2, name: 'Issue 2', wkt: 'POINT(-83.6 43.1)' });
+        done();
+      }, 100);
+    });
+
+    it('should handle null location values in map markers', (done) => {
+      const entityWithMap = {
+        ...MOCK_ENTITIES.issue,
+        show_map: true,
+        map_property_name: 'location'
+      };
+      const mockProps = [MOCK_PROPERTIES.geoPoint];
+      const mockData = [
+        { id: 1, location: 'POINT(-83.5 43.0)', display_name: 'Issue 1', created_at: '', updated_at: '' },
+        { id: 2, location: null, display_name: 'Issue 2', created_at: '', updated_at: '' }
+      ];
+
+      mockSchemaService.getEntity.and.returnValue(of(entityWithMap));
+      mockSchemaService.getPropsForList.and.returnValue(of(mockProps));
+      mockDataService.getDataPaginated.and.returnValue(of({ data: mockData as any, totalCount: 2 }));
+
+      routeParams.next({ entityKey: 'Issue' });
+
+      setTimeout(() => {
+        const markers = component.mapMarkers();
+        // Should only include non-null locations
+        expect(markers.length).toBe(1);
+        expect(markers[0].id).toBe(1);
+        done();
+      }, 100);
+    });
+  });
+
 });

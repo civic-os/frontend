@@ -15,9 +15,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Component, inject, ChangeDetectionStrategy, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Observable, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged, take, tap, shareReplay, switchMap, from, forkJoin } from 'rxjs';
+import { Observable, Subject, map, mergeMap, of, combineLatest, debounceTime, distinctUntilChanged, take, tap, shareReplay, switchMap, from, forkJoin } from 'rxjs';
 import { SchemaService } from '../../services/schema.service';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -28,6 +28,7 @@ import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 import { FilterBarComponent } from '../../components/filter-bar/filter-bar.component';
 import { PaginationComponent } from '../../components/pagination/pagination.component';
+import { GeoPointMapComponent, MapMarker } from '../../components/geo-point-map/geo-point-map.component';
 import { FilterCriteria } from '../../interfaces/query';
 
 interface FilterChip {
@@ -49,10 +50,11 @@ interface FilterChip {
     ReactiveFormsModule,
     DisplayPropertyComponent,
     FilterBarComponent,
-    PaginationComponent
+    PaginationComponent,
+    GeoPointMapComponent
 ]
 })
-export class ListPage implements OnInit {
+export class ListPage implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private schema = inject(SchemaService);
@@ -65,6 +67,9 @@ export class ListPage implements OnInit {
   public entityKey?: string;
   public searchControl = new FormControl('');
   public isLoading = signal<boolean>(false);
+
+  // Row hover stream for debouncing map interactions
+  private rowHover$ = new Subject<number | null>();
 
   public entity$: Observable<SchemaEntityTable | undefined> = this.route.params.pipe(
     mergeMap(p => {
@@ -84,6 +89,11 @@ export class ListPage implements OnInit {
       return of([]);
     }
   }));
+
+  // Properties for display - excludes map property if hidden from list
+  public displayProperties$: Observable<SchemaEntityProperty[]> = this.properties$.pipe(
+    map(props => props.filter(p => p.show_on_list !== false))
+  );
 
   public filterProperties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
     if(e) {
@@ -270,11 +280,47 @@ export class ListPage implements OnInit {
   // Count of search results (use totalCount for paginated results)
   public resultCount = computed(() => this.totalCount());
 
+  // Map-related signals
+  public highlightedRecordId = signal<number | null>(null);
+
+  // Convert entity$ to signal for map configuration
+  private entitySignal = toSignal(this.entity$);
+
+  // Check if map should be shown
+  public showMap = computed(() => {
+    const entity = this.entitySignal();
+    return entity?.show_map && entity?.map_property_name;
+  });
+
+  // Build map markers from current page data
+  public mapMarkers = computed(() => {
+    const entity = this.entitySignal();
+    const data = this.dataSignal();
+
+    if (!entity?.show_map || !entity?.map_property_name || !data || data.length === 0) {
+      return [];
+    }
+
+    const mapProperty = entity.map_property_name;
+    // PostgREST returns geography as 'property:property_text' which aliases to just 'property'
+    // So we access row[mapProperty] directly, NOT row[mapProperty + '_text']
+
+    const markers = data
+      .filter((row: any) => !!row[mapProperty])
+      .map((row: any) => ({
+        id: row.id,
+        name: row.display_name || `${entity.display_name} #${row.id}`,
+        wkt: row[mapProperty]
+      } as MapMarker));
+
+    return markers;
+  });
+
   // Build filter chips with compact format
   // Range filters (gte+lte pairs) are merged into single chips
   public filterChips$: Observable<FilterChip[]> = combineLatest([
     this.filters$,
-    this.properties$
+    this.displayProperties$
   ]).pipe(
     map(([filters, props]) => {
       if (filters.length === 0) return [];
@@ -396,6 +442,21 @@ export class ListPage implements OnInit {
           replaceUrl: true
         });
       });
+
+    // Debounce row hover events to prevent jerky map behavior during scrolling
+    this.rowHover$
+      .pipe(
+        debounceTime(150), // Wait 150ms before updating map
+        distinctUntilChanged() // Skip if same value
+      )
+      .subscribe(recordId => {
+        this.highlightedRecordId.set(recordId);
+      });
+  }
+
+  ngOnDestroy() {
+    // Clean up Subject
+    this.rowHover$.complete();
   }
 
   public onFiltersChange(filters: FilterCriteria[]) {
@@ -617,5 +678,38 @@ export class ListPage implements OnInit {
    */
   private storePageSize(pageSize: number) {
     localStorage.setItem(this.PAGE_SIZE_STORAGE_KEY, pageSize.toString());
+  }
+
+  /**
+   * Handle marker click - scroll to and highlight the corresponding row
+   */
+  public onMarkerClick(recordId: number) {
+    // Always highlight the clicked marker record
+    this.highlightedRecordId.set(recordId);
+
+    // Find the row element by data attribute and scroll to it if it exists
+    const rowElement = document.querySelector(`tr[data-record-id="${recordId}"]`);
+    if (rowElement) {
+      // Scroll to row with offset for sticky header
+      const yOffset = -100; // Account for sticky header
+      const y = rowElement.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }
+
+  /**
+   * Handle row hover - push to stream for debounced map updates
+   */
+  public onRowHover(recordId: number | null) {
+    this.rowHover$.next(recordId);
+  }
+
+  /**
+   * Handle map reset button click - clear highlighted record and reset map view
+   */
+  public onResetView() {
+    // Clear immediately without debounce
+    this.rowHover$.next(null);
+    this.highlightedRecordId.set(null);
   }
 }

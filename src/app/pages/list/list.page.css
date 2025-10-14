@@ -28,19 +28,66 @@ th.sortable .sort-icon-flipped {
     transform: scaleY(-1);
 }
 
-/* Sticky header controls */
-.sticky-controls {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+/* Controls wrapper - not sticky, just provides background */
+.sticky-controls-wrapper {
     background-color: hsl(var(--b1));
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
 }
 
-.sticky-controls-wrapper {
+/* Grid layout for table + map */
+.list-content-grid {
+    display: block; /* Default: single column */
+}
+
+/* Remove padding/margin workaround - no longer needed with border approach */
+
+/* Desktop: side-by-side layout when map is enabled */
+@media (min-width: 1024px) {
+    .list-content-grid.with-map {
+        display: grid;
+        grid-template-columns: 60% 40%;
+        gap: 1rem;
+    }
+}
+
+/* Map container */
+.map-container {
     position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: hsl(var(--b1));
+    top: 1rem; /* Small margin from viewport top when sticky */
+    align-self: start;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Mobile: hide map */
+@media (max-width: 1023px) {
+    .map-container {
+        display: none;
+    }
+}
+
+/* Highlighted row - full row background with primary color */
+/* Using box-shadow instead of border to avoid layout shift */
+/* In DaisyUI tables, the row has no visible background because cells have their own backgrounds */
+/* We must target BOTH the row AND its cells */
+/* DaisyUI 5 uses --color-primary with full oklch() value stored in the variable */
+.table tbody tr.highlighted-row {
+    box-shadow: inset 6px 0 0 var(--color-primary) !important;
+    position: relative;
+}
+
+/* Target the cells to actually show the background color */
+/* Use color-mix to add transparency to the primary color */
+.table tbody tr.highlighted-row > * {
+    background-color: color-mix(in oklch, var(--color-primary) 35%, transparent) !important;
+    animation: highlight-pulse 3s ease-out;
+}
+
+@keyframes highlight-pulse {
+    0% {
+        background-color: color-mix(in oklch, var(--color-primary) 50%, transparent) !important;
+    }
+    100% {
+        background-color: color-mix(in oklch, var(--color-primary) 20%, transparent) !important;
+    }
 }

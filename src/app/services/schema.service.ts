@@ -204,9 +204,19 @@ export class SchemaService {
   public getPropsForList(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     return this.getPropertiesForEntity(table)
       .pipe(map(props => {
-        return props
-          .filter(p => p.show_on_list !== false)
-          .sort((a, b) => a.sort_order - b.sort_order);
+        // Include properties visible on list
+        const visibleProps = props.filter(p => p.show_on_list !== false);
+
+        // If map is enabled, ensure the map property is included even if hidden from list
+        if (table.show_map && table.map_property_name) {
+          const mapProperty = props.find(p => p.column_name === table.map_property_name);
+          if (mapProperty && !visibleProps.includes(mapProperty)) {
+            // Add the map property so it's included in the PostgREST select query
+            visibleProps.push(mapProperty);
+          }
+        }
+
+        return visibleProps.sort((a, b) => a.sort_order - b.sort_order);
       }));
   }
   public getPropsForDetail(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {

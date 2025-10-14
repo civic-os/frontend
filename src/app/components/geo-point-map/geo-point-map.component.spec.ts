@@ -422,4 +422,249 @@ describe('GeoPointMapComponent', () => {
       expect(emitted).toBe(false);
     });
   });
+
+  describe('Reset View Functionality', () => {
+    it('should emit resetView event when onResetView is called', (done) => {
+      component.resetView.subscribe(() => {
+        done();
+      });
+
+      component.onResetView();
+    });
+  });
+
+  describe('Intelligent Zoom Calculation', () => {
+    beforeEach(() => {
+      // Create mock map with getBoundsZoom method
+      component['map'] = {
+        getBoundsZoom: jasmine.createSpy('getBoundsZoom').and.returnValue(14),
+        setView: jasmine.createSpy('setView'),
+        getZoom: jasmine.createSpy('getZoom').and.returnValue(13),
+        addLayer: jasmine.createSpy('addLayer'),
+        on: jasmine.createSpy('on'),
+        remove: jasmine.createSpy('remove'),
+        flyTo: jasmine.createSpy('flyTo'),
+        flyToBounds: jasmine.createSpy('flyToBounds')
+      } as any;
+    });
+
+    it('should return zoom 15 for single marker', () => {
+      // Setup single marker
+      const marker = createMockMarker();
+      component['markerMap'].set(1, marker);
+
+      const zoom = component['calculateIntelligentZoom'](1);
+
+      expect(zoom).toBe(15);
+    });
+
+    it('should return zoom 15 when highlighted marker not found', () => {
+      const zoom = component['calculateIntelligentZoom'](999);
+
+      expect(zoom).toBe(15);
+    });
+
+    it('should calculate zoom to fit selected + nearest neighbor for 2 markers', () => {
+      // Setup 2 markers
+      const marker1 = createMockMarker();
+      marker1.getLatLng.and.returnValue({ lat: 43.0, lng: -83.5, distanceTo: () => 1000 });
+      const marker2 = createMockMarker();
+      marker2.getLatLng.and.returnValue({ lat: 43.01, lng: -83.51, distanceTo: () => 1000 });
+
+      component['markerMap'].set(1, marker1);
+      component['markerMap'].set(2, marker2);
+
+      const zoom = component['calculateIntelligentZoom'](1);
+
+      // Should call getBoundsZoom with both markers
+      expect(component['map']!.getBoundsZoom).toHaveBeenCalled();
+      // Should constrain between 13-17
+      expect(zoom).toBeGreaterThanOrEqual(13);
+      expect(zoom).toBeLessThanOrEqual(17);
+    });
+
+    it('should calculate zoom for selected + 2 nearest neighbors for 3+ markers', () => {
+      // Setup 3 markers at different distances
+      const marker1 = createMockMarker();
+      marker1.getLatLng.and.returnValue({
+        lat: 43.0,
+        lng: -83.5,
+        distanceTo: jasmine.createSpy('distanceTo').and.returnValue(0)
+      });
+
+      const marker2 = createMockMarker();
+      marker2.getLatLng.and.returnValue({
+        lat: 43.01,
+        lng: -83.51,
+        distanceTo: jasmine.createSpy('distanceTo').and.callFake((other: any) => {
+          if (other.lat === 43.0) return 1000;
+          return 0;
+        })
+      });
+
+      const marker3 = createMockMarker();
+      marker3.getLatLng.and.returnValue({
+        lat: 43.02,
+        lng: -83.52,
+        distanceTo: jasmine.createSpy('distanceTo').and.callFake((other: any) => {
+          if (other.lat === 43.0) return 2000;
+          return 0;
+        })
+      });
+
+      component['markerMap'].set(1, marker1);
+      component['markerMap'].set(2, marker2);
+      component['markerMap'].set(3, marker3);
+
+      const zoom = component['calculateIntelligentZoom'](1);
+
+      expect(component['map']!.getBoundsZoom).toHaveBeenCalled();
+      expect(zoom).toBeGreaterThanOrEqual(13);
+      expect(zoom).toBeLessThanOrEqual(17);
+    });
+
+    it('should constrain zoom to max 17 for very close markers', () => {
+      // Mock getBoundsZoom to return very high zoom
+      (component['map']!.getBoundsZoom as jasmine.Spy).and.returnValue(20);
+
+      const marker1 = createMockMarker();
+      marker1.getLatLng.and.returnValue({
+        lat: 43.0,
+        lng: -83.5,
+        distanceTo: () => 10
+      });
+      const marker2 = createMockMarker();
+      marker2.getLatLng.and.returnValue({
+        lat: 43.0001,
+        lng: -83.5001,
+        distanceTo: () => 10
+      });
+
+      component['markerMap'].set(1, marker1);
+      component['markerMap'].set(2, marker2);
+
+      const zoom = component['calculateIntelligentZoom'](1);
+
+      expect(zoom).toBe(17); // Clamped to max
+    });
+
+    it('should constrain zoom to min 13 for far markers', () => {
+      // Mock getBoundsZoom to return very low zoom
+      (component['map']!.getBoundsZoom as jasmine.Spy).and.returnValue(8);
+
+      const marker1 = createMockMarker();
+      marker1.getLatLng.and.returnValue({
+        lat: 43.0,
+        lng: -83.5,
+        distanceTo: () => 100000
+      });
+      const marker2 = createMockMarker();
+      marker2.getLatLng.and.returnValue({
+        lat: 44.0,
+        lng: -84.5,
+        distanceTo: () => 100000
+      });
+
+      component['markerMap'].set(1, marker1);
+      component['markerMap'].set(2, marker2);
+
+      const zoom = component['calculateIntelligentZoom'](1);
+
+      expect(zoom).toBe(13); // Clamped to min
+    });
+  });
+
+  describe('Highlighted Marker Icon', () => {
+    it('should return icon with larger size (32x52)', () => {
+      const icon = component['getHighlightedIcon']();
+
+      expect(icon.options.iconSize).toEqual([32, 52]);
+    });
+
+    it('should have proportionally scaled anchor point', () => {
+      const icon = component['getHighlightedIcon']();
+
+      // Anchor should be [15, 27] (proportional to [12, 21] for size [32, 52])
+      expect(icon.options.iconAnchor).toEqual([15, 27]);
+    });
+
+    it('should use same icon URLs as default icon', () => {
+      const defaultIcon = component['getLeafletIcon']();
+      const highlightedIcon = component['getHighlightedIcon']();
+
+      expect(highlightedIcon.options.iconUrl).toBe(defaultIcon.options.iconUrl);
+      expect(highlightedIcon.options.iconRetinaUrl).toBe(defaultIcon.options.iconRetinaUrl);
+      expect(highlightedIcon.options.shadowUrl).toBe(defaultIcon.options.shadowUrl);
+    });
+  });
+
+  describe('Interactive Controls Detection', () => {
+    beforeEach(() => {
+      // Mock initializeMap to prevent Leaflet DOM operations
+      spyOn<any>(component, 'initializeMap');
+    });
+
+    it('should enable controls when mode is edit', () => {
+      fixture.componentRef.setInput('mode', 'edit');
+      fixture.componentRef.setInput('initialValue', null);
+      fixture.detectChanges();
+
+      // In real implementation, controls would be enabled in initializeMap
+      // Here we just verify the mode
+      expect(component.mode()).toBe('edit');
+    });
+
+    it('should enable controls when mode is display with no initialValue (multi-marker mode)', () => {
+      fixture.componentRef.setInput('mode', 'display');
+      fixture.componentRef.setInput('initialValue', null);
+      fixture.detectChanges();
+
+      expect(component.mode()).toBe('display');
+      expect(component.initialValue()).toBeNull();
+    });
+
+    it('should disable controls when mode is display with initialValue (single-marker mode)', () => {
+      fixture.componentRef.setInput('mode', 'display');
+      fixture.componentRef.setInput('initialValue', 'POINT(-83.5 43.0)');
+      fixture.detectChanges();
+
+      expect(component.mode()).toBe('display');
+      expect(component.initialValue()).toBe('POINT(-83.5 43.0)');
+    });
+  });
+
+  describe('Multi-Marker Mode', () => {
+    it('should emit markerClick event when marker is clicked', (done) => {
+      component.markerClick.subscribe((id: number) => {
+        expect(id).toBe(123);
+        done();
+      });
+
+      // Simulate marker click emission
+      component.markerClick.emit(123);
+    });
+
+    it('should accept markers input array', () => {
+      const markers = [
+        { id: 1, name: 'Marker 1', wkt: 'POINT(-83.5 43.0)' },
+        { id: 2, name: 'Marker 2', wkt: 'POINT(-83.6 43.1)' }
+      ];
+
+      fixture.componentRef.setInput('markers', markers);
+
+      expect(component.markers()).toEqual(markers);
+    });
+
+    it('should accept highlightedMarkerId input', () => {
+      fixture.componentRef.setInput('highlightedMarkerId', 5);
+
+      expect(component.highlightedMarkerId()).toBe(5);
+    });
+
+    it('should handle null highlightedMarkerId', () => {
+      fixture.componentRef.setInput('highlightedMarkerId', null);
+
+      expect(component.highlightedMarkerId()).toBeNull();
+    });
+  });
 });

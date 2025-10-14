@@ -15,9 +15,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStrategy, effect } from '@angular/core';
 import * as L from 'leaflet';
 import { environment } from '../../../environments/environment';
+
+export interface MapMarker {
+  id: number;
+  name: string;
+  wkt: string;
+}
 
 @Component({
   selector: 'app-geo-point-map',
@@ -27,20 +33,53 @@ import { environment } from '../../../environments/environment';
   styleUrl: './geo-point-map.component.css'
 })
 export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
+  // Single-marker mode (edit/display)
   mode = input<'display' | 'edit'>('display');
   initialValue = input<string | null>(null);
+
+  // Multi-marker mode (list view)
+  markers = input<MapMarker[]>([]);
+  highlightedMarkerId = input<number | null>(null);
+
+  // Common inputs
   width = input<string>('100%');
   height = input<string>('300px');
   maxWidth = input<string | undefined>(undefined);
 
+  // Single-marker outputs
   valueChange = output<string>();
   coordinatesChange = output<[number, number] | null>();
 
+  // Multi-marker outputs
+  markerClick = output<number>();
+  resetView = output<void>();
+
   private map?: L.Map;
-  private marker?: L.Marker;
+  private marker?: L.Marker; // For single-marker mode
+  private markerMap = new Map<number, L.Marker>(); // For multi-marker mode
+  private allMarkersBounds?: L.LatLngBounds; // Store bounds for reset after hover
   private currentLat?: number;
   private currentLng?: number;
   public mapId = 'geo-map-' + Math.random().toString(36).substring(2, 9);
+  private pendingAnimations: number[] = []; // Track setTimeout IDs for cleanup
+
+  constructor() {
+    // Watch for markers array changes
+    effect(() => {
+      const markersData = this.markers();
+      if (this.map && markersData.length > 0) {
+        this.updateMultiMarkers(markersData);
+      }
+    });
+
+    // Watch for highlighted marker changes
+    effect(() => {
+      const highlightedId = this.highlightedMarkerId();
+      if (this.map) {
+        this.updateHighlightedMarker(highlightedId);
+      }
+    });
+  }
 
   ngAfterViewInit() {
     setTimeout(() => {
@@ -49,6 +88,10 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    // Cancel pending animations to prevent errors when destroying during tests
+    this.pendingAnimations.forEach(id => clearTimeout(id));
+    this.pendingAnimations = [];
+
     if (this.map) {
       this.map.remove();
     }
@@ -61,7 +104,14 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     if (typeof value === 'string') {
       const match = value.match(/POINT\s*\(\s*([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s*\)/i);
       if (match) {
-        return [parseFloat(match[1]), parseFloat(match[2])];
+        const lng = parseFloat(match[1]);
+        const lat = parseFloat(match[2]);
+
+        if (isNaN(lng) || isNaN(lat)) {
+          return null;
+        }
+
+        return [lng, lat];
       }
     }
 
@@ -82,9 +132,13 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
 
   private initializeMap() {
     const mapElement = document.getElementById(this.mapId);
-    if (!mapElement) return;
+    if (!mapElement) {
+      return;
+    }
 
-    // Parse initial coordinates
+    const mode = this.mode();
+
+    // Parse initial coordinates (for single-marker mode)
     const coords = this.parseWKT(this.initialValue());
     if (coords) {
       this.currentLng = coords[0];
@@ -98,8 +152,8 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
       ? [this.currentLat, this.currentLng]
       : environment.map.defaultCenter;
 
-    // Create map with mode-specific options
-    const mode = this.mode();
+    // Create map with default options
+    // Controls will be enabled/disabled reactively based on mode
     const mapOptions: L.MapOptions = {
       center: center,
       zoom: mode === 'display' ? 15 : environment.map.defaultZoom,
@@ -107,8 +161,10 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
       zoomDelta: 1,
     };
 
-    // Disable all interactions for display mode
-    if (mode === 'display') {
+    // Only disable interactions for single-marker display mode (has initialValue)
+    // Edit mode and multi-marker mode (no initialValue) get full controls
+    if (mode === 'display' && this.initialValue()) {
+      // Single-marker display mode: disable all interactions
       Object.assign(mapOptions, {
         dragging: false,
         touchZoom: false,
@@ -117,6 +173,17 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
         boxZoom: false,
         keyboard: false,
         zoomControl: false
+      });
+    } else {
+      // Edit mode or multi-marker list mode: enable all interactive controls
+      Object.assign(mapOptions, {
+        dragging: true,
+        touchZoom: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        boxZoom: true,
+        keyboard: true,
+        zoomControl: true
       });
     }
 
@@ -202,5 +269,196 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     } else {
       alert('Geolocation is not supported by your browser.');
     }
+  }
+
+  // ============= Multi-Marker Mode Methods =============
+
+  private updateMultiMarkers(markersData: MapMarker[]) {
+    if (!this.map) {
+      return;
+    }
+
+    // Clear existing markers
+    this.markerMap.forEach(marker => marker.remove());
+    this.markerMap.clear();
+
+    if (markersData.length === 0) {
+      return;
+    }
+
+    // Create new markers and collect coordinates for bounds
+    const latLngs: L.LatLng[] = [];
+
+    markersData.forEach((markerData) => {
+      const coords = this.parseWKT(markerData.wkt);
+
+      if (!coords) {
+        return;
+      }
+
+      const [lng, lat] = coords;
+      const latLng: L.LatLng = L.latLng(lat, lng);
+      latLngs.push(latLng);
+
+      const marker = L.marker(latLng, {
+        icon: this.getLeafletIcon(),
+        title: markerData.name
+      }).addTo(this.map!);
+
+      // Add click handler
+      marker.on('click', () => {
+        this.markerClick.emit(markerData.id);
+      });
+
+      // Add tooltip
+      marker.bindTooltip(markerData.name, {
+        direction: 'top',
+        offset: [0, -20]
+      });
+
+      this.markerMap.set(markerData.id, marker);
+    });
+
+    // Auto-fit bounds to show all markers
+    // Use setTimeout to ensure map is fully rendered and sized
+    if (latLngs.length > 0) {
+      // Store bounds for later reset after hover
+      this.allMarkersBounds = L.latLngBounds(latLngs);
+
+      const timeoutId = window.setTimeout(() => {
+        if (!this.map) {
+          return;
+        }
+
+        // Force map to recalculate its size (important for sticky containers)
+        this.map.invalidateSize();
+
+        // Use different options based on number of markers
+        if (latLngs.length === 1) {
+          // Single marker: center on it with a reasonable zoom (smooth animation)
+          this.map.flyTo(latLngs[0], 15, {
+            duration: 1.2
+          });
+        } else {
+          // Multiple markers: fit all in view (smooth animation)
+          this.map.flyToBounds(this.allMarkersBounds!, {
+            padding: [30, 30],
+            maxZoom: 15,
+            duration: 1.2
+          });
+        }
+      }, 100);
+      this.pendingAnimations.push(timeoutId);
+    }
+  }
+
+  private updateHighlightedMarker(highlightedId: number | null) {
+    if (!this.map) return;
+
+    // Reset all markers to default icon
+    this.markerMap.forEach(marker => {
+      marker.setIcon(this.getLeafletIcon());
+    });
+
+    // Highlight the selected marker
+    if (highlightedId !== null) {
+      const marker = this.markerMap.get(highlightedId);
+      if (marker) {
+        marker.setIcon(this.getHighlightedIcon());
+
+        // Calculate intelligent zoom based on nearby markers
+        const targetZoom = this.calculateIntelligentZoom(highlightedId);
+
+        // Fly to highlighted marker with calculated zoom
+        const latLng = marker.getLatLng();
+        this.map.flyTo(latLng, targetZoom, {
+          duration: 1.0
+        });
+      }
+    } else {
+      // Reset view to show all markers when hover ends
+      if (this.allMarkersBounds && this.markerMap.size > 0) {
+        if (this.markerMap.size === 1) {
+          // Single marker: fly back to centered view
+          const marker = Array.from(this.markerMap.values())[0];
+          this.map.flyTo(marker.getLatLng(), 15, {
+            duration: 1.2
+          });
+        } else {
+          // Multiple markers: fly back to showing all markers
+          this.map.flyToBounds(this.allMarkersBounds, {
+            padding: [30, 30],
+            maxZoom: 15,
+            duration: 1.2
+          });
+        }
+      }
+    }
+  }
+
+  private calculateIntelligentZoom(highlightedId: number): number {
+    // Edge case: only one marker total
+    if (this.markerMap.size === 1) {
+      return 15; // Use display mode zoom
+    }
+
+    const highlightedMarker = this.markerMap.get(highlightedId);
+    if (!highlightedMarker || !this.map) {
+      return 15; // Fallback
+    }
+
+    const highlightedLatLng = highlightedMarker.getLatLng();
+
+    // Calculate distances to all other markers
+    const distances: Array<{ id: number; marker: L.Marker; distance: number }> = [];
+
+    this.markerMap.forEach((marker, id) => {
+      if (id !== highlightedId) {
+        const distance = highlightedLatLng.distanceTo(marker.getLatLng());
+        distances.push({ id, marker, distance });
+      }
+    });
+
+    // No other markers (shouldn't happen given size check, but be safe)
+    if (distances.length === 0) {
+      return 15;
+    }
+
+    // Sort by distance and take up to 2 nearest neighbors
+    distances.sort((a, b) => a.distance - b.distance);
+    const nearestNeighbors = distances.slice(0, 2);
+
+    // Create bounds including selected marker + nearest neighbors
+    const latLngs = [highlightedLatLng];
+    nearestNeighbors.forEach(n => latLngs.push(n.marker.getLatLng()));
+    const bounds = L.latLngBounds(latLngs);
+
+    // Calculate zoom that would fit these markers with padding
+    const zoom = this.map.getBoundsZoom(bounds, false, L.point(80, 80));
+
+    // Constrain zoom: min 13 (not too far), max 17 (not too close for tight clusters)
+    return Math.min(Math.max(zoom, 13), 17);
+  }
+
+  private getHighlightedIcon(): L.Icon {
+    // Use a larger version of the default icon for highlighted state
+    // Anchor must be proportional to size: default [12, 21] for [25, 41]
+    // For [32, 52]: [12 * 32/25, 21 * 52/41] ≈ [15, 27]
+    return L.icon({
+      iconUrl: 'assets/marker-icon.png',
+      iconRetinaUrl: 'assets/marker-icon-2x.png',
+      shadowUrl: 'assets/marker-shadow.png',
+      iconSize: [32, 52], // Slightly larger (default is 25x41)
+      iconAnchor: [15, 27], // Proportionally scaled from default [12, 21]
+      popupAnchor: [1, -34],
+      shadowSize: [50, 50]
+    });
+  }
+
+  // ============= User Controls =============
+
+  public onResetView() {
+    // Emit event to parent (ListPage) to clear highlighted record
+    this.resetView.emit();
   }
 }

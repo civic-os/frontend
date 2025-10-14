@@ -62,7 +62,9 @@ describe('EntityManagementService', () => {
         p_table_name: 'Issue',
         p_display_name: 'Issues',
         p_description: 'Track issues',
-        p_sort_order: 1
+        p_sort_order: 1,
+        p_show_map: false,
+        p_map_property_name: null
       });
       req.flush({});
     });
@@ -78,7 +80,9 @@ describe('EntityManagementService', () => {
         p_table_name: 'Issue',
         p_display_name: null,
         p_description: null,
-        p_sort_order: null
+        p_sort_order: null,
+        p_show_map: false,
+        p_map_property_name: null
       });
       req.flush({});
     });

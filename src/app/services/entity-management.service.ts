@@ -42,7 +42,9 @@ export class EntityManagementService {
     tableName: string,
     displayName: string | null,
     description: string | null,
-    sortOrder: number | null
+    sortOrder: number | null,
+    showMap: boolean = false,
+    mapPropertyName: string | null = null
   ): Observable<ApiResponse> {
     return this.http.post(
       environment.postgrestUrl + 'rpc/upsert_entity_metadata',
@@ -50,7 +52,9 @@ export class EntityManagementService {
         p_table_name: tableName,
         p_display_name: displayName,
         p_description: description,
-        p_sort_order: sortOrder
+        p_sort_order: sortOrder,
+        p_show_map: showMap,
+        p_map_property_name: mapPropertyName
       }
     ).pipe(
       map((response: any) => <ApiResponse>{ success: true, body: response }),

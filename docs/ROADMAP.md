@@ -16,24 +16,22 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] Add User Profile and management
 - [x] Add Login/Logout Screens (uses Keycloak Auth)
 - [ ] Set up default tables (id, created_at, updated_at, updated_at_trigger, permissions)
-- [ ] Advanced Form Validation by use of RPCs
 - [ ] Add File/Image data types (Priority 1: Unlocks many use cases)
 - [x] Live update page as Schema is updated
 
 - [ ] Prevent duplicate/cancelled dropdown queries (not changed)
 
 #### List Pages
-- [ ] Add List page configuration on top of Properties Management page
 - [X] Add pagination
 - [x] Add text search as an indexed column and toggle-able search box
-- [ ] Add Map view for List pages
+- [x] Add Map view for List pages
 - [x] Add Sortable columns and default sort
 - [x] Add filter-able columns (mostly FK fields, but also expand to other indexed fields like datetime)
 
 ### Roles
 - [x] Build Roles/Permissions schema
 - [ ] Give Roles display name, description
-- [ ] Allow creation of Roles on the Permissions screen (or a role-specific screen)
+- [x] Allow creation of Roles on the Permissions screen (or a role-specific screen)
 
 ### Workflow
 - [ ] Build table structure for attaching workflow to Entity (Use Properties table)
@@ -56,6 +54,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 ### Schema
 - [x] Build automatic generation of Entity Relationship Diagrams showing how schema works
 - [x] Permit other relationship types (one-to-one, many-to-many)
+- [ ] Advanced Form Validation by use of RPCs
 
 ### Workflow
 - [ ] Build automatic generation of Workflow diagrams showing how workflows operate

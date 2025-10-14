@@ -20,6 +20,8 @@ export interface SchemaEntityTable {
     sort_order: number,
     description: string | null,
     search_fields: string[] | null,
+    show_map: boolean,
+    map_property_name: string | null,
     table_name: string,
     insert: boolean,
     select: boolean,

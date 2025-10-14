@@ -191,7 +191,9 @@ CREATE TABLE metadata.entities (
   display_name TEXT,
   description TEXT,
   sort_order INT,
-  search_fields TEXT[]
+  search_fields TEXT[],
+  show_map BOOLEAN DEFAULT FALSE,
+  map_property_name TEXT
 );
 
 ALTER TABLE metadata.entities ENABLE ROW LEVEL SECURITY;
@@ -379,6 +381,8 @@ SELECT
   COALESCE(entities.sort_order, 0) AS sort_order,
   entities.description,
   entities.search_fields,
+  COALESCE(entities.show_map, FALSE) AS show_map,
+  entities.map_property_name,
   tables.table_name,
   public.has_permission(tables.table_name::text, 'create') AS insert,
   public.has_permission(tables.table_name::text, 'read') AS "select",
@@ -590,7 +594,9 @@ CREATE OR REPLACE FUNCTION public.upsert_entity_metadata(
   p_display_name TEXT,
   p_description TEXT,
   p_sort_order INT,
-  p_search_fields TEXT[] DEFAULT NULL
+  p_search_fields TEXT[] DEFAULT NULL,
+  p_show_map BOOLEAN DEFAULT FALSE,
+  p_map_property_name TEXT DEFAULT NULL
 )
 RETURNS void AS $$
 BEGIN
@@ -600,17 +606,19 @@ BEGIN
   END IF;
 
   -- Upsert the entity metadata
-  INSERT INTO metadata.entities (table_name, display_name, description, sort_order, search_fields)
-  VALUES (p_table_name, p_display_name, p_description, p_sort_order, p_search_fields)
+  INSERT INTO metadata.entities (table_name, display_name, description, sort_order, search_fields, show_map, map_property_name)
+  VALUES (p_table_name, p_display_name, p_description, p_sort_order, p_search_fields, p_show_map, p_map_property_name)
   ON CONFLICT (table_name) DO UPDATE
     SET display_name = EXCLUDED.display_name,
         description = EXCLUDED.description,
         sort_order = EXCLUDED.sort_order,
-        search_fields = EXCLUDED.search_fields;
+        search_fields = EXCLUDED.search_fields,
+        show_map = EXCLUDED.show_map,
+        map_property_name = EXCLUDED.map_property_name;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION public.upsert_entity_metadata(NAME, TEXT, TEXT, INT, TEXT[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_entity_metadata(NAME, TEXT, TEXT, INT, TEXT[], BOOLEAN, TEXT) TO authenticated;
 
 -- Update entity sort order (admin only)
 CREATE OR REPLACE FUNCTION public.update_entity_sort_order(
