@@ -11,6 +11,10 @@
         <a class="btn btn-ghost text-xl">Civic OS</a>
       </div>
       <div class="flex-none">
+        <!-- Dashboard Selector -->
+        <app-dashboard-selector></app-dashboard-selector>
+
+        <!-- Theme Selector -->
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn m-1">
             Theme
@@ -55,10 +59,22 @@
           </div>
         </div>
         <ul class="menu p-4 flex-1">
-          <!-- Sidebar content here -->
+          <!-- Home -->
+          <li (click)="navigateToHome()">
+            <a>
+              <span class="material-symbols-outlined">home</span>
+              Home
+            </a>
+          </li>
+
+          <!-- Entity menu items -->
+          <li class="menu-title mt-4">
+            <span>Data</span>
+          </li>
           @for (entity of menuItems; track entity) {
             <li (click)="navigate(entity.table_name)"><a>{{ entity.display_name }}</a></li>
           }
+
           <!-- About section -->
           <li class="menu-title mt-4">
             <span>About</span>

@@ -1,0 +1,42 @@
+<!-- Widget Container with DaisyUI Card Styling -->
+<div class="widget-container card bg-base-100 shadow-md">
+  <!-- Widget Title (Optional) -->
+  @if (title()) {
+    <div class="card-header px-4 py-2 border-b border-base-300">
+      <h3 class="text-lg font-semibold">{{ title() }}</h3>
+    </div>
+  }
+
+  <!-- Widget Body -->
+  <div class="card-body p-0">
+    <!-- Error State: Widget component not found -->
+    @if (hasError()) {
+      <div class="error-state p-6 text-center">
+        <div class="alert alert-error">
+          <span class="material-symbols-outlined">error</span>
+          <div>
+            <h4 class="font-bold">Widget Failed to Load</h4>
+            <p class="text-sm">Unknown widget type: {{ widget().widget_type }}</p>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-outline mt-4" (click)="retry()">
+          <span class="material-symbols-outlined">refresh</span>
+          Retry
+        </button>
+      </div>
+    }
+
+    <!-- Success State: Render widget component dynamically -->
+    @if (!hasError() && widgetComponent()) {
+      <div class="widget-content">
+        <!-- NgComponentOutlet dynamically creates the widget component -->
+        <ng-container
+          *ngComponentOutlet="widgetComponent()!; inputs: widgetInputs()"
+        ></ng-container>
+      </div>
+    }
+
+    <!-- Loading State (Phase 2: show skeleton while loading data) -->
+    <!-- For Phase 1, widgets load immediately with static data -->
+  </div>
+</div>

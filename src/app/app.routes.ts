@@ -24,10 +24,21 @@ import { PermissionsPage } from './pages/permissions/permissions.page';
 import { EntityManagementPage } from './pages/entity-management/entity-management.page';
 import { PropertyManagementPage } from './pages/property-management/property-management.page';
 import { SchemaErdPage } from './pages/schema-erd/schema-erd.page';
+import { DashboardPage } from './pages/dashboard/dashboard.page';
 import { schemaVersionGuard } from './guards/schema-version.guard';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
+    {
+        path: '',
+        component: DashboardPage,
+        canActivate: [schemaVersionGuard]
+    },
+    {
+        path: 'dashboard/:id',
+        component: DashboardPage,
+        canActivate: [schemaVersionGuard]
+    },
     {
         path: 'schema-erd',
         component: SchemaErdPage,

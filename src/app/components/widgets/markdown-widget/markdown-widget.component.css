@@ -1,0 +1,107 @@
+/**
+ * Markdown Widget Styles
+ *
+ * Uses Tailwind's @tailwindcss/typography plugin for prose styling.
+ * Markdown content is responsive and theme-aware.
+ */
+
+.markdown-widget {
+  /* Add padding for better readability */
+  padding: 1rem;
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+  .markdown-widget {
+    font-size: 0.875rem;
+  }
+}
+
+/* Dark mode text colors (DaisyUI theme-aware) */
+[data-theme="dark"] .markdown-widget,
+[data-theme="nord"] .markdown-widget {
+  color: oklch(var(--bc));
+}
+
+/* Ensure links are visible and styled */
+.markdown-widget :deep(a) {
+  color: oklch(var(--p));
+  text-decoration: underline;
+}
+
+.markdown-widget :deep(a:hover) {
+  color: oklch(var(--pf));
+}
+
+/* Headings use theme colors */
+.markdown-widget :deep(h1),
+.markdown-widget :deep(h2),
+.markdown-widget :deep(h3),
+.markdown-widget :deep(h4),
+.markdown-widget :deep(h5),
+.markdown-widget :deep(h6) {
+  color: oklch(var(--bc));
+}
+
+/* Code blocks */
+.markdown-widget :deep(code) {
+  background-color: oklch(var(--b2));
+  color: oklch(var(--bc));
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+.markdown-widget :deep(pre) {
+  background-color: oklch(var(--b2));
+  color: oklch(var(--bc));
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.markdown-widget :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Blockquotes */
+.markdown-widget :deep(blockquote) {
+  border-left: 4px solid oklch(var(--p));
+  padding-left: 1rem;
+  color: oklch(var(--bc) / 0.8);
+  font-style: italic;
+}
+
+/* Tables */
+.markdown-widget :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.markdown-widget :deep(th),
+.markdown-widget :deep(td) {
+  border: 1px solid oklch(var(--b3));
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.markdown-widget :deep(th) {
+  background-color: oklch(var(--b2));
+  font-weight: 600;
+}
+
+/* Images */
+.markdown-widget :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+/* Horizontal rules */
+.markdown-widget :deep(hr) {
+  border-color: oklch(var(--b3));
+  margin: 2rem 0;
+}

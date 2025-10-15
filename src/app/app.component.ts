@@ -26,13 +26,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SchemaEntityTable } from './interfaces/entity';
 import { AuthService } from './services/auth.service';
+import { DashboardSelectorComponent } from './components/dashboard-selector/dashboard-selector.component';
 
 @Component({
     selector: 'app-root',
     imports: [
     RouterOutlet,
     CommonModule,
-    FormsModule
+    FormsModule,
+    DashboardSelectorComponent
 ],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
@@ -52,6 +54,11 @@ export class AppComponent implements AfterViewInit {
 
   // Menu items exclude detected junction tables (accessible via direct URL)
   public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntitiesForMenu();
+
+  public navigateToHome() {
+    this.router.navigate(['/']);
+    this.drawerOpen = false;
+  }
 
   public navigate(key: string) {
     this.router.navigate(['view', key]);

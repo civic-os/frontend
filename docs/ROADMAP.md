@@ -42,13 +42,20 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] Set up Record Defaults (On Create)
 
 ### Logic
-- [ ] Build manually triggerable Logic (via Button on Entity page)
+- [ ] Build manually triggerable Logic (via Button on Entity detail page)
+
+### Dashboards (Phased Development)
+- [x] **Phase 1 - Core Infrastructure**: Database schema, widget registry, markdown widget, static dashboard with navigation
+- [ ] **Phase 2 - Dynamic Widgets**: Filtered list widget, auto-refresh infrastructure, data freshness UX
+- [ ] **Phase 3 - Management**: Dashboard management UI, widget editor, user preferences, global filter bar
+- [ ] **Phase 4 - Polish**: Drag-and-drop reordering, dashboard templates, embedded links, mobile optimizations
+- [ ] **Phase 5 - Advanced Widgets**: Stat cards (backend aggregation required), charts (Chart.js), query results from views
+- [ ] **Phase 6 - Permissions**: Role-based visibility, widget-level permissions, private dashboards
 
 ### General
 - [ ] ADA/WCAG Compatibility
 - [ ] SOC II Compliance
 - [ ] Allow Angular app to be configured at container runtime (for flexible deployments)
-- [ ] Customizable dashboards
 
 ## Phase 2: Introspection Tools
 

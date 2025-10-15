@@ -25,3 +25,4 @@
 
 export * from './mock-schema';
 export * from './mock-http';
+export * from './mock-dashboard';

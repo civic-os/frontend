@@ -68,6 +68,10 @@ describe('AppComponent', () => {
       { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
     ]));
 
+    // Handle dashboard requests from DashboardSelectorComponent
+    const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+    dashboardReqs.forEach(req => req.flush([]));
+
     expect(app).toBeTruthy();
   });
 
@@ -85,6 +89,10 @@ describe('AppComponent', () => {
       { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
       { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
     ]));
+
+    // Handle dashboard requests from DashboardSelectorComponent
+    const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+    dashboardReqs.forEach(req => req.flush([]));
 
     expect(app.title).toEqual('frontend');
   });
@@ -115,6 +123,10 @@ describe('AppComponent', () => {
       { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
       { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
     ]));
+
+    // Handle dashboard requests from DashboardSelectorComponent
+    const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+    dashboardReqs.forEach(req => req.flush([]));
 
     // Simulate theme change
     themeInput.checked = true;

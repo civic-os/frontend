@@ -1,0 +1,100 @@
+/**
+ * Dashboard Page Styles
+ *
+ * Responsive CSS Grid layout for widgets with DaisyUI theming.
+ */
+
+.dashboard-page {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+/* Error State */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  text-align: center;
+}
+
+/* Widgets Grid - CSS Grid Layout */
+.widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columns on desktop */
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.widget-cell {
+  /* Widget dimensions controlled by inline styles (grid-column, grid-row) */
+  min-height: 200px;
+  display: flex;
+}
+
+.widget-cell > * {
+  flex: 1; /* Widget container fills cell */
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Responsive Design */
+
+/* Tablet (max-width: 1024px) - Single column */
+@media (max-width: 1024px) {
+  .widgets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .widget-cell {
+    /* Override inline grid-column to always span full width */
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Mobile (max-width: 640px) */
+@media (max-width: 640px) {
+  .dashboard-page {
+    padding: 1rem;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .widgets-grid {
+    gap: 1rem;
+  }
+
+  .widget-cell {
+    min-height: 150px;
+  }
+}

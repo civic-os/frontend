@@ -1,0 +1,45 @@
+/**
+ * Dashboard Selector Component Styles
+ *
+ * Dropdown menu styling for dashboard navigation.
+ * Uses DaisyUI dropdown + menu components.
+ */
+
+/* Ensure dropdown menu appears above other content */
+.dropdown-content {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Menu item styling */
+.menu li > a {
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+/* Active item highlighting */
+.menu li > a.active {
+  background-color: oklch(var(--p) / 0.1);
+  color: oklch(var(--p));
+}
+
+/* Dashboard description text */
+.menu li > a .text-xs {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  /* Show icon only on mobile */
+  .btn-ghost span:not(.material-symbols-outlined) {
+    display: none;
+  }
+
+  /* Narrower dropdown on mobile */
+  .dropdown-content {
+    width: 16rem;
+  }
+}

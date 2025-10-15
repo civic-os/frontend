@@ -1,0 +1,76 @@
+<!-- Dashboard Selector Dropdown (DaisyUI) -->
+<div class="dropdown dropdown-end">
+  <!-- Dropdown Button -->
+  <div tabindex="0" role="button" class="btn btn-ghost">
+    <span class="material-symbols-outlined">dashboard</span>
+    <span class="hidden sm:inline ml-2">{{ getCurrentDashboardName() }}</span>
+    <span class="material-symbols-outlined ml-1">expand_more</span>
+  </div>
+
+  <!-- Dropdown Menu -->
+  @if (!loading() && dashboards().length > 0) {
+    <ul
+      tabindex="0"
+      class="dropdown-content menu bg-base-100 rounded-box z-[1] w-72 p-2 shadow-lg border border-base-300"
+    >
+      <!-- Default Dashboard -->
+      <li>
+        <a
+          (click)="selectDefaultDashboard()"
+          [class.active]="currentDashboardId() === undefined"
+          class="flex items-center"
+        >
+          <span class="material-symbols-outlined">home</span>
+          <span>Default Dashboard</span>
+          @if (currentDashboardId() === undefined) {
+            <span class="material-symbols-outlined ml-auto text-primary">check</span>
+          }
+        </a>
+      </li>
+
+      <li class="menu-title">
+        <span>All Dashboards</span>
+      </li>
+
+      <!-- Dashboard List -->
+      @for (dashboard of dashboards(); track dashboard.id) {
+        <li>
+          <a
+            (click)="selectDashboard(dashboard.id)"
+            [class.active]="currentDashboardId() === dashboard.id"
+            class="flex items-center"
+          >
+            <span class="material-symbols-outlined">
+              {{ dashboard.is_public ? 'public' : 'lock' }}
+            </span>
+            <div class="flex flex-col flex-1">
+              <span>{{ dashboard.display_name }}</span>
+              @if (dashboard.description) {
+                <span class="text-xs text-base-content/50">{{ dashboard.description }}</span>
+              }
+            </div>
+            @if (currentDashboardId() === dashboard.id) {
+              <span class="material-symbols-outlined ml-auto text-primary">check</span>
+            }
+          </a>
+        </li>
+      }
+    </ul>
+  }
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <ul
+      tabindex="0"
+      class="dropdown-content menu bg-base-100 rounded-box z-[1] w-72 p-2 shadow-lg border border-base-300"
+    >
+      <li class="disabled">
+        <a class="flex items-center justify-center">
+          <span class="loading loading-spinner loading-sm"></span>
+          <span class="ml-2">Loading dashboards...</span>
+        </a>
+      </li>
+    </ul>
+  }
+</div>
+

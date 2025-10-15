@@ -1,0 +1,48 @@
+/**
+ * Widget Container Styles
+ *
+ * Provides card-based layout for widgets with DaisyUI styling.
+ * Responsive and theme-aware.
+ */
+
+.widget-container {
+  /* DaisyUI card provides base styling */
+  /* Additional customization here if needed */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  flex-shrink: 0;
+}
+
+.card-body {
+  flex: 1;
+  overflow: auto; /* Allow scrolling if widget content is tall */
+}
+
+.widget-content {
+  /* Widget components render inside this container */
+  height: 100%;
+}
+
+/* Error state styling */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.error-state .alert {
+  max-width: 400px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .widget-container {
+    margin-bottom: 1rem;
+  }
+}

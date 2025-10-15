@@ -15,19 +15,37 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZonelessChangeDetection, APP_INITIALIZER } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { createInterceptorCondition, INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG, IncludeBearerTokenCondition, includeBearerTokenInterceptor, provideKeycloak } from 'keycloak-angular';
 import { environment } from '../environments/environment';
+import { WidgetComponentRegistry } from './services/widget-component-registry.service';
+import { MarkdownWidgetComponent } from './components/widgets/markdown-widget/markdown-widget.component';
+import { provideMarkdown } from 'ngx-markdown';
 
 const escapedUrl = environment.postgrestUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
   urlPattern: new RegExp(`^(${escapedUrl})(.*)?$`, 'i'),
   bearerPrefix: 'Bearer'
 });
+
+/**
+ * Register widget components at application startup
+ * This is critical for dynamic widget loading in dashboards
+ */
+function initializeWidgetRegistry(registry: WidgetComponentRegistry): () => void {
+  return () => {
+    console.log('[AppConfig] Registering widget components...');
+
+    // Register all widget components
+    registry.register('markdown', MarkdownWidgetComponent);
+
+    console.log('[AppConfig] Widget registration complete');
+  };
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -50,5 +68,14 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     // provideHttpClient(withFetch()),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor])),
+    // Markdown support for MarkdownWidget
+    provideMarkdown(),
+    // Register widget components at startup
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeWidgetRegistry,
+      deps: [WidgetComponentRegistry],
+      multi: true
+    }
   ]
 };
