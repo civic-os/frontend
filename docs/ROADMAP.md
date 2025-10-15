@@ -27,6 +27,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Add Map view for List pages
 - [x] Add Sortable columns and default sort
 - [x] Add filter-able columns (mostly FK fields, but also expand to other indexed fields like datetime)
+- [x] Add spreadsheet Import/Export capabilities
 
 ### Roles
 - [x] Build Roles/Permissions schema
@@ -55,6 +56,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Build automatic generation of Entity Relationship Diagrams showing how schema works
 - [x] Permit other relationship types (one-to-one, many-to-many)
 - [ ] Advanced Form Validation by use of RPCs
+- [ ] Add customizable template pages (primarily for PDF)
 
 ### Workflow
 - [ ] Build automatic generation of Workflow diagrams showing how workflows operate

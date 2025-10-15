@@ -71,7 +71,7 @@
                         <p class="text-sm opacity-70">This relationship has many records. Click below to view the full list.</p>
                         <div class="card-actions">
                           <a
-                            [routerLink]="'/list/' + relationship.meta.sourceTable"
+                            [routerLink]="'/view/' + relationship.meta.sourceTable"
                             [queryParams]="{
                               f0_col: relationship.meta.sourceColumn,
                               f0_op: 'eq',

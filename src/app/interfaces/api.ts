@@ -19,6 +19,7 @@ export interface ApiResponse {
     success: boolean;
     error?: ApiError;
     body?: any;
+    progress?: number;  // For upload progress tracking (0-100)
 }
 export interface ApiError {
     httpCode?: number;

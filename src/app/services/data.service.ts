@@ -635,4 +635,52 @@ export class DataService {
       catchError(err => this.parseApiError(err))
     );
   }
+
+  /**
+   * Bulk insert records via PostgREST.
+   * Posts array of objects as JSON.
+   * IMPORTANT: This is an all-or-nothing transaction.
+   * If any row fails database constraints, the entire import will be rejected.
+   *
+   * @param entity Table name
+   * @param data Array of records to insert
+   * @returns Observable of API response with progress events
+   */
+  public bulkInsert(entity: string, data: any[]): Observable<ApiResponse> {
+    return this.http.post(
+      environment.postgrestUrl + entity,
+      data,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        // Track upload progress for large datasets
+        reportProgress: true,
+        observe: 'events'
+      }
+    ).pipe(
+      // Filter for UploadProgress and Response events
+      filter((event: HttpEvent<any>) =>
+        event.type === HttpEventType.UploadProgress ||
+        event.type === HttpEventType.Response
+      ),
+      map((event: HttpEvent<any>) => {
+        if (event.type === HttpEventType.UploadProgress) {
+          // Emit progress event
+          const progress = Math.round(
+            (event.loaded / (event.total || event.loaded)) * 100
+          );
+          // Return interim response with progress
+          return { success: false, progress, body: null } as ApiResponse;
+        } else if (event.type === HttpEventType.Response) {
+          // Final response
+          return { success: true, body: event.body } as ApiResponse;
+        }
+        // Should never reach here due to filter, but TypeScript needs return
+        return { success: false, body: null } as ApiResponse;
+      }),
+      catchError(err => this.parseApiError(err))
+    );
+  }
 }

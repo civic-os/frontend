@@ -625,7 +625,7 @@ BEGIN
     SET display_name = EXCLUDED.display_name,
         description = EXCLUDED.description,
         sort_order = EXCLUDED.sort_order,
-        search_fields = EXCLUDED.search_fields,
+        search_fields = COALESCE(EXCLUDED.search_fields, metadata.entities.search_fields),
         show_map = EXCLUDED.show_map,
         map_property_name = EXCLUDED.map_property_name;
 END;

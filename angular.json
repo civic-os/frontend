@@ -18,6 +18,7 @@
             "browser": "src/main.ts",
             "polyfills": [],
             "tsConfig": "tsconfig.app.json",
+            "webWorkerTsConfig": "tsconfig.worker.json",
             "assets": [
               "src/favicon.ico",
               "src/assets",

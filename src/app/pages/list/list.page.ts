@@ -29,6 +29,7 @@ import { DisplayPropertyComponent } from '../../components/display-property/disp
 import { FilterBarComponent } from '../../components/filter-bar/filter-bar.component';
 import { PaginationComponent } from '../../components/pagination/pagination.component';
 import { GeoPointMapComponent, MapMarker } from '../../components/geo-point-map/geo-point-map.component';
+import { ImportExportButtonsComponent } from '../../components/import-export-buttons/import-export-buttons.component';
 import { FilterCriteria } from '../../interfaces/query';
 
 interface FilterChip {
@@ -51,7 +52,8 @@ interface FilterChip {
     DisplayPropertyComponent,
     FilterBarComponent,
     PaginationComponent,
-    GeoPointMapComponent
+    GeoPointMapComponent,
+    ImportExportButtonsComponent
 ]
 })
 export class ListPage implements OnInit, OnDestroy {
@@ -711,5 +713,16 @@ export class ListPage implements OnInit, OnDestroy {
     // Clear immediately without debounce
     this.rowHover$.next(null);
     this.highlightedRecordId.set(null);
+  }
+
+  /**
+   * Handle import completion - refresh data to show newly imported records
+   */
+  public onImportComplete(count: number) {
+    console.log(`Import completed: ${count} records imported`);
+    // The data$ observable will automatically refresh when the route params change
+    // For now, we can manually trigger a reload by navigating to the same route
+    // This will cause the data$ observable to re-fetch
+    window.location.reload();
   }
 }

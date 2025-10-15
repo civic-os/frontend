@@ -31,6 +31,9 @@
               }
             </label>
           </div>
+        } @else {
+          <!-- Spacer to push buttons to the right when no search bar -->
+          <div class="flex-1"></div>
         }
 
         <!-- Filter Bar -->
@@ -45,9 +48,20 @@
           }
         }
 
+        <!-- Import/Export Buttons -->
+        <app-import-export-buttons
+          [entity]="entity"
+          [entityKey]="entityKey"
+          [currentFilters]="filtersSignal()"
+          [searchQuery]="searchControl.value || undefined"
+          [sortColumn]="sortStateSignal().column || undefined"
+          [sortDirection]="sortStateSignal().direction || undefined"
+          (importComplete)="onImportComplete($event)">
+        </app-import-export-buttons>
+
         <!-- Add Button -->
         @if (entity.insert) {
-          <button class="btn btn-primary" [routerLink]="'/create/' + entityKey">
+          <button class="btn btn-primary btn-sm" [routerLink]="'/create/' + entityKey">
             <span class="material-symbols-outlined">add_circle</span>
             <span class="hidden sm:inline">Add {{ entity.display_name }}</span>
           </button>

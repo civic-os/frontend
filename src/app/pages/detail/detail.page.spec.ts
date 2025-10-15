@@ -320,7 +320,7 @@ describe('DetailPage', () => {
         expect(callArgs.fields).toContain('due_date');
         expect(callArgs.fields).toContain('created_at');
         expect(callArgs.fields).toContain('status_id:Status(id,display_name)');
-        expect(callArgs.fields).toContain('assigned_to:civic_os_users!assigned_to(display_name,private:civic_os_users_private(display_name,phone,email))');
+        expect(callArgs.fields).toContain('assigned_to:civic_os_users!assigned_to(id,display_name,private:civic_os_users_private(display_name,phone,email))');
         expect(callArgs.fields).toContain('location:location_text');
         done();
       });

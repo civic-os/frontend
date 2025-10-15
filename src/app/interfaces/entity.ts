@@ -152,3 +152,82 @@ export interface ManyToManyMeta {
     // Optional fields on related table
     relatedTableHasColor: boolean;  // Whether related table has 'color' column
 }
+
+/**
+ * Complete FK lookup structure for import validation.
+ * Supports: ID validation, name-to-ID lookup, and reverse lookup for error messages.
+ */
+export interface ForeignKeyLookup {
+    // Name-to-IDs mapping (handles duplicates)
+    // Key: lowercase display_name, Value: array of matching IDs
+    displayNameToIds: Map<string, (number | string)[]>;
+
+    // Fast ID existence check
+    // Contains all valid IDs for this FK field
+    validIds: Set<number | string>;
+
+    // Reverse lookup for error messages
+    // Key: ID, Value: display_name (original casing)
+    idsToDisplayName: Map<number | string, string>;
+}
+
+/**
+ * Represents a single validation error during import.
+ */
+export interface ImportError {
+    row: number;        // Excel row number (1-indexed, includes header)
+    column: string;     // Column display name
+    value: any;         // The invalid value
+    error: string;      // Error message
+    errorType: string;  // Error category for grouping
+}
+
+/**
+ * Summary of all validation errors with grouping and limits.
+ */
+export interface ValidationErrorSummary {
+    totalErrors: number;
+    errorsByType: Map<string, number>;    // "Status not found" → 450
+    errorsByColumn: Map<string, number>;  // "Status" → 450
+    firstNErrors: ImportError[];          // First 100 for UI display
+    allErrors: ImportError[];             // All errors for download
+}
+
+/**
+ * Progress message during validation in Web Worker.
+ */
+export interface ValidationProgress {
+    type: 'progress';
+    progress: {
+        currentRow: number;
+        totalRows: number;
+        percentage: number;
+        stage: string;
+    };
+}
+
+/**
+ * Completion message from Web Worker validation.
+ */
+export interface ValidationComplete {
+    type: 'complete';
+    results: {
+        validRows: any[];
+        errorSummary: ValidationErrorSummary;
+    };
+}
+
+/**
+ * Cancellation message from Web Worker.
+ */
+export interface ValidationCancelled {
+    type: 'cancelled';
+}
+
+/**
+ * Error message from Web Worker.
+ */
+export interface ValidationError {
+    type: 'error';
+    error: string;
+}
