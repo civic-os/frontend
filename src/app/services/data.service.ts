@@ -412,6 +412,9 @@ export class DataService {
 
     let identical: boolean;
     if(representation?.body?.[0] === undefined) {
+      // Empty response - likely RLS blocking SELECT after UPDATE
+      // This could be due to permissions, token expiration, or validation issues
+      // Note: Token expiration is handled by explicit refresh in create/edit pages
       identical = false;
     } else {
       identical = (representation !== undefined) && Object.keys(input).every(key => {

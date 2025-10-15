@@ -25,6 +25,7 @@ import { EntityManagementPage } from './pages/entity-management/entity-managemen
 import { PropertyManagementPage } from './pages/property-management/property-management.page';
 import { SchemaErdPage } from './pages/schema-erd/schema-erd.page';
 import { schemaVersionGuard } from './guards/schema-version.guard';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
     {
@@ -60,11 +61,11 @@ export const routes: Routes = [
     {
         path: 'create/:entityKey',
         component: CreatePage,
-        canActivate: [schemaVersionGuard]
+        canActivate: [schemaVersionGuard, authGuard]
     },
     {
         path: 'edit/:entityKey/:entityId',
         component: EditPage,
-        canActivate: [schemaVersionGuard]
+        canActivate: [schemaVersionGuard, authGuard]
     },
 ];

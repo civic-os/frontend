@@ -18,6 +18,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ErrorService } from './error.service';
+import { ApiError } from '../interfaces/api';
 
 describe('ErrorService', () => {
   let service: ErrorService;
@@ -31,5 +32,95 @@ describe('ErrorService', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  describe('parseToHuman()', () => {
+    it('should return permissions error for code 42501', () => {
+      const error: ApiError = {
+        code: '42501',
+        httpCode: 403,
+        message: 'insufficient_privilege',
+        details: '',
+        humanMessage: 'Permissions error'
+      };
+
+      const result = ErrorService.parseToHuman(error);
+      expect(result).toBe('Permissions error');
+    });
+
+    it('should return unique constraint error for code 23505', () => {
+      const error: ApiError = {
+        code: '23505',
+        httpCode: 409,
+        message: 'duplicate key value',
+        details: '',
+        humanMessage: 'Could not update'
+      };
+
+      const result = ErrorService.parseToHuman(error);
+      expect(result).toBe('Record must be unique');
+    });
+
+    it('should return validation error for code 23514', () => {
+      const error: ApiError = {
+        code: '23514',
+        httpCode: 400,
+        message: 'check constraint violated',
+        details: '',
+        humanMessage: 'Could not update'
+      };
+
+      const result = ErrorService.parseToHuman(error);
+      expect(result).toBe('Validation failed');
+    });
+
+    it('should extract constraint name from CHECK violation details', () => {
+      const error: ApiError = {
+        code: '23514',
+        httpCode: 400,
+        message: 'new row violates check constraint "price_positive"',
+        details: 'Failing row contains (1, "Product", -10.00)',
+        humanMessage: 'Could not update'
+      };
+
+      const result = ErrorService.parseToHuman(error);
+      expect(result).toBe('Validation failed: price_positive');
+    });
+
+    it('should return not found error for HTTP 404', () => {
+      const error: ApiError = {
+        httpCode: 404,
+        message: 'Resource not found',
+        details: '',
+        humanMessage: 'Not found'
+      };
+
+      const result = ErrorService.parseToHuman(error);
+      expect(result).toBe('Resource not found');
+    });
+
+    it('should return session expired error for HTTP 401', () => {
+      const error: ApiError = {
+        httpCode: 401,
+        message: 'Session expired',
+        details: '',
+        humanMessage: 'Session Expired'
+      };
+
+      const result = ErrorService.parseToHuman(error);
+      expect(result).toBe('Your session has expired. Please refresh the page to log in again.');
+    });
+
+    it('should return generic error for unknown error codes', () => {
+      const error: ApiError = {
+        httpCode: 500,
+        message: 'Internal server error',
+        details: '',
+        humanMessage: 'System Error'
+      };
+
+      const result = ErrorService.parseToHuman(error);
+      expect(result).toBe('System Error');
+    });
   });
 });

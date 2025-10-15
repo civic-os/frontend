@@ -42,6 +42,8 @@ export class ErrorService {
       return "Validation failed";
     } else if(err.httpCode == 404) {
       return "Resource not found";
+    } else if(err.httpCode == 401) {
+      return "Your session has expired. Please refresh the page to log in again.";
     }
     return "System Error";
   }

@@ -21,6 +21,7 @@ import { Observable, mergeMap, of, tap, map } from 'rxjs';
 import { SchemaEntityProperty, SchemaEntityTable, EntityPropertyType } from '../../interfaces/entity';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SchemaService } from '../../services/schema.service';
+import Keycloak from 'keycloak-js';
 
 import { EditPropertyComponent } from "../../components/edit-property/edit-property.component";
 import { CommonModule } from '@angular/common';
@@ -46,6 +47,7 @@ export class CreatePage {
   private schema = inject(SchemaService);
   private data = inject(DataService);
   private router = inject(Router);
+  private keycloak = inject(Keycloak);
 
   // Expose Math and SchemaService to template
   protected readonly Math = Math;
@@ -130,51 +132,67 @@ export class CreatePage {
     // Form is valid, hide error banner and proceed
     this.showValidationError = false;
 
-    if(this.entityKey && this.createForm) {
-      const formData = this.createForm.value;
+    // Refresh token before submission (if expires in < 60 seconds)
+    this.keycloak.updateToken(60)
+      .then(() => {
+        // Token is fresh, proceed with submission
+        if(this.entityKey && this.createForm) {
+          const formData = this.createForm.value;
 
-      // Transform values back to database format before submission
-      const transformedData = this.transformValuesForApi(formData);
+          // Transform values back to database format before submission
+          const transformedData = this.transformValuesForApi(formData);
 
-      // M:M properties are filtered out, so just create the entity directly
-      this.data.createData(this.entityKey, transformedData)
-        .subscribe({
-          next: (result) => {
-            if(result.success === true) {
-              console.log('[CREATE SUBMIT] Success!');
-              if (this.successDialog) {
-                this.successDialog.open();
-              } else {
-                console.error('Success dialog not available');
+          // M:M properties are filtered out, so just create the entity directly
+          this.data.createData(this.entityKey, transformedData)
+            .subscribe({
+              next: (result) => {
+                if(result.success === true) {
+                  console.log('[CREATE SUBMIT] Success!');
+                  if (this.successDialog) {
+                    this.successDialog.open();
+                  } else {
+                    console.error('Success dialog not available');
+                  }
+                } else {
+                  console.error('[CREATE SUBMIT] API returned error:', result.error);
+                  console.error('[CREATE SUBMIT] Error details:', {
+                    httpCode: result.error?.httpCode,
+                    message: result.error?.message,
+                    details: result.error?.details,
+                    hint: result.error?.hint,
+                    humanMessage: result.error?.humanMessage
+                  });
+                  if (this.errorDialog) {
+                    this.errorDialog.open(result.error);
+                  } else {
+                    console.error('Error dialog not available', result.error);
+                  }
+                }
+              },
+              error: (err) => {
+                console.error('Unexpected error during create:', err);
+                if (this.errorDialog) {
+                  this.errorDialog.open({
+                    httpCode: 500,
+                    message: 'An unexpected error occurred',
+                    humanMessage: 'System Error'
+                  });
+                }
               }
-            } else {
-              console.error('[CREATE SUBMIT] API returned error:', result.error);
-              console.error('[CREATE SUBMIT] Error details:', {
-                httpCode: result.error?.httpCode,
-                message: result.error?.message,
-                details: result.error?.details,
-                hint: result.error?.hint,
-                humanMessage: result.error?.humanMessage
-              });
-              if (this.errorDialog) {
-                this.errorDialog.open(result.error);
-              } else {
-                console.error('Error dialog not available', result.error);
-              }
-            }
-          },
-          error: (err) => {
-            console.error('Unexpected error during create:', err);
-            if (this.errorDialog) {
-              this.errorDialog.open({
-                httpCode: 500,
-                message: 'An unexpected error occurred',
-                humanMessage: 'System Error'
-              });
-            }
-          }
-        });
-    }
+            });
+        }
+      })
+      .catch((error) => {
+        // Token refresh failed - session expired
+        if (this.errorDialog) {
+          this.errorDialog.open({
+            httpCode: 401,
+            message: "Session expired",
+            humanMessage: "Session Expired",
+            hint: "Your login session has expired. Please refresh the page to log in again."
+          });
+        }
+      });
   }
 
   private scrollToFirstError(): void {

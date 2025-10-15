@@ -26,6 +26,7 @@ import { DataService } from '../../services/data.service';
 import { BehaviorSubject, of } from 'rxjs';
 import { MOCK_ENTITIES, MOCK_PROPERTIES, createMockProperty } from '../../testing';
 import { EntityPropertyType } from '../../interfaces/entity';
+import Keycloak from 'keycloak-js';
 
 describe('EditPage', () => {
   let component: EditPage;
@@ -33,6 +34,7 @@ describe('EditPage', () => {
   let mockSchemaService: jasmine.SpyObj<SchemaService>;
   let mockDataService: jasmine.SpyObj<DataService>;
   let mockRouter: jasmine.SpyObj<Router>;
+  let mockKeycloak: jasmine.SpyObj<Keycloak>;
   let routeParams: BehaviorSubject<any>;
 
   beforeEach(async () => {
@@ -44,6 +46,10 @@ describe('EditPage', () => {
     ]);
     mockDataService = jasmine.createSpyObj('DataService', ['getData', 'editData']);
     mockRouter = jasmine.createSpyObj('Router', ['navigate']);
+    mockKeycloak = jasmine.createSpyObj('Keycloak', ['updateToken']);
+
+    // Setup updateToken to return resolved promise by default (for form submission)
+    mockKeycloak.updateToken.and.returnValue(Promise.resolve(true));
 
     await TestBed.configureTestingModule({
       imports: [EditPage],
@@ -53,7 +59,8 @@ describe('EditPage', () => {
         { provide: ActivatedRoute, useValue: { params: routeParams.asObservable() } },
         { provide: SchemaService, useValue: mockSchemaService },
         { provide: DataService, useValue: mockDataService },
-        { provide: Router, useValue: mockRouter }
+        { provide: Router, useValue: mockRouter },
+        { provide: Keycloak, useValue: mockKeycloak }
       ]
     })
     .compileComponents();
@@ -795,6 +802,103 @@ describe('EditPage', () => {
             done();
           }, 10);
         });
+      });
+    });
+  });
+
+  describe('Token Refresh (Keycloak Integration)', () => {
+    let mockKeycloak: jasmine.SpyObj<any>;
+
+    beforeEach(() => {
+      // Create mock Keycloak instance
+      mockKeycloak = jasmine.createSpyObj('Keycloak', ['updateToken']);
+
+      mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
+      mockSchemaService.getPropsForEdit.and.returnValue(of([MOCK_PROPERTIES.textShort]));
+      mockDataService.getData.and.returnValue(of([{ id: 42, name: 'Test' }] as any));
+
+      // Manually inject mock Keycloak (bypass DI for testing)
+      (component as any).keycloak = mockKeycloak;
+
+      fixture.detectChanges();
+    });
+
+    it('should call updateToken before form submission', (done) => {
+      mockKeycloak.updateToken.and.returnValue(Promise.resolve(true));
+      mockDataService.editData.and.returnValue(of({ success: true }));
+
+      component.data$.subscribe(() => {
+        spyOn(component.successDialog, 'open');
+        spyOn(component.errorDialog, 'open');
+
+        component.submitForm({});
+
+        setTimeout(() => {
+          expect(mockKeycloak.updateToken).toHaveBeenCalledWith(60);
+          expect(mockDataService.editData).toHaveBeenCalled();
+          done();
+        }, 10);
+      });
+    });
+
+    it('should proceed with submission when token refresh succeeds', (done) => {
+      mockKeycloak.updateToken.and.returnValue(Promise.resolve(true));
+      mockDataService.editData.and.returnValue(of({ success: true }));
+
+      component.data$.subscribe(() => {
+        spyOn(component.successDialog, 'open');
+        spyOn(component.errorDialog, 'open');
+
+        component.editForm?.patchValue({ name: 'Updated' });
+        component.submitForm({});
+
+        setTimeout(() => {
+          expect(mockDataService.editData).toHaveBeenCalledWith(
+            'Issue',
+            '42',
+            { name: 'Updated' }
+          );
+          expect(component.successDialog.open).toHaveBeenCalled();
+          done();
+        }, 10);
+      });
+    });
+
+    it('should show 401 error dialog when token refresh fails', (done) => {
+      mockKeycloak.updateToken.and.returnValue(Promise.reject(new Error('Token refresh failed')));
+
+      component.data$.subscribe(() => {
+        spyOn(component.errorDialog, 'open');
+        spyOn(component.successDialog, 'open');
+
+        component.submitForm({});
+
+        setTimeout(() => {
+          expect(component.errorDialog.open).toHaveBeenCalledWith(
+            jasmine.objectContaining({
+              httpCode: 401,
+              message: 'Session expired',
+              humanMessage: 'Session Expired',
+              hint: 'Your login session has expired. Please refresh the page to log in again.'
+            })
+          );
+          expect(mockDataService.editData).not.toHaveBeenCalled();
+          expect(component.successDialog.open).not.toHaveBeenCalled();
+          done();
+        }, 10);
+      });
+    });
+
+    it('should not call editData when token refresh fails', (done) => {
+      mockKeycloak.updateToken.and.returnValue(Promise.reject(new Error('Expired')));
+
+      component.data$.subscribe(() => {
+        component.submitForm({});
+
+        setTimeout(() => {
+          expect(mockDataService.editData).not.toHaveBeenCalled();
+          done();
+        }, 10);
       });
     });
   });
