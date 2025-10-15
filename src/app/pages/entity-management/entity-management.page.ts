@@ -202,7 +202,12 @@ export class EntityManagementPage {
       this.saveSubjects.set(entity.table_name, subject);
 
       subject.pipe(debounceTime(1000)).subscribe(() => {
-        this.performSave(entity);
+        // Look up current entity from signal to avoid stale closure references
+        // (entities array may be replaced when schema refreshes after reordering)
+        const currentEntity = this.entities().find(e => e.table_name === entity.table_name);
+        if (currentEntity) {
+          this.performSave(currentEntity);
+        }
       });
     }
 

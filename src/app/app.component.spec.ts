@@ -17,11 +17,12 @@
 
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { AppComponent } from './app.component';
 import { AuthService } from './services/auth.service';
+import { Location } from '@angular/common';
 
 describe('AppComponent', () => {
   let mockAuthService: jasmine.SpyObj<AuthService>;
@@ -137,5 +138,61 @@ describe('AppComponent', () => {
 
     // Cleanup
     document.body.removeChild(themeInput);
+  });
+
+  describe('isDashboardRoute detection', () => {
+    /**
+     * Helper to create component with specific initial router URL
+     */
+    function createComponentWithUrl(url: string) {
+      const router = TestBed.inject(Router);
+      spyOnProperty(router, 'url', 'get').and.returnValue(url);
+
+      const fixture = TestBed.createComponent(AppComponent);
+      const app = fixture.componentInstance;
+
+      // Handle HTTP requests
+      const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+      schemaEntitiesReqs.forEach(req => req.flush([]));
+      const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+      versionReqs.forEach(req => req.flush([
+        { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+        { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+      ]));
+      const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+      dashboardReqs.forEach(req => req.flush([]));
+
+      return { fixture, app };
+    }
+
+    it('should set isDashboardRoute to true when on home page', () => {
+      const { app } = createComponentWithUrl('/');
+      expect(app.isDashboardRoute()).toBe(true);
+    });
+
+    it('should set isDashboardRoute to true when on dashboard page', () => {
+      const { app } = createComponentWithUrl('/dashboard/42');
+      expect(app.isDashboardRoute()).toBe(true);
+    });
+
+    it('should set isDashboardRoute to false when on entity list page', () => {
+      const { app } = createComponentWithUrl('/view/issues');
+      expect(app.isDashboardRoute()).toBe(false);
+    });
+
+    it('should set isDashboardRoute to false when on management page', () => {
+      const { app } = createComponentWithUrl('/entity-management');
+      expect(app.isDashboardRoute()).toBe(false);
+    });
+
+    it('should set isDashboardRoute to false when on detail page', () => {
+      const { app } = createComponentWithUrl('/view/issues/123');
+      expect(app.isDashboardRoute()).toBe(false);
+    });
+
+    it('should set isDashboardRoute to false when on edit page', () => {
+      const { app } = createComponentWithUrl('/edit/issues/123');
+      expect(app.isDashboardRoute()).toBe(false);
+    });
   });
 });

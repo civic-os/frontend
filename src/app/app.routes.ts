@@ -47,17 +47,17 @@ export const routes: Routes = [
     {
         path: 'permissions',
         component: PermissionsPage,
-        canActivate: [schemaVersionGuard]
+        canActivate: [schemaVersionGuard, authGuard]
     },
     {
         path: 'entity-management',
         component: EntityManagementPage,
-        canActivate: [schemaVersionGuard]
+        canActivate: [schemaVersionGuard, authGuard]
     },
     {
         path: 'property-management',
         component: PropertyManagementPage,
-        canActivate: [schemaVersionGuard]
+        canActivate: [schemaVersionGuard, authGuard]
     },
     {
         path: 'view/:entityKey',

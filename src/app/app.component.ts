@@ -15,9 +15,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Component, inject, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, inject, ViewChild, AfterViewInit, signal } from '@angular/core';
 
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs';
 import { SchemaService } from './services/schema.service';
 import { VersionService } from './services/version.service';
 import { Observable } from 'rxjs';
@@ -48,12 +49,36 @@ export class AppComponent implements AfterViewInit {
   public drawerOpen: boolean = false;
   title = 'frontend';
 
+  // Track if current route is a dashboard page (home or /dashboard/:id)
+  isDashboardRoute = signal(false);
+
   // Initialize schema and version tracking on app startup
   private _schemaInit = this.schema.init();
   private _versionInit = this.version.init().subscribe();
 
   // Menu items exclude detected junction tables (accessible via direct URL)
   public menuItems$: Observable<SchemaEntityTable[] | undefined> = this.schema.getEntitiesForMenu();
+
+  constructor() {
+    // Check initial route
+    this.checkIfDashboardRoute(this.router.url);
+
+    // Listen for navigation events to update dashboard route status
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: NavigationEnd) => {
+      this.checkIfDashboardRoute(event.urlAfterRedirects);
+    });
+  }
+
+  /**
+   * Check if the given URL is a dashboard route (home or /dashboard/:id)
+   */
+  private checkIfDashboardRoute(url: string): void {
+    this.isDashboardRoute.set(
+      url === '/' || url.startsWith('/dashboard')
+    );
+  }
 
   public navigateToHome() {
     this.router.navigate(['/']);

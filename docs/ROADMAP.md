@@ -71,6 +71,9 @@ This document outlines the development roadmap for Civic OS, organized by phases
 ### Logic
 - [ ] Build automatic generation of Block Diagrams showing how Logic works
 
+### Utilities
+- [ ] Build notification service
+
 ## Phase 3: Graphical Editing Tools
 
 ### Schema

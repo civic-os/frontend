@@ -11,8 +11,10 @@
         <a class="btn btn-ghost text-xl">Civic OS</a>
       </div>
       <div class="flex-none">
-        <!-- Dashboard Selector -->
-        <app-dashboard-selector></app-dashboard-selector>
+        <!-- Dashboard Selector (only shown on dashboard pages) -->
+        @if (isDashboardRoute()) {
+          <app-dashboard-selector></app-dashboard-selector>
+        }
 
         <!-- Theme Selector -->
         <div class="dropdown">
