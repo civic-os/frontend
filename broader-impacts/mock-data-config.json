@@ -1,0 +1,26 @@
+{
+  "recordsPerEntity": {
+    "organizations": 30,
+    "contacts": 75,
+    "projects": 40,
+    "interest_centers": 8,
+    "broader_impact_categories": 15,
+    "organization_broader_impact_categories": 60,
+    "contact_projects": 100,
+    "contact_broader_impact_categories": 120,
+    "project_broader_impact_categories": 80
+  },
+  "excludeTables": [
+    "organization_types",
+    "project_statuses"
+  ],
+  "outputFormat": "sql",
+  "generateUsers": false,
+  "userCount": 10,
+  "geographyBounds": {
+    "minLat": 42.25,
+    "maxLat": 42.45,
+    "minLng": -83.30,
+    "maxLng": -82.90
+  }
+}
