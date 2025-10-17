@@ -134,7 +134,20 @@ describe('SchemaErdPage', () => {
   });
 
   describe('Mermaid Initialization', () => {
+    afterEach(() => {
+      // Clean up by deleting the property, allowing it to fall back to the native implementation
+      delete (document as any).documentElement;
+    });
+
     it('should initialize Mermaid only in browser platform', () => {
+      // Mock document.documentElement to ensure consistent behavior in CI
+      const mockHtmlElement = document.createElement('html');
+      mockHtmlElement.setAttribute('data-theme', 'light');
+      Object.defineProperty(document, 'documentElement', {
+        configurable: true,
+        get: () => mockHtmlElement
+      });
+
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
