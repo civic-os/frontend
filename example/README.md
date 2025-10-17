@@ -219,6 +219,42 @@ VALUES
 
 3. Navigate to `http://localhost:4200/view/my_entity` - the UI auto-generates!
 
+## Mock Data Generation
+
+The example deployment includes a domain-specific mock data generator customized for the pot-hole tracking system.
+
+### Running Mock Data Generator
+
+```bash
+cd example
+set -a && source .env && set +a  # Load database connection vars
+npx ts-node generate-mock-data.ts       # Direct insert to database
+npx ts-node generate-mock-data.ts --sql # Generate SQL file
+```
+
+### Configuration
+
+Edit `mock-data-config.json` to control:
+- Record counts per table
+- Geographic bounds for location data
+- Tables to exclude
+- Output format and path
+
+The generator automatically:
+- Respects validation rules from `metadata.validations`
+- Generates domain-specific display names (e.g., "Large pothole on Main Street")
+- Handles foreign key dependencies
+- Creates realistic pot-hole tracking data
+
+### Customizing for Your Domain
+
+The `generate-mock-data.ts` script in this folder is customized for pot-hole tracking. To adapt it for your domain:
+
+1. Modify the `generateDisplayName()` method for your entity names
+2. Update geography bounds if using location data
+3. Adjust special case handling in `generateFakeValue()`
+4. Update excludeTables list in DEFAULT_CONFIG
+
 ## User Sync (Manual Process)
 
 Since Keycloak users are external, you need to manually sync users to `civic_os_users` table:

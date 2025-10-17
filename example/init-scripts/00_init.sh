@@ -12,7 +12,7 @@ echo "======================================"
 for script in /civic-os-core/*.sql; do
     if [ -f "$script" ]; then
         echo "Executing: $(basename $script)"
-        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$script"
+        psql -v ON_ERROR_STOP=1 -v authenticator_password="$POSTGRES_PASSWORD" --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$script"
     fi
 done
 

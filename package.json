@@ -29,7 +29,6 @@
     "keycloak-angular": "^20.0.0",
     "keycloak-js": "^26.2.0",
     "leaflet": "^1.9.4",
-    "marked": "^16.4.0",
     "mermaid": "^11.12.0",
     "ngx-currency": "^19.0.0",
     "ngx-markdown": "^20.1.0",

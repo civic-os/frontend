@@ -5,7 +5,7 @@
 -- Create PostgREST roles
 CREATE ROLE web_anon NOLOGIN;
 CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'securepassword123';
+CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD :'authenticator_password';
 
 -- Grant role switching to authenticator
 GRANT web_anon TO authenticator;

@@ -1,21 +1,5 @@
 #!/usr/bin/env ts-node
 
-/**
- * CIVIC OS MOCK DATA GENERATOR - GENERIC TEMPLATE
- *
- * This is a generic template for generating mock data. For production use,
- * copy this file to your deployment folder (e.g., example/, broader-impacts/)
- * and customize it for your domain:
- *
- * 1. Update DEFAULT_CONFIG (outputPath, geographyBounds, excludeTables)
- * 2. Customize generateDisplayName() for your entities
- * 3. Add domain-specific logic to generateFakeValue() if needed
- * 4. Update config path to ./mock-data-config.json
- *
- * See example/generate-mock-data.ts and broader-impacts/generate-mock-data.ts
- * for domain-specific implementations.
- */
-
 import { faker } from '@faker-js/faker';
 import { Client } from 'pg';
 import * as fs from 'fs';
@@ -104,7 +88,7 @@ interface MockDataConfig {
   userCount?: number;
 }
 
-// Default configuration
+// Default configuration (pot-hole domain)
 const DEFAULT_CONFIG: MockDataConfig = {
   recordsPerEntity: {},
   geographyBounds: {
@@ -115,7 +99,7 @@ const DEFAULT_CONFIG: MockDataConfig = {
   },
   excludeTables: ['civic_os_users', 'civic_os_users_private', 'IssueStatus', 'WorkPackageStatus'],
   outputFormat: 'insert',
-  outputPath: './example/init-scripts/05_mock_data.sql.deprecated',
+  outputPath: './init-scripts/05_mock_data.sql.deprecated',
   generateUsers: false,
   userCount: 10,
 };
@@ -354,14 +338,57 @@ class MockDataGenerator {
 
   /**
    * Generate domain-specific display names based on table context
-   *
-   * TEMPLATE: Customize this method for your domain by adding case statements
-   * for your specific entities. See example/generate-mock-data.ts and
-   * broader-impacts/generate-mock-data.ts for domain-specific implementations.
    */
   private generateDisplayName(tableName: string): string {
-    // Generic fallback - customize for your domain
-    return faker.company.catchPhrase();
+    switch (tableName) {
+      case 'Issue': {
+        // Road issue descriptions: "Large pothole on Main Street"
+        const sizes = ['Small', 'Medium', 'Large', 'Severe'];
+        const issueTypes = ['pothole', 'crack', 'road damage', 'pavement damage', 'broken asphalt'];
+        const size = faker.helpers.arrayElement(sizes);
+        const issueType = faker.helpers.arrayElement(issueTypes);
+        const street = faker.location.street();
+        return `${size} ${issueType} on ${street}`;
+      }
+
+      case 'WorkPackage': {
+        // Project scope descriptions: "Q2 2024 road repairs - Downtown"
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        const seasons = ['Spring', 'Summer', 'Fall', 'Winter'];
+        const useQuarter = faker.datatype.boolean();
+        const period = useQuarter
+          ? faker.helpers.arrayElement(quarters)
+          : faker.helpers.arrayElement(seasons);
+        const year = faker.date.recent({ days: 365 }).getFullYear();
+        const area = faker.location.city();
+        return `${period} ${year} road repairs - ${area}`;
+      }
+
+      case 'Bid': {
+        // Contractor bid descriptions: "ABC Construction proposal"
+        const company = faker.company.name();
+        return `${company} proposal`;
+      }
+
+      case 'WorkDetail': {
+        // Work notes/inspection findings: descriptive sentences
+        const actions = ['Inspected', 'Measured', 'Documented', 'Assessed', 'Reviewed'];
+        const findings = [
+          'damage extent and recommended materials',
+          'repair area and estimated labor hours',
+          'surface condition and preparation needs',
+          'structural integrity and safety concerns',
+          'material requirements and cost estimate'
+        ];
+        const action = faker.helpers.arrayElement(actions);
+        const finding = faker.helpers.arrayElement(findings);
+        return `${action} ${finding}`;
+      }
+
+      default:
+        // Fallback to generic product names for extensibility
+        return faker.commerce.productName();
+    }
   }
 
   private generateFakeValue(prop: SchemaEntityProperty, relatedIds?: any[]): any {
@@ -373,7 +400,9 @@ class MockDataGenerator {
     }
 
     // Handle nullable fields (30% chance of null for optional fields)
-    if (prop.is_nullable && prop.column_name !== 'display_name' && faker.datatype.boolean({ probability: 0.3 })) {
+    // Exception for demo purposes: Issue.location should always have a value
+    const isIssueLocation = prop.table_name === 'Issue' && prop.column_name === 'location';
+    if (prop.is_nullable && prop.column_name !== 'display_name' && !isIssueLocation && faker.datatype.boolean({ probability: 0.3 })) {
       return null;
     }
 
@@ -881,7 +910,7 @@ async function main() {
 
   // Load config if exists
   let userConfig: Partial<MockDataConfig> = {};
-  const configPath = './scripts/mock-data-config.json';
+  const configPath = './mock-data-config.json';
 
   if (fs.existsSync(configPath)) {
     console.log('Loading configuration from mock-data-config.json...\n');
