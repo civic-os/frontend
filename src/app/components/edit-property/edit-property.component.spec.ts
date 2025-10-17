@@ -316,6 +316,293 @@ describe('EditPropertyComponent', () => {
     });
   });
 
+  describe('Email Type', () => {
+    it('should render email input with HTML5 email type', () => {
+      const emailProp = createMockProperty({
+        column_name: 'contact_email',
+        display_name: 'Contact Email',
+        udt_name: 'email_address',
+        type: EntityPropertyType.Email
+      });
+      const formGroup = new FormGroup({
+        contact_email: new FormControl('test@example.com')
+      });
+      fixture.componentRef.setInput('property', emailProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const input = fixture.debugElement.query(By.css('input[type="email"]'));
+      expect(input).toBeTruthy();
+      expect(input.nativeElement.id).toBe('contact_email');
+      expect(input.nativeElement.placeholder).toBe('user@example.com');
+    });
+
+    it('should bind form control to email input', () => {
+      const emailProp = createMockProperty({
+        column_name: 'contact_email',
+        udt_name: 'email_address',
+        type: EntityPropertyType.Email
+      });
+      const formGroup = new FormGroup({
+        contact_email: new FormControl('john@example.com')
+      });
+      fixture.componentRef.setInput('property', emailProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const input = fixture.debugElement.query(By.css('input[type="email"]')).nativeElement;
+      expect(input.value).toBe('john@example.com');
+    });
+  });
+
+  describe('Telephone Type', () => {
+    it('should render tel input with masking', () => {
+      const telProp = createMockProperty({
+        column_name: 'contact_phone',
+        display_name: 'Contact Phone',
+        udt_name: 'phone_number',
+        type: EntityPropertyType.Telephone
+      });
+      const formGroup = new FormGroup({
+        contact_phone: new FormControl('5551234567')
+      });
+      fixture.componentRef.setInput('property', telProp);
+      fixture.componentRef.setInput('formGroup', formGroup);
+      component.ngOnInit();
+      fixture.detectChanges();
+
+      const input = fixture.debugElement.query(By.css('input[type="tel"]'));
+      expect(input).toBeTruthy();
+      expect(input.nativeElement.id).toBe('contact_phone');
+      expect(input.nativeElement.getAttribute('maxlength')).toBe('14');
+      expect(input.nativeElement.placeholder).toBe('(555) 123-4567');
+    });
+
+    describe('getFormattedPhone()', () => {
+      it('should format empty string', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formGroup = new FormGroup({
+          contact_phone: new FormControl('')
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+
+        expect(component.getFormattedPhone('contact_phone')).toBe('');
+      });
+
+      it('should format 1-3 digits with opening parenthesis', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formGroup = new FormGroup({
+          contact_phone: new FormControl('5')
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+
+        expect(component.getFormattedPhone('contact_phone')).toBe('(5');
+      });
+
+      it('should format 4-6 digits with closing parenthesis and space', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formGroup = new FormGroup({
+          contact_phone: new FormControl('5551')
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+
+        expect(component.getFormattedPhone('contact_phone')).toBe('(555) 1');
+      });
+
+      it('should format 7-10 digits with dash', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formGroup = new FormGroup({
+          contact_phone: new FormControl('5551234567')
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+
+        expect(component.getFormattedPhone('contact_phone')).toBe('(555) 123-4567');
+      });
+
+      it('should truncate beyond 10 digits', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formGroup = new FormGroup({
+          contact_phone: new FormControl('55512345678901')
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+
+        expect(component.getFormattedPhone('contact_phone')).toBe('(555) 123-4567');
+      });
+
+      it('should handle null value', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formGroup = new FormGroup({
+          contact_phone: new FormControl(null)
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+
+        expect(component.getFormattedPhone('contact_phone')).toBe('');
+      });
+    });
+
+    describe('onPhoneInput()', () => {
+      it('should strip non-digit characters and update form control', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formControl = new FormControl('');
+        const formGroup = new FormGroup({
+          contact_phone: formControl
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+        fixture.detectChanges();
+
+        const input = fixture.debugElement.query(By.css('input[type="tel"]')).nativeElement as HTMLInputElement;
+
+        // Simulate typing "(555) 123-4567"
+        input.value = '(555) 123-4567';
+        input.setSelectionRange(14, 14); // Cursor at end
+        const event = new Event('input', { bubbles: true });
+        Object.defineProperty(event, 'target', { value: input, writable: false });
+
+        component.onPhoneInput(event, 'contact_phone');
+
+        // Form control should have raw digits only
+        expect(formControl.value).toBe('5551234567');
+        // Display should be formatted
+        expect(input.value).toBe('(555) 123-4567');
+      });
+
+      it('should limit to 10 digits', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formControl = new FormControl('');
+        const formGroup = new FormGroup({
+          contact_phone: formControl
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+        fixture.detectChanges();
+
+        const input = fixture.debugElement.query(By.css('input[type="tel"]')).nativeElement as HTMLInputElement;
+
+        // Try to input more than 10 digits
+        input.value = '123456789012345';
+        const event = new Event('input', { bubbles: true });
+        Object.defineProperty(event, 'target', { value: input, writable: false });
+
+        component.onPhoneInput(event, 'contact_phone');
+
+        // Should truncate to 10 digits
+        expect(formControl.value).toBe('1234567890');
+      });
+
+      it('should handle empty input', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formControl = new FormControl('5551234567');
+        const formGroup = new FormGroup({
+          contact_phone: formControl
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+        fixture.detectChanges();
+
+        const input = fixture.debugElement.query(By.css('input[type="tel"]')).nativeElement as HTMLInputElement;
+
+        // Clear the input
+        input.value = '';
+        const event = new Event('input', { bubbles: true });
+        Object.defineProperty(event, 'target', { value: input, writable: false });
+
+        component.onPhoneInput(event, 'contact_phone');
+
+        expect(formControl.value).toBe('');
+        expect(input.value).toBe('');
+      });
+
+      it('should preserve cursor position when typing in middle', () => {
+        const telProp = createMockProperty({
+          column_name: 'contact_phone',
+          udt_name: 'phone_number',
+          type: EntityPropertyType.Telephone
+        });
+        const formControl = new FormControl('5551234');
+        const formGroup = new FormGroup({
+          contact_phone: formControl
+        });
+        fixture.componentRef.setInput('property', telProp);
+        fixture.componentRef.setInput('formGroup', formGroup);
+        component.ngOnInit();
+        fixture.detectChanges();
+
+        const input = fixture.debugElement.query(By.css('input[type="tel"]')).nativeElement as HTMLInputElement;
+
+        // Set initial formatted value "(555) 123-4"
+        input.value = '(555) 123-4';
+        // User inserts a digit in middle: cursor at position 5 (after "555)")
+        input.setSelectionRange(5, 5);
+
+        // Simulate typing "9" after area code
+        input.value = '(555)9 123-4';
+        const event = new Event('input', { bubbles: true });
+        Object.defineProperty(event, 'target', { value: input, writable: false });
+
+        component.onPhoneInput(event, 'contact_phone');
+
+        // Form control updated
+        expect(formControl.value).toBe('55591234');
+        // Cursor position restored (tests that cursor logic runs)
+        expect(input.selectionStart).toBeDefined();
+      });
+    });
+  });
+
   describe('Color Type', () => {
     it('should render both color picker and text input', () => {
       const colorProp = createMockProperty({

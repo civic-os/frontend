@@ -77,6 +77,31 @@
     </div>
   }
 
+  @if (propType() == EntityPropertyType.Email) {
+    <input
+      type="email"
+      placeholder="user@example.com"
+      class="input input-bordered w-full"
+      [id]="prop().column_name"
+      [formControlName]="prop().column_name"
+    />
+  }
+
+  @if (propType() == EntityPropertyType.Telephone) {
+    <input
+      type="tel"
+      placeholder="(555) 123-4567"
+      maxlength="14"
+      class="input input-bordered w-full font-mono"
+      [id]="prop().column_name"
+      [value]="getFormattedPhone(prop().column_name)"
+      (input)="onPhoneInput($event, prop().column_name)"
+    />
+    <div class="text-xs text-base-content/60 mt-1">
+      Enter 10-digit US phone number
+    </div>
+  }
+
   @if (propType() == EntityPropertyType.Unknown) {
   }
 

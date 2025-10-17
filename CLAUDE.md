@@ -41,6 +41,8 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 - `TextLong`: `text` → Textarea
 - `GeoPoint`: `geography(Point, 4326)` → Interactive map (Leaflet) with location picker
 - `Color`: `hex_color` → Color chip display with native HTML5 color picker
+- `Email`: `email_address` → Clickable mailto: link, HTML5 email input
+- `Telephone`: `phone_number` → Clickable tel: link with formatted display, masked input (XXX) XXX-XXXX
 
 **Color Type**: Use the `hex_color` domain for RGB color values. The domain enforces `#RRGGBB` format validation at the database level. UI displays colors as badges with colored swatches, and provides both a visual color picker and text input for editing. Example:
 ```sql
@@ -48,6 +50,21 @@ CREATE TABLE tags (
   id SERIAL PRIMARY KEY,
   display_name VARCHAR(50) NOT NULL,
   color hex_color NOT NULL DEFAULT '#3B82F6'
+);
+```
+
+**Email Type**: Use the `email_address` domain for email addresses. The domain enforces simplified RFC 5322 validation at the database level. UI displays emails as clickable mailto: links and provides HTML5 email input with mobile keyboard optimization. Pattern: `^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`
+
+**Telephone Type**: Use the `phone_number` domain for US phone numbers. The domain enforces 10-digit format (no dashes or formatting) at the database level. UI displays formatted as (XXX) XXX-XXXX and renders as clickable tel: links. Input uses masked entry with automatic formatting as user types. Storage format: 10 digits (e.g., "5551234567").
+
+Example:
+```sql
+CREATE TABLE contacts (
+  id SERIAL PRIMARY KEY,
+  display_name VARCHAR(100) NOT NULL,
+  email email_address NOT NULL,
+  phone phone_number,
+  alternate_email email_address
 );
 ```
 

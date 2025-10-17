@@ -69,6 +69,9 @@ const EntityPropertyType = {
   ForeignKeyName: 10,
   User: 11,
   GeoPoint: 12,
+  Color: 13,
+  Email: 14,
+  Telephone: 15,
 } as const;
 
 type EntityPropertyType = typeof EntityPropertyType[keyof typeof EntityPropertyType];
@@ -200,6 +203,15 @@ class MockDataGenerator {
     }
     if (['money'].includes(prop.udt_name)) {
       return EntityPropertyType.Money;
+    }
+    if (['hex_color'].includes(prop.udt_name)) {
+      return EntityPropertyType.Color;
+    }
+    if (['email_address'].includes(prop.udt_name)) {
+      return EntityPropertyType.Email;
+    }
+    if (['phone_number'].includes(prop.udt_name)) {
+      return EntityPropertyType.Telephone;
     }
     if (['varchar'].includes(prop.udt_name)) {
       return EntityPropertyType.TextShort;
@@ -557,6 +569,25 @@ class MockDataGenerator {
         const lng = faker.number.float({ min: bounds.minLng, max: bounds.maxLng, fractionDigits: 6 });
         return `SRID=4326;POINT(${lng} ${lat})`;
 
+      case EntityPropertyType.Color:
+        // Generate random hex color in #RRGGBB format
+        return '#' + faker.string.hexadecimal({ length: 6, casing: 'lower', prefix: '' });
+
+      case EntityPropertyType.Email:
+        // Generate realistic email based on context
+        if (prop.column_name.includes('company')) {
+          // Company email: companyname@example.com
+          const companyName = faker.company.name().toLowerCase().replace(/[^a-z0-9]/g, '');
+          return `${companyName}@example.com`;
+        } else {
+          // Personal email: firstname.lastname@example.com
+          return faker.internet.email();
+        }
+
+      case EntityPropertyType.Telephone:
+        // Generate 10-digit US phone number (no formatting, as per phone_number domain constraint)
+        return faker.string.numeric(10);
+
       default:
         return null;
     }
@@ -668,6 +699,19 @@ class MockDataGenerator {
       // Extract user IDs for foreign key references
       userIds = publicUsers.map(u => u.id);
       console.log(`Generated ${userIds.length} mock users\n`);
+
+      // If in insert mode, insert users immediately so they exist for FK references
+      console.log(`Output format: ${this.config.outputFormat}`);
+      if (this.config.outputFormat === 'insert' && this.client) {
+        console.log('Inserting users into database immediately...\n');
+        // Insert civic_os_users (first statement)
+        const usersSql = this.sqlStatements[0];
+        await this.client.query(usersSql);
+        // Insert civic_os_users_private (second statement)
+        const usersPrivateSql = this.sqlStatements[1];
+        await this.client.query(usersPrivateSql);
+        console.log('Users inserted successfully!\n');
+      }
     } else {
       // Get existing user IDs for foreign key references
       userIds = await this.getUserIds();
@@ -895,8 +939,15 @@ class MockDataGenerator {
 
     console.log('\nInserting data directly into database...');
 
-    for (const sql of this.sqlStatements) {
-      await this.client.query(sql);
+    // If users were already inserted, skip them
+    let startIndex = 0;
+    if (this.config.generateUsers && this.config.outputFormat === 'insert') {
+      // Skip the first 2 statements (civic_os_users and civic_os_users_private)
+      startIndex = 2;
+    }
+
+    for (let i = startIndex; i < this.sqlStatements.length; i++) {
+      await this.client.query(this.sqlStatements[i]);
     }
 
     console.log('Data inserted successfully!');

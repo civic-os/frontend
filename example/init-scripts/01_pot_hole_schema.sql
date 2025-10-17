@@ -14,7 +14,9 @@ CREATE TABLE "public"."Bid" (
 	"work_start_date" DATE NOT NULL,
 	"work_end_date" DATE NOT NULL,
 	"work_package" BIGINT NOT NULL,
-	"total_cost" MONEY NOT NULL
+	"total_cost" MONEY NOT NULL,
+	"company_email" email_address NOT NULL,
+	"contact_phone" phone_number
 );
 
 -- Issue table
@@ -26,7 +28,9 @@ CREATE TABLE "public"."Issue" (
 	"status" BIGINT NOT NULL DEFAULT '1'::BIGINT,
 	"created_user" UUID NOT NULL DEFAULT public.current_user_id(),
 	"work_package" BIGINT,
-	"location" postgis.geography(Point, 4326)
+	"location" postgis.geography(Point, 4326),
+	"contact_email" email_address,
+	"contact_phone" phone_number
 );
 
 -- IssueStatus table
@@ -92,6 +96,10 @@ CREATE UNIQUE INDEX "Issue_pkey" ON public."Issue" USING btree (id);
 CREATE UNIQUE INDEX "WorkDetail_pkey" ON public."WorkDetail" USING btree (id);
 CREATE UNIQUE INDEX "WorkPackageStatus_pkey" ON public."WorkPackageStatus" USING btree (id);
 CREATE UNIQUE INDEX "WorkPackage_pkey" ON public."WorkPackage" USING btree (id);
+
+-- Indexes for email/phone fields (for search and filtering)
+CREATE INDEX "idx_issue_contact_email" ON public."Issue" USING btree (contact_email);
+CREATE INDEX "idx_bid_company_email" ON public."Bid" USING btree (company_email);
 
 -- Add primary key constraints
 ALTER TABLE "public"."Bid" ADD CONSTRAINT "Bid_pkey" PRIMARY KEY USING INDEX "Bid_pkey";

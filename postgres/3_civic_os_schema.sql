@@ -190,6 +190,20 @@ CREATE DOMAIN hex_color AS VARCHAR(7)
 
 COMMENT ON DOMAIN hex_color IS 'RGB hex color in #RRGGBB format (e.g., #3B82F6)';
 
+-- Email address domain with RFC 5322 simplified validation
+CREATE DOMAIN email_address AS VARCHAR(255)
+  CHECK (VALUE ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+  DEFAULT NULL;
+
+COMMENT ON DOMAIN email_address IS 'Email address with RFC 5322 validation (e.g., user@example.com)';
+
+-- US phone number domain (10 digits, no formatting)
+CREATE DOMAIN phone_number AS VARCHAR(10)
+  CHECK (VALUE ~ '^\d{10}$')
+  DEFAULT NULL;
+
+COMMENT ON DOMAIN phone_number IS 'US phone number as 10 digits (e.g., 5551234567)';
+
 -- =====================================================
 -- Metadata Schema (Civic OS Core)
 -- =====================================================

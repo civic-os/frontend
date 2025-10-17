@@ -277,6 +277,101 @@ describe('DisplayPropertyComponent', () => {
     });
   });
 
+  describe('Email Type', () => {
+    it('should render email as clickable mailto link', () => {
+      const emailProp = createMockProperty({
+        column_name: 'contact_email',
+        display_name: 'Contact Email',
+        udt_name: 'email_address',
+        type: EntityPropertyType.Email
+      });
+
+      fixture.componentRef.setInput('property', emailProp);
+      fixture.componentRef.setInput('datum', 'test@example.com');
+      fixture.detectChanges();
+
+      const link = fixture.debugElement.query(By.css('a'));
+      expect(link).toBeTruthy();
+      expect(link.nativeElement.getAttribute('href')).toBe('mailto:test@example.com');
+      expect(link.nativeElement.textContent.trim()).toBe('test@example.com');
+      expect(link.nativeElement.classList.contains('link')).toBe(true);
+      expect(link.nativeElement.classList.contains('link-primary')).toBe(true);
+    });
+
+    it('should show "Not Set" for null email value', () => {
+      const emailProp = createMockProperty({
+        column_name: 'contact_email',
+        udt_name: 'email_address',
+        type: EntityPropertyType.Email
+      });
+
+      fixture.componentRef.setInput('property', emailProp);
+      fixture.componentRef.setInput('datum', null);
+      fixture.detectChanges();
+
+      const textContent = fixture.nativeElement.textContent.trim();
+      expect(textContent).toContain('Not Set');
+    });
+  });
+
+  describe('Telephone Type', () => {
+    it('should render telephone as clickable tel link with formatted display', () => {
+      const telProp = createMockProperty({
+        column_name: 'contact_phone',
+        display_name: 'Contact Phone',
+        udt_name: 'phone_number',
+        type: EntityPropertyType.Telephone
+      });
+
+      fixture.componentRef.setInput('property', telProp);
+      fixture.componentRef.setInput('datum', '5551234567');
+      fixture.detectChanges();
+
+      const link = fixture.debugElement.query(By.css('a'));
+      expect(link).toBeTruthy();
+      expect(link.nativeElement.getAttribute('href')).toBe('tel:+15551234567');
+      expect(link.nativeElement.textContent.trim()).toBe('(555) 123-4567');
+      expect(link.nativeElement.classList.contains('link')).toBe(true);
+      expect(link.nativeElement.classList.contains('link-primary')).toBe(true);
+    });
+
+    it('should show "Not Set" for null telephone value', () => {
+      const telProp = createMockProperty({
+        column_name: 'contact_phone',
+        udt_name: 'phone_number',
+        type: EntityPropertyType.Telephone
+      });
+
+      fixture.componentRef.setInput('property', telProp);
+      fixture.componentRef.setInput('datum', null);
+      fixture.detectChanges();
+
+      const textContent = fixture.nativeElement.textContent.trim();
+      expect(textContent).toContain('Not Set');
+    });
+
+    describe('formatPhoneNumber()', () => {
+      it('should format 10-digit phone number', () => {
+        expect(component.formatPhoneNumber('5551234567')).toBe('(555) 123-4567');
+      });
+
+      it('should return original value for non-10-digit input', () => {
+        expect(component.formatPhoneNumber('123')).toBe('123');
+        expect(component.formatPhoneNumber('12345')).toBe('12345');
+        expect(component.formatPhoneNumber('123456789012')).toBe('123456789012');
+      });
+
+      it('should handle null and undefined gracefully', () => {
+        expect(component.formatPhoneNumber(null as any)).toBeNull();
+        expect(component.formatPhoneNumber(undefined as any)).toBeUndefined();
+      });
+
+      it('should handle empty string', () => {
+        expect(component.formatPhoneNumber('')).toBe('');
+      });
+    });
+  });
+
   describe('Color Type', () => {
     it('should render color badge with swatch and uppercase hex value', () => {
       const colorProp = createMockProperty({

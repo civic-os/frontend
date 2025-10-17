@@ -6,7 +6,6 @@
 
 -- Add new fields to existing tables for validation demonstrations
 ALTER TABLE public."Issue" ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE public."Issue" ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20);
 ALTER TABLE public."Issue" ADD COLUMN IF NOT EXISTS severity_level INT;
 
 -- =====================================================
@@ -147,8 +146,11 @@ ON CONFLICT (constraint_name) DO UPDATE
 INSERT INTO metadata.properties (table_name, column_name, display_name, description, sort_order)
 VALUES
   ('Issue', 'description', 'Description', 'Detailed description of the issue (min 10 characters)', 2),
-  ('Issue', 'contact_phone', 'Contact Phone', 'Phone number to contact about this issue (10 digits)', 3),
-  ('Issue', 'severity_level', 'Severity Level', 'Urgency rating from 1 (low) to 5 (critical)', 4)
+  ('Issue', 'contact_email', 'Contact Email', 'Email address of the person reporting this issue', 3),
+  ('Issue', 'contact_phone', 'Contact Phone', 'Phone number to contact about this issue (10 digits)', 4),
+  ('Issue', 'severity_level', 'Severity Level', 'Urgency rating from 1 (low) to 5 (critical)', 5),
+  ('Bid', 'company_email', 'Company Email', 'Primary email address for the bidding company', 5),
+  ('Bid', 'contact_phone', 'Contact Phone', 'Phone number for bid inquiries', 6)
 ON CONFLICT (table_name, column_name) DO UPDATE
   SET display_name = EXCLUDED.display_name,
       description = EXCLUDED.description,

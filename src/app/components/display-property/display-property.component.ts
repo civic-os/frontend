@@ -49,4 +49,9 @@ export class DisplayPropertyComponent {
   onCoordinatesChange(coords: [number, number] | null) {
     this.displayCoordinates.set(coords);
   }
+
+  formatPhoneNumber(raw: string): string {
+    if (!raw || raw.length !== 10) return raw;
+    return `(${raw.slice(0, 3)}) ${raw.slice(3, 6)}-${raw.slice(6)}`;
+  }
 }

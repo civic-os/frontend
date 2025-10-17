@@ -230,6 +230,16 @@ describe('SchemaService', () => {
       expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.Color);
     });
 
+    it('should detect Email for email_address domain', () => {
+      const prop = createMockProperty({ udt_name: 'email_address' });
+      expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.Email);
+    });
+
+    it('should detect Telephone for phone_number domain', () => {
+      const prop = createMockProperty({ udt_name: 'phone_number' });
+      expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.Telephone);
+    });
+
     it('should return Unknown for unrecognized types', () => {
       const prop = createMockProperty({ udt_name: 'unknown_type' });
       expect(service['getPropertyType'](prop)).toBe(EntityPropertyType.Unknown);

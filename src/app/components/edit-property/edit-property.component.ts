@@ -108,4 +108,50 @@ export class EditPropertyComponent {
     form.get(prop.column_name)?.setValue(ewkt);
     form.get(prop.column_name)?.markAsDirty();
   }
+
+  // Format phone number for display: 5551234567 → (555) 123-4567
+  public getFormattedPhone(controlName: string): string {
+    const rawValue = this.form().get(controlName)?.value;
+    if (!rawValue) return '';
+
+    // Remove all non-digits
+    const digits = rawValue.replace(/\D/g, '');
+
+    // Format based on length
+    if (digits.length <= 3) {
+      return digits ? `(${digits}` : '';
+    } else if (digits.length <= 6) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    } else {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    }
+  }
+
+  // Handle phone input: format display, store raw digits
+  public onPhoneInput(event: Event, controlName: string): void {
+    const input = event.target as HTMLInputElement;
+    const cursorPos = input.selectionStart || 0;
+
+    // Extract only digits
+    const digits = input.value.replace(/\D/g, '').slice(0, 10);
+
+    // Store raw digits in form control
+    this.form().get(controlName)?.setValue(digits, { emitEvent: false });
+
+    // Format for display
+    const formatted = this.getFormattedPhone(controlName);
+    input.value = formatted;
+
+    // Restore cursor position (adjust for formatting characters)
+    const digitsBeforeCursor = input.value.slice(0, cursorPos).replace(/\D/g, '').length;
+    let newCursorPos = 0;
+    let digitCount = 0;
+
+    for (let i = 0; i < formatted.length && digitCount < digitsBeforeCursor; i++) {
+      if (/\d/.test(formatted[i])) digitCount++;
+      newCursorPos = i + 1;
+    }
+
+    input.setSelectionRange(newCursorPos, newCursorPos);
+  }
 }

@@ -59,7 +59,9 @@ const EntityPropertyType = {
   User: 11,
   GeoPoint: 12,
   Color: 13,
-  ManyToMany: 14
+  Email: 14,
+  Telephone: 15,
+  ManyToMany: 16
 };
 
 interface ImportError {
@@ -305,6 +307,12 @@ function validateProperty(
 
     case EntityPropertyType.Color:
       return validateColor(value, rowNumber, displayName, rowErrors);
+
+    case EntityPropertyType.Email:
+      return validateEmail(value, rowNumber, displayName, rowErrors);
+
+    case EntityPropertyType.Telephone:
+      return validateTelephone(value, rowNumber, displayName, rowErrors);
 
     default:
       return value;
@@ -602,4 +610,74 @@ function validateColor(value: any, rowNumber: number, displayName: string, rowEr
   }
 
   return str;
+}
+
+/**
+ * Validate email address using RFC 5322 simplified pattern.
+ *
+ * Accepts standard email formats like:
+ * - user@example.com
+ * - john.doe@company.co.uk
+ * - test+tag@domain.org
+ *
+ * @param value Raw value from Excel cell
+ * @param rowNumber Excel row number (for error reporting)
+ * @param displayName Property display name (for error messages)
+ * @param rowErrors Array to collect validation errors
+ * @returns Validated email address (trimmed, lowercase)
+ */
+function validateEmail(value: any, rowNumber: number, displayName: string, rowErrors: ImportError[]): string {
+  const str = String(value).trim().toLowerCase();
+
+  // RFC 5322 simplified email validation (matches PostgreSQL email_address domain)
+  const emailPattern = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+  if (!emailPattern.test(str)) {
+    rowErrors.push({
+      row: rowNumber,
+      column: displayName,
+      value: value,
+      error: 'Must be a valid email address (e.g., user@example.com)',
+      errorType: 'Invalid email'
+    });
+    return str;
+  }
+
+  return str;
+}
+
+/**
+ * Validate US phone number (10 digits, no formatting).
+ *
+ * Accepts various input formats and strips to 10 digits:
+ * - 5551234567 (preferred format)
+ * - (555) 123-4567
+ * - 555-123-4567
+ * - 555.123.4567
+ *
+ * @param value Raw value from Excel cell
+ * @param rowNumber Excel row number (for error reporting)
+ * @param displayName Property display name (for error messages)
+ * @param rowErrors Array to collect validation errors
+ * @returns 10-digit phone number string (digits only)
+ */
+function validateTelephone(value: any, rowNumber: number, displayName: string, rowErrors: ImportError[]): string {
+  const str = String(value).trim();
+
+  // Strip all non-digit characters
+  const digits = str.replace(/\D/g, '');
+
+  // Must be exactly 10 digits (US phone number)
+  if (digits.length !== 10) {
+    rowErrors.push({
+      row: rowNumber,
+      column: displayName,
+      value: value,
+      error: 'Must be a 10-digit US phone number (e.g., 5551234567 or (555) 123-4567)',
+      errorType: 'Invalid phone number'
+    });
+    return digits;
+  }
+
+  return digits;
 }

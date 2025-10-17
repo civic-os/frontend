@@ -96,6 +96,16 @@
         {{ datum()?.toUpperCase() }}
       </div>
     }
+    @if (propType() == EntityPropertyType.Email) {
+      <a [href]="'mailto:' + datum()" class="link link-primary">
+        {{ datum() }}
+      </a>
+    }
+    @if (propType() == EntityPropertyType.Telephone) {
+      <a [href]="'tel:+1' + datum()" class="link link-primary">
+        {{ formatPhoneNumber(datum()) }}
+      </a>
+    }
     @if (propType() == EntityPropertyType.ManyToMany) {
       <div class="flex flex-wrap gap-2">
         @if (datum() && datum().length > 0) {
