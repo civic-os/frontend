@@ -1,0 +1,79 @@
+# Copyright (C) 2023-2025 Civic OS, L3C
+# AGPL-3.0-or-later
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: civic-os-ingress
+  namespace: civic-os
+  annotations:
+    # SSL/TLS with cert-manager
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # IMPORTANT: For wildcard domains (*.yourdomain.com), you need DNS-01 challenge
+    # Configure your ClusterIssuer like this:
+    #
+    # apiVersion: cert-manager.io/v1
+    # kind: ClusterIssuer
+    # metadata:
+    #   name: letsencrypt-prod
+    # spec:
+    #   acme:
+    #     server: https://acme-v02.api.letsencrypt.org/directory
+    #     email: admin@yourdomain.com
+    #     privateKeySecretRef:
+    #       name: letsencrypt-prod
+    #     solvers:
+    #       - dns01:
+    #           digitalocean:  # or cloudflare, route53, etc.
+    #             tokenSecretRef:
+    #               name: digitalocean-dns
+    #               key: access-token
+
+    # NOTE: Avoid using nginx.ingress.kubernetes.io/ssl-redirect: "true" during
+    # initial certificate issuance with HTTP-01 challenge (it will fail)
+    # With DNS-01 challenge, ssl-redirect is fine to use
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - app.yourdomain.com
+    - api.yourdomain.com
+    - docs.yourdomain.com
+    secretName: civic-os-tls
+  rules:
+  # Frontend (main application)
+  - host: app.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: civic-os-frontend
+            port:
+              number: 80
+
+  # PostgREST API (public REST API)
+  - host: api.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: civic-os-postgrest
+            port:
+              number: 3000
+
+  # Swagger UI (API documentation)
+  - host: docs.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: civic-os-swagger-ui
+            port:
+              number: 8080

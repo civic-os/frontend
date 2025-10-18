@@ -1,0 +1,70 @@
+# Copyright (C) 2023-2025 Civic OS, L3C
+# AGPL-3.0-or-later
+
+# OPTIONAL: Network policy for security isolation
+# Only enable if your cluster supports NetworkPolicy (not all providers do)
+# This restricts pod-to-pod communication within the namespace
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: civic-os-network-policy
+  namespace: civic-os
+spec:
+  podSelector: {}  # Apply to all pods in this namespace
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # Allow traffic from ingress controller to all services
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80    # frontend
+        - protocol: TCP
+          port: 3000  # postgrest
+        - protocol: TCP
+          port: 8080  # swagger-ui
+
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+
+    # Allow internal communication within namespace
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 3000  # PostgREST
+        - protocol: TCP
+          port: 5432  # PostgreSQL (if in-cluster)
+
+    # Allow external HTTPS access
+    # CRITICAL: Don't add namespaceSelector or podSelector here!
+    # PostgREST needs to fetch JWKS from external Keycloak (auth.civic-os.org)
+    # Without this, you'll see timeout errors like "context deadline exceeded"
+    - ports:
+        - protocol: TCP
+          port: 443
+
+    # Allow external HTTP (for redirects, etc.)
+    - ports:
+        - protocol: TCP
+          port: 80
+
+    # Allow managed database access (if using external PostgreSQL)
+    - ports:
+        - protocol: TCP
+          port: 5432   # Standard PostgreSQL
+        - protocol: TCP
+          port: 25060  # Digital Ocean managed database

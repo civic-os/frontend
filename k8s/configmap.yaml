@@ -1,0 +1,35 @@
+# Copyright (C) 2023-2025 Civic OS, L3C
+# AGPL-3.0-or-later
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: civic-os-config
+  namespace: civic-os
+data:
+  # Frontend configuration (SPA makes API calls from browser to public endpoint)
+  # IMPORTANT: Must be the public HTTPS URL, not internal service URL
+  POSTGREST_URL: "https://api.yourdomain.com/"
+
+  # Swagger UI configuration (point to public API for OpenAPI spec)
+  # PostgREST automatically exposes OpenAPI spec at its root endpoint
+  SWAGGER_API_URL: "https://api.yourdomain.com/"
+
+  # Keycloak configuration
+  KEYCLOAK_URL: "https://auth.civic-os.org"
+  KEYCLOAK_REALM: "civic-os-dev"
+  KEYCLOAK_CLIENT_ID: "myclient"
+
+  # Map configuration (customize for your location)
+  MAP_TILE_URL: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  MAP_ATTRIBUTION: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
+  MAP_DEFAULT_LAT: "43.0125"
+  MAP_DEFAULT_LNG: "-83.6875"
+  MAP_DEFAULT_ZOOM: "13"
+
+  # PostgREST configuration
+  PGRST_DB_SCHEMA: "public,metadata"
+  PGRST_DB_ANON_ROLE: "web_anon"
+  PGRST_DB_PRE_REQUEST: "public.check_jwt"
+  PGRST_JWT_AUD: "account"
+  PGRST_LOG_LEVEL: "info"
