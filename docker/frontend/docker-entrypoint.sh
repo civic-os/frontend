@@ -57,6 +57,13 @@ mv /tmp/index.html.new /usr/share/nginx/html/index.html
 
 echo "✓ Configuration injected into index.html"
 echo ""
+
+# Substitute KEYCLOAK_URL into nginx configuration
+echo "Updating nginx CSP header with Keycloak URL..."
+sed -i "s|KEYCLOAK_URL_PLACEHOLDER|${KEYCLOAK_URL}|g" /etc/nginx/conf.d/default.conf
+echo "✓ Nginx configuration updated"
+echo ""
+
 echo "======================================"
 echo "Starting Nginx..."
 echo "======================================"
