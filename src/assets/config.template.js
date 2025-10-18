@@ -13,7 +13,7 @@ window.civicOsConfig = {
   postgrestUrl: '${POSTGREST_URL}',
   map: {
     tileUrl: '${MAP_TILE_URL}',
-    attribution: '${MAP_ATTRIBUTION}',
+    attribution: "${MAP_ATTRIBUTION}",
     defaultCenter: [parseFloat('${MAP_DEFAULT_LAT}'), parseFloat('${MAP_DEFAULT_LNG}')],
     defaultZoom: parseInt('${MAP_DEFAULT_ZOOM}')
   },

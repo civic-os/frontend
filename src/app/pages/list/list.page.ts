@@ -719,7 +719,6 @@ export class ListPage implements OnInit, OnDestroy {
    * Handle import completion - refresh data to show newly imported records
    */
   public onImportComplete(count: number) {
-    console.log(`Import completed: ${count} records imported`);
     // The data$ observable will automatically refresh when the route params change
     // For now, we can manually trigger a reload by navigating to the same route
     // This will cause the data$ observable to re-fetch

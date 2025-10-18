@@ -51,12 +51,10 @@ export const schemaVersionGuard: CanActivateFn = (route, state) => {
 
       // Selective cache refresh based on what changed
       if (updateCheck.entitiesNeedsRefresh) {
-        console.log('[SchemaVersion] Entities cache updated, refreshing...');
         schemaService.refreshEntitiesCache();
       }
 
       if (updateCheck.propertiesNeedsRefresh) {
-        console.log('[SchemaVersion] Properties cache updated, refreshing...');
         schemaService.refreshPropertiesCache();
       }
 

@@ -15,72 +15,51 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ApplicationConfig, provideZonelessChangeDetection, APP_INITIALIZER } from '@angular/core';
+import { ApplicationConfig, provideZonelessChangeDetection, provideAppInitializer, inject } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
-import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { createInterceptorCondition, INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG, IncludeBearerTokenCondition, includeBearerTokenInterceptor, provideKeycloak } from 'keycloak-angular';
-import { environment } from '../environments/environment';
 import { WidgetComponentRegistry } from './services/widget-component-registry.service';
 import { MarkdownWidgetComponent } from './components/widgets/markdown-widget/markdown-widget.component';
 import { provideMarkdown } from 'ngx-markdown';
-import { ConfigService } from './services/config.service';
-
-// Get runtime config (loaded from /assets/config.js in production, or environment.ts in dev)
-// This is available immediately because config.js is loaded via script tag in index.html
-const runtimeConfig = (window as any).civicOsConfig || environment;
-
-const escapedUrl = runtimeConfig.postgrestUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
-  urlPattern: new RegExp(`^(${escapedUrl})(.*)?$`, 'i'),
-  bearerPrefix: 'Bearer'
-});
-
-/**
- * Register widget components at application startup
- * This is critical for dynamic widget loading in dashboards
- */
-function initializeWidgetRegistry(registry: WidgetComponentRegistry): () => void {
-  return () => {
-    console.log('[AppConfig] Registering widget components...');
-
-    // Register all widget components
-    registry.register('markdown', MarkdownWidgetComponent);
-
-    console.log('[AppConfig] Widget registration complete');
-  };
-}
+import { getKeycloakConfig, getPostgrestUrl } from './config/runtime';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
+
+    // Keycloak configuration - uses helper that reads window.civicOsConfig (inline script) or environment.ts fallback
     provideKeycloak({
-      config: {
-        url: runtimeConfig.keycloak.url,
-        realm: runtimeConfig.keycloak.realm,
-        clientId: runtimeConfig.keycloak.clientId
-      },
+      config: getKeycloakConfig(),
       initOptions: {
         onLoad: 'check-sso',
         silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html'
       }
     }),
+
+    // Bearer token interceptor - uses helper function to get PostgREST URL
     {
       provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
-      useValue: [urlCondition] // <-- Note that multiple conditions might be added.
+      useFactory: () => {
+        const escapedUrl = getPostgrestUrl().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
+          urlPattern: new RegExp(`^(${escapedUrl})(.*)?$`, 'i'),
+          bearerPrefix: 'Bearer'
+        });
+        return [urlCondition];
+      }
     },
+
     provideRouter(routes),
-    // provideHttpClient(withFetch()),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor])),
-    // Markdown support for MarkdownWidget
     provideMarkdown(),
+
     // Register widget components at startup
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeWidgetRegistry,
-      deps: [WidgetComponentRegistry],
-      multi: true
-    }
+    provideAppInitializer(() => {
+      const registry = inject(WidgetComponentRegistry);
+      registry.register('markdown', MarkdownWidgetComponent);
+    })
   ]
 };

@@ -80,7 +80,6 @@ export class WidgetContainerComponent {
    * Retry loading widget (Phase 1: just reload page, Phase 2: re-fetch data)
    */
   retry(): void {
-    console.log('[WidgetContainerComponent] Retry not implemented in Phase 1');
     // TODO: Phase 2 - trigger widget data refresh
   }
 }

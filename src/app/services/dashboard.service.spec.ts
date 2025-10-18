@@ -22,13 +22,18 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { DashboardService } from './dashboard.service';
 import { Dashboard, WidgetType } from '../interfaces/dashboard';
 import { createMockDashboard, createMockWidgetType, MOCK_DASHBOARDS, MOCK_WIDGET_TYPES } from '../testing';
-import { environment } from '../../environments/environment';
 
 describe('DashboardService', () => {
   let service: DashboardService;
   let httpMock: HttpTestingController;
+  const testPostgrestUrl = 'http://test-api.example.com/';
 
   beforeEach(() => {
+    // Mock runtime configuration
+    (window as any).civicOsConfig = {
+      postgrestUrl: testPostgrestUrl
+    };
+
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
@@ -43,6 +48,8 @@ describe('DashboardService', () => {
 
   afterEach(() => {
     httpMock.verify(); // Ensure no outstanding HTTP requests
+    // Clean up mock
+    delete (window as any).civicOsConfig;
   });
 
   describe('Basic Service Setup', () => {
@@ -64,7 +71,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboards');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboards');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
       req.flush(mockDashboards);
@@ -83,7 +90,7 @@ describe('DashboardService', () => {
         // No HTTP request should be made for the second call
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboards');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboards');
       req.flush(mockDashboards);
     });
 
@@ -94,7 +101,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboards');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboards');
       req.flush([]);
     });
 
@@ -104,7 +111,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboards');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboards');
       req.error(new ProgressEvent('error'), { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -120,7 +127,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboard');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ p_dashboard_id: 3 });
       req.flush(mockDashboard);
@@ -156,7 +163,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboard');
       req.flush(mockDashboard);
     });
 
@@ -166,7 +173,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboard');
       expect(req.request.body).toEqual({ p_dashboard_id: 999 });
       req.flush(null); // RPC returns null when dashboard not found
     });
@@ -177,7 +184,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboard');
       req.error(new ProgressEvent('error'), { status: 404, statusText: 'Not Found' });
     });
   });
@@ -189,7 +196,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_user_default_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_user_default_dashboard');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
       req.flush(1);
@@ -201,7 +208,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_user_default_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_user_default_dashboard');
       req.flush(42);
     });
 
@@ -211,7 +218,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_user_default_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_user_default_dashboard');
       req.flush(null); // RPC returns null when no default dashboard
     });
 
@@ -221,7 +228,7 @@ describe('DashboardService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_user_default_dashboard');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_user_default_dashboard');
       req.error(new ProgressEvent('error'), { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -287,7 +294,7 @@ describe('DashboardService', () => {
       service.refreshCache();
 
       // Verify it triggers a fetch
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_dashboards');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_dashboards');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
       req.flush(mockDashboards);
@@ -297,7 +304,7 @@ describe('DashboardService', () => {
       expect(() => service.refreshCache()).not.toThrow();
 
       // Clean up pending request
-      const req = httpMock.match(environment.postgrestUrl + 'rpc/get_dashboards');
+      const req = httpMock.match(testPostgrestUrl + 'rpc/get_dashboards');
       req.forEach(r => r.flush([]));
     });
   });

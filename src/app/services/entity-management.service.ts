@@ -18,8 +18,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
-import { environment } from '../../environments/environment';
 import { ApiResponse } from '../interfaces/api';
+import { getPostgrestUrl } from '../config/runtime';
 
 export interface EntityMetadata {
   table_name: string;
@@ -47,7 +47,7 @@ export class EntityManagementService {
     mapPropertyName: string | null = null
   ): Observable<ApiResponse> {
     return this.http.post(
-      environment.postgrestUrl + 'rpc/upsert_entity_metadata',
+      getPostgrestUrl() + 'rpc/upsert_entity_metadata',
       {
         p_table_name: tableName,
         p_display_name: displayName,
@@ -76,7 +76,7 @@ export class EntityManagementService {
     // Call RPC function for each entity and use forkJoin to wait for all
     const updates = entities.map(entity =>
       this.http.post(
-        environment.postgrestUrl + 'rpc/update_entity_sort_order',
+        getPostgrestUrl() + 'rpc/update_entity_sort_order',
         {
           p_table_name: entity.table_name,
           p_sort_order: entity.sort_order
@@ -105,7 +105,7 @@ export class EntityManagementService {
    */
   isAdmin(): Observable<boolean> {
     return this.http.post<boolean>(
-      environment.postgrestUrl + 'rpc/is_admin',
+      getPostgrestUrl() + 'rpc/is_admin',
       {}
     ).pipe(
       catchError(() => of(false))

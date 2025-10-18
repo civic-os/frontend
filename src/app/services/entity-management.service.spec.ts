@@ -20,13 +20,18 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { EntityManagementService } from './entity-management.service';
-import { environment } from '../../environments/environment';
 
 describe('EntityManagementService', () => {
   let service: EntityManagementService;
   let httpMock: HttpTestingController;
+  const testPostgrestUrl = 'http://test-api.example.com/';
 
   beforeEach(() => {
+    // Mock runtime configuration
+    (window as any).civicOsConfig = {
+      postgrestUrl: testPostgrestUrl
+    };
+
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
@@ -41,6 +46,8 @@ describe('EntityManagementService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    // Clean up mock
+    delete (window as any).civicOsConfig;
   });
 
   describe('Basic Service Setup', () => {
@@ -56,7 +63,7 @@ describe('EntityManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_entity_metadata');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/upsert_entity_metadata');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({
         p_table_name: 'Issue',
@@ -75,7 +82,7 @@ describe('EntityManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_entity_metadata');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/upsert_entity_metadata');
       expect(req.request.body).toEqual({
         p_table_name: 'Issue',
         p_display_name: null,
@@ -94,7 +101,7 @@ describe('EntityManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_entity_metadata');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/upsert_entity_metadata');
       req.flush({ message: 'Admin access required' }, { status: 403, statusText: 'Forbidden' });
     });
   });
@@ -113,7 +120,7 @@ describe('EntityManagementService', () => {
       });
 
       // Expect 3 separate RPC calls - use match to get all requests
-      const requests = httpMock.match(environment.postgrestUrl + 'rpc/update_entity_sort_order');
+      const requests = httpMock.match(testPostgrestUrl + 'rpc/update_entity_sort_order');
       expect(requests.length).toBe(3);
 
       expect(requests[0].request.body).toEqual({ p_table_name: 'Issue', p_sort_order: 0 });
@@ -129,7 +136,7 @@ describe('EntityManagementService', () => {
         done();
       });
 
-      httpMock.expectNone(environment.postgrestUrl + 'rpc/update_entity_sort_order');
+      httpMock.expectNone(testPostgrestUrl + 'rpc/update_entity_sort_order');
     });
 
     it('should handle errors', (done) => {
@@ -141,7 +148,7 @@ describe('EntityManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/update_entity_sort_order');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/update_entity_sort_order');
       req.flush({ message: 'Error' }, { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -153,7 +160,7 @@ describe('EntityManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/is_admin');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
       req.flush(true);
@@ -165,7 +172,7 @@ describe('EntityManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/is_admin');
       req.flush({}, { status: 401, statusText: 'Unauthorized' });
     });
   });

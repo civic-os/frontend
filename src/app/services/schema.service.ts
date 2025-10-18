@@ -17,10 +17,10 @@
 
 import { HttpClient } from '@angular/common/http';
 import { effect, inject, Injectable, signal } from '@angular/core';
-import { environment } from '../../environments/environment';
 import { Observable, combineLatest, filter, map, of, ReplaySubject, tap } from 'rxjs';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable, InverseRelationshipMeta, ManyToManyMeta } from '../interfaces/entity';
 import { ValidatorFn, Validators } from '@angular/forms';
+import { getPostgrestUrl } from '../config/runtime';
 
 @Injectable({
   providedIn: 'root'
@@ -41,7 +41,7 @@ export class SchemaService {
   });
 
   private getSchema() {
-    return this.http.get<SchemaEntityTable[]>(environment.postgrestUrl + 'schema_entities')
+    return this.http.get<SchemaEntityTable[]>(getPostgrestUrl() + 'schema_entities')
     .pipe(tap(tables => {
       this.tables.set(tables);
     }));
@@ -99,7 +99,7 @@ export class SchemaService {
 
     // Fetch both properties and tables to enable M:M enrichment
     return combineLatest([
-      this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_properties'),
+      this.http.get<SchemaEntityProperty[]>(getPostgrestUrl() + 'schema_properties'),
       this.getEntities()
     ]).pipe(
       map(([props, tables]) => {
@@ -124,7 +124,7 @@ export class SchemaService {
   }
   public getPropertiesForEntityFresh(table: SchemaEntityTable): Observable<SchemaEntityProperty[]> {
     // Fetch fresh from database, bypass cache
-    return this.http.get<SchemaEntityProperty[]>(environment.postgrestUrl + 'schema_properties')
+    return this.http.get<SchemaEntityProperty[]>(getPostgrestUrl() + 'schema_properties')
       .pipe(
         map(props => {
           return props

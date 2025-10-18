@@ -18,9 +18,9 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
-import { environment } from '../../environments/environment';
 import { Dashboard, DashboardWidget, WidgetType } from '../interfaces/dashboard';
 import { ApiResponse } from '../interfaces/api';
+import { getPostgrestUrl } from '../config/runtime';
 
 /**
  * Dashboard Service
@@ -55,7 +55,7 @@ export class DashboardService {
 
     // Call RPC function
     return this.http.post<Dashboard[]>(
-      environment.postgrestUrl + 'rpc/get_dashboards',
+      getPostgrestUrl() + 'rpc/get_dashboards',
       {}
     ).pipe(
       tap(dashboards => {
@@ -78,7 +78,7 @@ export class DashboardService {
   getDashboard(id: number): Observable<Dashboard | undefined> {
     // Call RPC function with dashboard ID
     return this.http.post<Dashboard | null>(
-      environment.postgrestUrl + 'rpc/get_dashboard',
+      getPostgrestUrl() + 'rpc/get_dashboard',
       { p_dashboard_id: id }
     ).pipe(
       map(dashboard => {
@@ -104,7 +104,7 @@ export class DashboardService {
   getDefaultDashboard(): Observable<number | undefined> {
     // Call RPC function to get default dashboard ID
     return this.http.post<number>(
-      environment.postgrestUrl + 'rpc/get_user_default_dashboard',
+      getPostgrestUrl() + 'rpc/get_user_default_dashboard',
       {}
     ).pipe(
       map(dashboardId => {
@@ -128,7 +128,7 @@ export class DashboardService {
    */
   loadDefaultDashboard(): Observable<Dashboard | undefined> {
     return this.http.post<number>(
-      environment.postgrestUrl + 'rpc/get_user_default_dashboard',
+      getPostgrestUrl() + 'rpc/get_user_default_dashboard',
       {}
     ).pipe(
       map(dashboardId => {
@@ -163,7 +163,7 @@ export class DashboardService {
    */
   getWidgetTypes(): Observable<WidgetType[]> {
     return this.http.get<WidgetType[]>(
-      environment.postgrestUrl + 'widget_types?is_active=eq.true&order=widget_type.asc'
+      getPostgrestUrl() + 'widget_types?is_active=eq.true&order=widget_type.asc'
     ).pipe(
       catchError(error => {
         console.error('[DashboardService] Error fetching widget types:', error);

@@ -17,9 +17,8 @@
 
 import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStrategy, effect, inject } from '@angular/core';
 import * as L from 'leaflet';
-import { environment } from '../../../environments/environment';
 import { ThemeService } from '../../services/theme.service';
-import { ConfigService } from '../../services/config.service';
+import { getMapConfig } from '../../config/runtime';
 import { Subscription } from 'rxjs';
 
 export interface MapMarker {
@@ -70,7 +69,6 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   private themeSubscription?: Subscription; // Track theme changes
 
   private themeService = inject(ThemeService);
-  private config = inject(ConfigService);
 
   constructor() {
     // Watch for markers array changes
@@ -166,7 +164,7 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     }
 
     // Determine initial center
-    const mapConfig = this.config.getMapConfig();
+    const mapConfig = getMapConfig();
     const center: [number, number] = (this.currentLat !== undefined && this.currentLng !== undefined)
       ? [this.currentLat, this.currentLng]
       : mapConfig.defaultCenter;

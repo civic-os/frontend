@@ -90,7 +90,6 @@ export class CreatePage {
             this.createForm.statusChanges.subscribe(status => {
               // Reactively hide error banner when form becomes valid
               if (status === 'VALID' && this.showValidationError) {
-                console.log('[CREATE FORM] Form is now valid, hiding error banner');
                 this.showValidationError = false;
               }
             });
@@ -147,7 +146,6 @@ export class CreatePage {
             .subscribe({
               next: (result) => {
                 if(result.success === true) {
-                  console.log('[CREATE SUBMIT] Success!');
                   if (this.successDialog) {
                     this.successDialog.open();
                   } else {

@@ -18,8 +18,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
-import { environment } from '../../environments/environment';
 import { ApiResponse } from '../interfaces/api';
+import { getPostgrestUrl } from '../config/runtime';
 
 export interface PropertyMetadata {
   table_name: string;
@@ -61,7 +61,7 @@ export class PropertyManagementService {
     showOnDetail: boolean
   ): Observable<ApiResponse> {
     return this.http.post(
-      environment.postgrestUrl + 'rpc/upsert_property_metadata',
+      getPostgrestUrl() + 'rpc/upsert_property_metadata',
       {
         p_table_name: tableName,
         p_column_name: columnName,
@@ -96,7 +96,7 @@ export class PropertyManagementService {
     // Call RPC function for each property and use forkJoin to wait for all
     const updates = properties.map(property =>
       this.http.post(
-        environment.postgrestUrl + 'rpc/update_property_sort_order',
+        getPostgrestUrl() + 'rpc/update_property_sort_order',
         {
           p_table_name: property.table_name,
           p_column_name: property.column_name,
@@ -126,7 +126,7 @@ export class PropertyManagementService {
    */
   isAdmin(): Observable<boolean> {
     return this.http.post<boolean>(
-      environment.postgrestUrl + 'rpc/is_admin',
+      getPostgrestUrl() + 'rpc/is_admin',
       {}
     ).pipe(
       catchError(() => of(false))

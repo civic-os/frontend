@@ -22,7 +22,7 @@ import { DataService } from './data.service';
 import { SchemaService } from './schema.service';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { getPostgrestUrl } from '../config/runtime';
 
 @Injectable({
   providedIn: 'root'
@@ -47,9 +47,7 @@ export class AuthService {
           this.loadUserRoles();
           this.data.refreshCurrentUser().subscribe({
             next: (result) => {
-              if (result.success) {
-                console.log('User data refreshed from JWT');
-              } else {
+              if (!result.success) {
                 console.error('Failed to refresh user data:', result.error);
               }
             },
@@ -108,7 +106,7 @@ export class AuthService {
    */
   hasPermission(tableName: string, permission: string): Observable<boolean> {
     return this.http.post<boolean>(
-      environment.postgrestUrl + 'rpc/has_permission',
+      getPostgrestUrl() + 'rpc/has_permission',
       {
         p_table_name: tableName,
         p_permission: permission

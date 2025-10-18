@@ -22,13 +22,18 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { of } from 'rxjs';
 import { PermissionsService } from './permissions.service';
 import { SchemaService } from './schema.service';
-import { environment } from '../../environments/environment';
 
 describe('PermissionsService', () => {
   let service: PermissionsService;
   let httpMock: HttpTestingController;
+  const testPostgrestUrl = 'http://test-api.example.com/';
 
   beforeEach(() => {
+    // Mock runtime configuration
+    (window as any).civicOsConfig = {
+      postgrestUrl: testPostgrestUrl
+    };
+
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
@@ -52,6 +57,8 @@ describe('PermissionsService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    // Clean up mock
+    delete (window as any).civicOsConfig;
   });
 
   describe('Basic Service Setup', () => {
@@ -72,7 +79,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_roles');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_roles');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
       req.flush(mockRoles);
@@ -84,7 +91,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_roles');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_roles');
       req.flush({ message: 'Error' }, { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -112,7 +119,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_role_permissions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_role_permissions');
       expect(req.request.body).toEqual({ p_role_id: 1 });
       req.flush(mockPermissions);
     });
@@ -129,7 +136,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_role_permissions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_role_permissions');
       req.flush(mockPermissions);
     });
 
@@ -139,7 +146,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/get_role_permissions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/get_role_permissions');
       req.flush({ message: 'Error' }, { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -151,7 +158,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/set_role_permission');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/set_role_permission');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({
         p_role_id: 1,
@@ -171,7 +178,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/set_role_permission');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/set_role_permission');
       req.flush(errorResponse);
     });
 
@@ -182,7 +189,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/set_role_permission');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/set_role_permission');
       req.flush({ message: 'Error' }, { status: 403, statusText: 'Forbidden' });
     });
   });
@@ -194,7 +201,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/is_admin');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
       req.flush(true);
@@ -206,7 +213,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/is_admin');
       req.flush({ message: 'Error' }, { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -221,7 +228,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/create_role');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/create_role');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({
         p_display_name: 'moderator',
@@ -239,7 +246,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/create_role');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/create_role');
       expect(req.request.body).toEqual({
         p_display_name: 'viewer',
         p_description: null
@@ -256,7 +263,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/create_role');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/create_role');
       req.flush(errorResponse);
     });
 
@@ -269,7 +276,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/create_role');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/create_role');
       req.flush(errorResponse);
     });
 
@@ -282,7 +289,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/create_role');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/create_role');
       req.flush(errorResponse);
     });
 
@@ -293,7 +300,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/create_role');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/create_role');
       req.error(new ProgressEvent('Network error'), { status: 0 });
     });
 
@@ -304,7 +311,7 @@ describe('PermissionsService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/create_role');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/create_role');
       req.flush({ message: 'Internal server error' }, { status: 500, statusText: 'Internal Server Error' });
     });
   });

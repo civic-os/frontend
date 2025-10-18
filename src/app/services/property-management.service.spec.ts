@@ -20,13 +20,18 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { PropertyManagementService } from './property-management.service';
-import { environment } from '../../environments/environment';
 
 describe('PropertyManagementService', () => {
   let service: PropertyManagementService;
   let httpMock: HttpTestingController;
+  const testPostgrestUrl = 'http://test-api.example.com/';
 
   beforeEach(() => {
+    // Mock runtime configuration
+    (window as any).civicOsConfig = {
+      postgrestUrl: testPostgrestUrl
+    };
+
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
@@ -41,6 +46,8 @@ describe('PropertyManagementService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    // Clean up mock
+    delete (window as any).civicOsConfig;
   });
 
   describe('Basic Service Setup', () => {
@@ -69,7 +76,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_property_metadata');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/upsert_property_metadata');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({
         p_table_name: 'Issue',
@@ -107,7 +114,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_property_metadata');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/upsert_property_metadata');
       expect(req.request.body).toEqual({
         p_table_name: 'Issue',
         p_column_name: 'title',
@@ -145,7 +152,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/upsert_property_metadata');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/upsert_property_metadata');
       req.flush({ message: 'Admin access required' }, { status: 403, statusText: 'Forbidden' });
     });
   });
@@ -180,7 +187,7 @@ describe('PropertyManagementService', () => {
       });
 
       // Expect 3 separate RPC calls - use match to get all requests
-      const requests = httpMock.match(environment.postgrestUrl + 'rpc/update_property_sort_order');
+      const requests = httpMock.match(testPostgrestUrl + 'rpc/update_property_sort_order');
       expect(requests.length).toBe(3);
 
       expect(requests[0].request.body).toEqual({ p_table_name: 'Issue', p_column_name: 'title', p_sort_order: 0 });
@@ -204,7 +211,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      const requests = httpMock.match(environment.postgrestUrl + 'rpc/update_property_sort_order');
+      const requests = httpMock.match(testPostgrestUrl + 'rpc/update_property_sort_order');
       expect(requests.length).toBe(3);
 
       // Verify all properties are sent for reordering, including system fields
@@ -224,7 +231,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      httpMock.expectNone(environment.postgrestUrl + 'rpc/update_property_sort_order');
+      httpMock.expectNone(testPostgrestUrl + 'rpc/update_property_sort_order');
     });
 
     it('should handle errors', (done) => {
@@ -236,7 +243,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/update_property_sort_order');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/update_property_sort_order');
       req.flush({ message: 'Error' }, { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -248,7 +255,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/is_admin');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
       req.flush(true);
@@ -260,7 +267,7 @@ describe('PropertyManagementService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'rpc/is_admin');
+      const req = httpMock.expectOne(testPostgrestUrl + 'rpc/is_admin');
       req.flush({}, { status: 401, statusText: 'Unauthorized' });
     });
   });

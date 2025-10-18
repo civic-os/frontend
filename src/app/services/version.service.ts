@@ -18,7 +18,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { getPostgrestUrl } from '../config/runtime';
 
 export interface CacheVersion {
   cache_name: 'entities' | 'properties';
@@ -97,7 +97,7 @@ export class VersionService {
    */
   private fetchVersions(): Observable<CacheVersion[]> {
     return this.http.get<CacheVersion[]>(
-      environment.postgrestUrl + 'schema_cache_versions'
+      getPostgrestUrl() + 'schema_cache_versions'
     );
   }
 

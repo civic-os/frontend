@@ -230,19 +230,7 @@ describe('WidgetContainerComponent', () => {
       expect(typeof component.retry).toBe('function');
     });
 
-    it('should log message in Phase 1', () => {
-      spyOn(console, 'log');
-
-      component.retry();
-
-      expect(console.log).toHaveBeenCalledWith(
-        '[WidgetContainerComponent] Retry not implemented in Phase 1'
-      );
-    });
-
     it('should not throw error when called', () => {
-      spyOn(console, 'log'); // Suppress log
-
       expect(() => component.retry()).not.toThrow();
     });
   });
@@ -330,7 +318,6 @@ describe('WidgetContainerComponent', () => {
 
     it('should trigger retry() when retry button clicked', () => {
       spyOn(console, 'error'); // Suppress error
-      spyOn(console, 'log'); // Capture retry log
       spyOn(component, 'retry').and.callThrough();
 
       const unknownWidget = createMockWidget({
@@ -346,9 +333,6 @@ describe('WidgetContainerComponent', () => {
       retryButton.click();
 
       expect(component.retry).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith(
-        '[WidgetContainerComponent] Retry not implemented in Phase 1'
-      );
     });
 
     it('should render widget component when registered', () => {

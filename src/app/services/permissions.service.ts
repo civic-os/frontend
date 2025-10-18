@@ -18,10 +18,10 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
 import { SchemaService } from './schema.service';
 import { ApiResponse } from '../interfaces/api';
 import { catchError, map, of } from 'rxjs';
+import { getPostgrestUrl } from '../config/runtime';
 
 export interface Role {
   id: number;
@@ -46,7 +46,7 @@ export class PermissionsService {
 
   getRoles(): Observable<Role[]> {
     return this.http.post<Role[]>(
-      environment.postgrestUrl + 'rpc/get_roles',
+      getPostgrestUrl() + 'rpc/get_roles',
       {}
     ).pipe(
       catchError((error) => {
@@ -65,7 +65,7 @@ export class PermissionsService {
   getRolePermissions(roleId?: number): Observable<RolePermission[]> {
     const body = roleId !== undefined ? { p_role_id: roleId } : {};
     return this.http.post<any[]>(
-      environment.postgrestUrl + 'rpc/get_role_permissions',
+      getPostgrestUrl() + 'rpc/get_role_permissions',
       body
     ).pipe(
       map(permissions => permissions.map(p => ({
@@ -82,7 +82,7 @@ export class PermissionsService {
 
   setRolePermission(roleId: number, tableName: string, permission: string, enabled: boolean): Observable<ApiResponse> {
     return this.http.post(
-      environment.postgrestUrl + 'rpc/set_role_permission',
+      getPostgrestUrl() + 'rpc/set_role_permission',
       {
         p_role_id: roleId,
         p_table_name: tableName,
@@ -110,7 +110,7 @@ export class PermissionsService {
 
   isAdmin(): Observable<boolean> {
     return this.http.post<boolean>(
-      environment.postgrestUrl + 'rpc/is_admin',
+      getPostgrestUrl() + 'rpc/is_admin',
       {}
     ).pipe(
       catchError(() => of(false))
@@ -119,7 +119,7 @@ export class PermissionsService {
 
   createRole(displayName: string, description?: string): Observable<ApiResponse & { roleId?: number }> {
     return this.http.post<any>(
-      environment.postgrestUrl + 'rpc/create_role',
+      getPostgrestUrl() + 'rpc/create_role',
       {
         p_display_name: displayName,
         p_description: description || null

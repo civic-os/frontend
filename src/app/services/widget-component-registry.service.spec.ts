@@ -76,19 +76,8 @@ describe('WidgetComponentRegistry', () => {
       expect(registry.getRegisteredTypes().length).toBe(3);
     });
 
-    it('should log console message when registering', () => {
-      spyOn(console, 'log');
-
-      registry.register('markdown', MockMarkdownWidgetComponent);
-
-      expect(console.log).toHaveBeenCalledWith(
-        '[WidgetComponentRegistry] Registered widget type: markdown'
-      );
-    });
-
     it('should warn when overwriting existing registration', () => {
       spyOn(console, 'warn');
-      spyOn(console, 'log'); // Suppress log messages
 
       registry.register('markdown', MockMarkdownWidgetComponent);
       registry.register('markdown', MockListWidgetComponent); // Overwrite
@@ -100,7 +89,6 @@ describe('WidgetComponentRegistry', () => {
 
     it('should overwrite component when registering same type twice', () => {
       spyOn(console, 'warn'); // Suppress warnings
-      spyOn(console, 'log'); // Suppress logs
 
       registry.register('markdown', MockMarkdownWidgetComponent);
       registry.register('markdown', MockListWidgetComponent);
@@ -261,13 +249,10 @@ describe('WidgetComponentRegistry', () => {
 
     it('should not log warnings when clearing', () => {
       spyOn(console, 'warn');
-      spyOn(console, 'log');
 
       registry.register('markdown', MockMarkdownWidgetComponent);
       registry.clear();
 
-      // Should only log once for the registration, not for clear
-      expect(console.log).toHaveBeenCalledTimes(1);
       expect(console.warn).not.toHaveBeenCalled();
     });
   });

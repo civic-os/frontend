@@ -20,11 +20,11 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { VersionService, CacheVersion } from './version.service';
-import { environment } from '../../environments/environment';
 
 describe('VersionService', () => {
   let service: VersionService;
   let httpMock: HttpTestingController;
+  const testPostgrestUrl = 'http://test-api.example.com/';
 
   const mockVersions: CacheVersion[] = [
     { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
@@ -47,6 +47,11 @@ describe('VersionService', () => {
   ];
 
   beforeEach(() => {
+    // Mock runtime configuration
+    (window as any).civicOsConfig = {
+      postgrestUrl: testPostgrestUrl
+    };
+
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
@@ -61,6 +66,8 @@ describe('VersionService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    // Clean up mock
+    delete (window as any).civicOsConfig;
   });
 
   it('should be created', () => {
@@ -76,7 +83,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       expect(req.request.method).toBe('GET');
       req.flush(mockVersions);
     });
@@ -92,7 +99,7 @@ describe('VersionService', () => {
     beforeEach((done) => {
       // Initialize service with baseline versions
       service.init().subscribe(() => done());
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(mockVersions);
     });
 
@@ -104,7 +111,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(updatedEntitiesVersion);
     });
 
@@ -116,7 +123,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(updatedPropertiesVersion);
     });
 
@@ -128,7 +135,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(updatedBothVersions);
     });
 
@@ -140,7 +147,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(mockVersions);
     });
 
@@ -152,7 +159,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(updatedBothVersions);
     });
   });
@@ -176,7 +183,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(mockVersions);
     });
   });
@@ -196,7 +203,7 @@ describe('VersionService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'schema_cache_versions');
+      const req = httpMock.expectOne(testPostgrestUrl + 'schema_cache_versions');
       req.flush(mockVersions);
     });
   });

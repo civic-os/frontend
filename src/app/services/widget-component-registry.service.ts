@@ -46,7 +46,6 @@ export class WidgetComponentRegistry {
       console.warn(`[WidgetComponentRegistry] Widget type "${widgetType}" is already registered. Overwriting.`);
     }
     this.registry.set(widgetType, component);
-    console.log(`[WidgetComponentRegistry] Registered widget type: ${widgetType}`);
   }
 
   /**

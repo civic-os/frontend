@@ -107,7 +107,6 @@ export class EditPage {
       // Subscribe to form status changes to reactively hide error banner
       this.editForm.statusChanges.subscribe(status => {
         if (status === 'VALID' && this.showValidationError()) {
-          console.log('[EDIT FORM] Form is now valid, hiding error banner');
           this.showValidationError.set(false);
         }
       });
@@ -164,7 +163,6 @@ export class EditPage {
             .subscribe({
               next: (result) => {
                 if(result.success === true) {
-                  console.log('[EDIT SUBMIT] Success!');
                   if (this.successDialog) {
                     this.successDialog.open();
                   } else {

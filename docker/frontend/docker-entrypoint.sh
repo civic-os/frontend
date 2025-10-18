@@ -18,11 +18,44 @@ echo "  MAP_DEFAULT_LNG: $MAP_DEFAULT_LNG"
 echo "  MAP_DEFAULT_ZOOM: $MAP_DEFAULT_ZOOM"
 echo ""
 
-# Generate config.js from template using environment variables
-echo "Generating runtime config.js from environment variables..."
-envsubst < /usr/share/nginx/html/assets/config.template.js > /usr/share/nginx/html/assets/config.js
+# Generate inline config script
+echo "Injecting runtime configuration into index.html..."
 
-echo "✓ Configuration file generated at /usr/share/nginx/html/assets/config.js"
+# Create temporary file with config script
+cat > /tmp/config-script.html <<EOF
+<script>
+window.civicOsConfig = {
+  postgrestUrl: '${POSTGREST_URL}',
+  map: {
+    tileUrl: '${MAP_TILE_URL}',
+    attribution: "${MAP_ATTRIBUTION}",
+    defaultCenter: [parseFloat('${MAP_DEFAULT_LAT}'), parseFloat('${MAP_DEFAULT_LNG}')],
+    defaultZoom: parseInt('${MAP_DEFAULT_ZOOM}')
+  },
+  keycloak: {
+    url: '${KEYCLOAK_URL}',
+    realm: '${KEYCLOAK_REALM}',
+    clientId: '${KEYCLOAK_CLIENT_ID}'
+  }
+};
+</script>
+EOF
+
+# Inject the config script right after <head> tag in index.html
+# Using awk for more reliable multiline insertion
+awk '
+/<head>/ {
+  print
+  system("cat /tmp/config-script.html")
+  next
+}
+{ print }
+' /usr/share/nginx/html/index.html > /tmp/index.html.new
+
+# Replace original with modified version
+mv /tmp/index.html.new /usr/share/nginx/html/index.html
+
+echo "✓ Configuration injected into index.html"
 echo ""
 echo "======================================"
 echo "Starting Nginx..."

@@ -87,7 +87,6 @@ describe('schemaVersionGuard', () => {
           expect(result).toBe(true);
           expect(mockSchemaService.refreshEntitiesCache).toHaveBeenCalledTimes(1);
           expect(mockSchemaService.refreshPropertiesCache).not.toHaveBeenCalled();
-          expect(console.log).toHaveBeenCalledWith('[SchemaVersion] Entities cache updated, refreshing...');
           done();
         });
       }
@@ -110,7 +109,6 @@ describe('schemaVersionGuard', () => {
           expect(result).toBe(true);
           expect(mockSchemaService.refreshEntitiesCache).not.toHaveBeenCalled();
           expect(mockSchemaService.refreshPropertiesCache).toHaveBeenCalledTimes(1);
-          expect(console.log).toHaveBeenCalledWith('[SchemaVersion] Properties cache updated, refreshing...');
           done();
         });
       }
@@ -133,8 +131,6 @@ describe('schemaVersionGuard', () => {
           expect(result).toBe(true);
           expect(mockSchemaService.refreshEntitiesCache).toHaveBeenCalledTimes(1);
           expect(mockSchemaService.refreshPropertiesCache).toHaveBeenCalledTimes(1);
-          expect(console.log).toHaveBeenCalledWith('[SchemaVersion] Entities cache updated, refreshing...');
-          expect(console.log).toHaveBeenCalledWith('[SchemaVersion] Properties cache updated, refreshing...');
           done();
         });
       }

@@ -20,7 +20,6 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { DataService } from './data.service';
-import { environment } from '../../environments/environment';
 
 // EWKB test data constants - All using Downtown Flint, MI area coordinates
 // Format: [byte order][type][SRID][X coord][Y coord]
@@ -47,8 +46,14 @@ const EWKB_SAMPLES = {
 describe('DataService', () => {
   let service: DataService;
   let httpMock: HttpTestingController;
+  const testPostgrestUrl = 'http://test-api.example.com/';
 
   beforeEach(() => {
+    // Mock runtime configuration
+    (window as any).civicOsConfig = {
+      postgrestUrl: testPostgrestUrl
+    };
+
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
@@ -63,6 +68,8 @@ describe('DataService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    // Clean up mock
+    delete (window as any).civicOsConfig;
   });
 
   describe('Basic Service Setup', () => {
@@ -206,9 +213,9 @@ describe('DataService', () => {
       }).subscribe();
 
       const req = httpMock.expectOne(req =>
-        req.url.startsWith(environment.postgrestUrl)
+        req.url.startsWith(testPostgrestUrl)
       );
-      expect(req.request.url).toContain(environment.postgrestUrl);
+      expect(req.request.url).toContain(testPostgrestUrl);
       req.flush([]);
       done();
     });
@@ -795,7 +802,7 @@ describe('DataService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'Issue');
+      const req = httpMock.expectOne(testPostgrestUrl + 'Issue');
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual(newData);
       expect(req.request.headers.get('Prefer')).toBe('return=representation');
@@ -811,7 +818,7 @@ describe('DataService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'Issue');
+      const req = httpMock.expectOne(testPostgrestUrl + 'Issue');
       req.flush({ id: 1, name: 'Test' });
     });
 
@@ -831,7 +838,7 @@ describe('DataService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'Issue');
+      const req = httpMock.expectOne(testPostgrestUrl + 'Issue');
       req.flush(errorResponse, { status: 409, statusText: 'Conflict' });
     });
   });
@@ -1068,7 +1075,7 @@ describe('DataService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(environment.postgrestUrl + 'Issue');
+      const req = httpMock.expectOne(testPostgrestUrl + 'Issue');
       req.error(new ProgressEvent('Network error'), { status: 0 });
     });
   });
@@ -1588,7 +1595,7 @@ describe('DataService', () => {
           done();
         });
 
-        const req = httpMock.expectOne(environment.postgrestUrl + 'issue_tags');
+        const req = httpMock.expectOne(testPostgrestUrl + 'issue_tags');
         expect(req.request.method).toBe('POST');
         expect(req.request.body).toEqual({
           issue_id: 5,
@@ -1617,7 +1624,7 @@ describe('DataService', () => {
           done();
         });
 
-        const req = httpMock.expectOne(environment.postgrestUrl + 'user_roles');
+        const req = httpMock.expectOne(testPostgrestUrl + 'user_roles');
         expect(req.request.body).toEqual({
           user_id: 'abc-123-uuid',
           role_id: 2
@@ -1646,7 +1653,7 @@ describe('DataService', () => {
           done();
         });
 
-        const req = httpMock.expectOne(environment.postgrestUrl + 'issue_tags');
+        const req = httpMock.expectOne(testPostgrestUrl + 'issue_tags');
         req.flush(
           { message: 'duplicate key value violates unique constraint', code: '23505' },
           { status: 409, statusText: 'Conflict' }
@@ -1674,7 +1681,7 @@ describe('DataService', () => {
           done();
         });
 
-        const req = httpMock.expectOne(environment.postgrestUrl + 'issue_tags');
+        const req = httpMock.expectOne(testPostgrestUrl + 'issue_tags');
         req.flush(
           { message: 'permission denied for table issue_tags', code: '42501' },
           { status: 403, statusText: 'Forbidden' }

@@ -213,20 +213,52 @@ git push
 - `PGRST_DB_ANON_ROLE` - Anonymous role (default: `web_anon`)
 - `PGRST_DB_PRE_REQUEST` - Pre-request function (default: `public.check_jwt`)
 
-### ConfigService Architecture
+### Runtime Configuration Architecture
 
-The frontend uses `ConfigService` (`src/app/services/config.service.ts`) to provide runtime configuration:
+The frontend uses **semantic helper functions** (`src/app/config/runtime.ts`) to provide runtime configuration:
 
-1. **Docker entrypoint** generates `/assets/config.js` from environment variables using `envsubst`
-2. **index.html** loads `config.js` via script tag before Angular bootstrap
-3. **ConfigService** provides configuration to Angular services:
-   - `DataService` - Gets PostgREST URL
-   - `app.config.ts` - Gets Keycloak configuration
-   - `GeoPointMapComponent` - Gets map defaults
+**How It Works:**
+
+1. **Docker entrypoint** (`docker/frontend/docker-entrypoint.sh`) injects config inline into `index.html` as a `<script>` tag
+2. **Script sets `window.civicOsConfig`** before Angular bootstrap (guaranteed to exist when app loads)
+3. **Helper functions** read from `window.civicOsConfig` (production) or `environment.ts` (development):
+   - `getPostgrestUrl()` - Returns PostgREST API URL
+   - `getKeycloakConfig()` - Returns Keycloak authentication config object
+   - `getMapConfig()` - Returns Leaflet map configuration
+
+**Usage Example:**
+
+```typescript
+import { getPostgrestUrl, getKeycloakConfig } from '../config/runtime';
+
+// In services
+export class DataService {
+  private get(url: string) {
+    return this.http.get(getPostgrestUrl() + url);
+  }
+}
+
+// In app configuration
+export const appConfig = {
+  providers: [
+    provideKeycloak({ config: getKeycloakConfig() })
+  ]
+};
+```
+
+**CRITICAL RULE: Always use helper functions, NEVER import `environment.postgrestUrl` directly.**
+
+Direct imports get baked into the compiled bundle at build time and cannot be changed at runtime. This was the root cause of configuration bugs where services used `environment.postgrestUrl` instead of runtime helpers.
 
 **Development vs Production:**
-- Development: Falls back to `src/environments/environment.ts`
-- Production: Uses runtime `config.js` generated from ENV vars
+- Development: Helper functions fall back to `src/environments/environment.ts`
+- Production: Helpers read `window.civicOsConfig` (injected inline by Docker entrypoint)
+
+**Files to Update When Adding New Config:**
+1. `docker/frontend/docker-entrypoint.sh` - Add to inline script template
+2. `src/app/config/runtime.ts` - Add helper function or update existing getter
+3. `src/environments/environment.ts` - Add development fallback value
+4. `.env.example` - Document new environment variable
 
 ### Quick Deployment
 

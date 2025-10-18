@@ -147,15 +147,10 @@ export class AppComponent implements AfterViewInit {
     // We need to manually update it so other components can react to theme changes
     const themeInputs = document.querySelectorAll<HTMLInputElement>('input.theme-controller');
 
-    console.log('[AppComponent] Found theme-controller inputs:', themeInputs.length);
-
-    themeInputs.forEach((input, index) => {
-      console.log(`[AppComponent] Theme input ${index}: value="${input.value}", checked=${input.checked}`);
-
+    themeInputs.forEach((input) => {
       input.addEventListener('change', (e) => {
         const target = e.target as HTMLInputElement;
         if (target.checked) {
-          console.log('[AppComponent] Theme changed to:', target.value);
           document.documentElement.setAttribute('data-theme', target.value);
         }
       });

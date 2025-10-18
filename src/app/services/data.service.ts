@@ -18,22 +18,20 @@
 import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, filter, forkJoin, map, of } from 'rxjs';
-import { environment } from '../../environments/environment';
 import { EntityData, InverseRelationshipMeta, InverseRelationshipData, ManyToManyMeta } from '../interfaces/entity';
 import { DataQuery, PaginatedResponse } from '../interfaces/query';
 import { ApiError, ApiResponse } from '../interfaces/api';
 import { ErrorService } from './error.service';
-import { ConfigService } from './config.service';
+import { getPostgrestUrl } from '../config/runtime';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DataService {
   private http = inject(HttpClient);
-  private config = inject(ConfigService);
 
   private get(url: string): Observable<any> {
-    return this.http.get(this.config.getPostgrestUrl() + url);
+    return this.http.get(getPostgrestUrl() + url);
   }
 
   public getData(query: DataQuery): Observable<EntityData[]> {
@@ -107,7 +105,7 @@ export class DataService {
     const offset = (pagination.page - 1) * pagination.pageSize;
     const rangeEnd = offset + pagination.pageSize - 1;
 
-    return this.http.get<EntityData[]>(this.config.getPostgrestUrl() + url, {
+    return this.http.get<EntityData[]>(getPostgrestUrl() + url, {
       observe: 'response',
       headers: {
         'Range-Unit': 'items',
@@ -143,7 +141,7 @@ export class DataService {
   }
 
   public createData(entity: string, data: any): Observable<ApiResponse> {
-    return this.http.post(this.config.getPostgrestUrl() + entity, data, {
+    return this.http.post(getPostgrestUrl() + entity, data, {
       headers: {
         Prefer: 'return=representation'
       }
@@ -161,7 +159,7 @@ export class DataService {
       );
   }
   public editData(entity: string, id: string | number, data: any): Observable<ApiResponse> {
-    return this.http.patch(this.config.getPostgrestUrl() + entity + '?id=eq.' + id, data, {
+    return this.http.patch(getPostgrestUrl() + entity + '?id=eq.' + id, data, {
       headers: {
         Prefer: 'return=representation'
       }
@@ -180,7 +178,7 @@ export class DataService {
   }
 
   public deleteData(entity: string, id: string | number): Observable<ApiResponse> {
-    return this.http.delete(this.config.getPostgrestUrl() + entity + '?id=eq.' + id)
+    return this.http.delete(getPostgrestUrl() + entity + '?id=eq.' + id)
       .pipe(
         catchError((err) => this.parseApiError(err)),
         map((response) => {
@@ -195,7 +193,7 @@ export class DataService {
   }
 
   public refreshCurrentUser(): Observable<ApiResponse> {
-    return this.http.post(this.config.getPostgrestUrl() + 'rpc/refresh_current_user', {})
+    return this.http.post(getPostgrestUrl() + 'rpc/refresh_current_user', {})
       .pipe(
         catchError((err) => this.parseApiError(err)),
         map((response) => {
@@ -517,7 +515,7 @@ export class DataService {
   ): Observable<{ records: EntityData[], totalCount: number }> {
     const url = `${sourceTable}?${filterColumn}=eq.${filterValue}&select=id,display_name&limit=${limit}`;
 
-    return this.http.get<EntityData[]>(this.config.getPostgrestUrl() + url, {
+    return this.http.get<EntityData[]>(getPostgrestUrl() + url, {
       observe: 'response',
       headers: {
         'Prefer': 'count=exact'
@@ -601,7 +599,7 @@ export class DataService {
     targetId: number
   ): Observable<ApiResponse> {
     return this.http.post(
-      this.config.getPostgrestUrl() + meta.junctionTable,
+      getPostgrestUrl() + meta.junctionTable,
       {
         [meta.sourceColumn]: entityId,
         [meta.targetColumn]: targetId
@@ -631,7 +629,7 @@ export class DataService {
     const filter = `${meta.sourceColumn}=eq.${entityId}&${meta.targetColumn}=eq.${targetId}`;
 
     return this.http.delete(
-      this.config.getPostgrestUrl() + meta.junctionTable + '?' + filter
+      getPostgrestUrl() + meta.junctionTable + '?' + filter
     ).pipe(
       map(() => ({ success: true, body: null })),
       catchError(err => this.parseApiError(err))
@@ -650,7 +648,7 @@ export class DataService {
    */
   public bulkInsert(entity: string, data: any[]): Observable<ApiResponse> {
     return this.http.post(
-      this.config.getPostgrestUrl() + entity,
+      getPostgrestUrl() + entity,
       data,
       {
         headers: {
