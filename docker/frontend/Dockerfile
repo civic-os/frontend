@@ -11,16 +11,20 @@ WORKDIR /app
 # Copy package files for dependency installation
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies with npm cache mount for faster rebuilds
 # Use ci for clean, reproducible builds
-RUN npm ci --legacy-peer-deps
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
-# Build production bundle
+# Build production bundle with Angular cache mount for faster rebuilds
 # This creates optimized static files in dist/frontend/browser/
-RUN npm run build
+# Cache mounts persist between builds, significantly speeding up incremental builds
+RUN --mount=type=cache,target=/app/.angular \
+    --mount=type=cache,target=/root/.npm \
+    npm run build
 
 # ======================================
 # Stage 2: Production Nginx Server
