@@ -1,17 +1,22 @@
 # Copyright (C) 2023-2025 Civic OS, L3C
 # AGPL-3.0-or-later
 
-FROM postgrest/postgrest:v13.0.7
+# Official PostgREST images are built FROM scratch with only the static binary.
+# To extend them, we copy the binary into a fuller base image per official docs:
+# https://github.com/PostgREST/postgrest/tree/main/nix/tools/docker
 
-# Switch to root using numeric UID (PostgREST base image runs as non-root)
-USER 0
+FROM ubuntu:24.04
+
+# Copy PostgREST binary from official image
+COPY --from=postgrest/postgrest:v13.0.7 /bin/postgrest /bin/postgrest
 
 # Install dependencies for JWKS fetching
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl \
         jq \
-        bash && \
+        bash \
+        ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy JWKS fetch script
@@ -23,10 +28,11 @@ COPY docker/postgrest/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create directory for JWKS file with proper ownership
+# Note: Ubuntu 24.04 already has UID 1000 (ubuntu user), so we use it directly
 RUN mkdir -p /etc/postgrest && \
     chown -R 1000:1000 /etc/postgrest
 
-# Switch to non-root postgrest user for runtime security
+# Switch to non-root user for runtime security
 USER 1000
 
 # Set custom entrypoint
