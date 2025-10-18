@@ -13,7 +13,7 @@ COPY package*.json ./
 
 # Install dependencies
 # Use ci for clean, reproducible builds
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
