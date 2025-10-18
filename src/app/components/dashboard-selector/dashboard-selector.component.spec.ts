@@ -412,7 +412,7 @@ describe('DashboardSelectorComponent', () => {
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
-        const activeItems = compiled.querySelectorAll('.dropdown-content li a.active');
+        const activeItems = compiled.querySelectorAll('.dropdown-content li a.menu-active');
 
         expect(activeItems.length).toBeGreaterThan(0);
         done();

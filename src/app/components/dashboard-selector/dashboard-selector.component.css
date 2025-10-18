@@ -18,9 +18,9 @@
 }
 
 /* Active item highlighting */
-.menu li > a.active {
+.menu li > a.menu-active {
   background-color: oklch(var(--p) / 0.1);
-  color: oklch(var(--p));
+  color: var(--color-base-content) !important;
 }
 
 /* Dashboard description text */

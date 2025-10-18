@@ -60,38 +60,74 @@
             </label>
           </div>
         </div>
-        <ul class="menu p-4 flex-1">
+        <ul class="menu menu-md p-4 flex-1">
           <!-- Home -->
           <li (click)="navigateToHome()">
-            <a>
+            <a [class.menu-active]="isRouteActive('/')"
+               [class.font-bold]="isRouteActive('/')"
+               [class.opacity-85]="!isRouteActive('/')">
               <span class="material-symbols-outlined">home</span>
               Home
             </a>
           </li>
 
           <!-- Entity menu items -->
-          <li class="menu-title mt-4">
-            <span>Data</span>
+          <li class="mt-4">
+            <span class="block px-4 py-2 text-base font-bold uppercase tracking-wide pointer-events-none">Data</span>
           </li>
           @for (entity of menuItems; track entity) {
-            <li (click)="navigate(entity.table_name)"><a>{{ entity.display_name }}</a></li>
+            <li (click)="navigate(entity.table_name)">
+              <a [class.menu-active]="isRouteActive('/view/' + entity.table_name)"
+                 [class.font-bold]="isRouteActive('/view/' + entity.table_name)"
+                 [class.opacity-85]="!isRouteActive('/view/' + entity.table_name)">
+                {{ entity.display_name }}
+              </a>
+            </li>
           }
 
           <!-- About section -->
-          <li class="menu-title mt-4">
-            <span>About</span>
+          <li class="mt-4">
+            <span class="block px-4 py-2 text-base font-bold uppercase tracking-wide pointer-events-none">About</span>
           </li>
-          <li (click)="navigateToSchemaErd()"><a>Database Schema</a></li>
+          <li (click)="navigateToSchemaErd()">
+            <a [class.menu-active]="isRouteActive('/schema-erd')"
+               [class.font-bold]="isRouteActive('/schema-erd')"
+               [class.opacity-85]="!isRouteActive('/schema-erd')">
+              <span class="material-symbols-outlined">account_tree</span>
+              Database Schema
+            </a>
+          </li>
           <!-- Admin section (admin-only) -->
           @if (auth.isAdmin()) {
-            <li class="menu-title mt-4">
-              <span>Admin</span>
+            <li class="mt-4">
+              <span class="block px-4 py-2 text-base font-bold uppercase tracking-wide pointer-events-none">Admin</span>
             </li>
           }
           @if (auth.isAdmin()) {
-            <li (click)="navigateToEntityManagement()"><a>Entities</a></li>
-            <li (click)="navigateToPropertyManagement()"><a>Properties</a></li>
-            <li (click)="navigateToPermissions()"><a>Permissions</a></li>
+            <li (click)="navigateToEntityManagement()">
+              <a [class.menu-active]="isRouteActive('/entity-management')"
+                 [class.font-bold]="isRouteActive('/entity-management')"
+                 [class.opacity-85]="!isRouteActive('/entity-management')">
+                <span class="material-symbols-outlined">dashboard_customize</span>
+                Entities
+              </a>
+            </li>
+            <li (click)="navigateToPropertyManagement()">
+              <a [class.menu-active]="isRouteActive('/property-management')"
+                 [class.font-bold]="isRouteActive('/property-management')"
+                 [class.opacity-85]="!isRouteActive('/property-management')">
+                <span class="material-symbols-outlined">tune</span>
+                Properties
+              </a>
+            </li>
+            <li (click)="navigateToPermissions()">
+              <a [class.menu-active]="isRouteActive('/permissions')"
+                 [class.font-bold]="isRouteActive('/permissions')"
+                 [class.opacity-85]="!isRouteActive('/permissions')">
+                <span class="material-symbols-outlined">lock</span>
+                Permissions
+              </a>
+            </li>
           }
         </ul>
       </div>

@@ -140,30 +140,31 @@ describe('AppComponent', () => {
     document.body.removeChild(themeInput);
   });
 
+  /**
+   * Helper to create component with specific initial router URL
+   */
+  function createComponentWithUrl(url: string) {
+    const router = TestBed.inject(Router);
+    spyOnProperty(router, 'url', 'get').and.returnValue(url);
+
+    const fixture = TestBed.createComponent(AppComponent);
+    const app = fixture.componentInstance;
+
+    // Handle HTTP requests
+    const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+    schemaEntitiesReqs.forEach(req => req.flush([]));
+    const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+    versionReqs.forEach(req => req.flush([
+      { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+      { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+    ]));
+    const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+    dashboardReqs.forEach(req => req.flush([]));
+
+    return { fixture, app };
+  }
+
   describe('isDashboardRoute detection', () => {
-    /**
-     * Helper to create component with specific initial router URL
-     */
-    function createComponentWithUrl(url: string) {
-      const router = TestBed.inject(Router);
-      spyOnProperty(router, 'url', 'get').and.returnValue(url);
-
-      const fixture = TestBed.createComponent(AppComponent);
-      const app = fixture.componentInstance;
-
-      // Handle HTTP requests
-      const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
-      schemaEntitiesReqs.forEach(req => req.flush([]));
-      const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
-      versionReqs.forEach(req => req.flush([
-        { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
-        { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
-      ]));
-      const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
-      dashboardReqs.forEach(req => req.flush([]));
-
-      return { fixture, app };
-    }
 
     it('should set isDashboardRoute to true when on home page', () => {
       const { app } = createComponentWithUrl('/');
@@ -193,6 +194,89 @@ describe('AppComponent', () => {
     it('should set isDashboardRoute to false when on edit page', () => {
       const { app } = createComponentWithUrl('/edit/issues/123');
       expect(app.isDashboardRoute()).toBe(false);
+    });
+  });
+
+  describe('isRouteActive', () => {
+    describe('Home route', () => {
+      it('should match home page', () => {
+        const { app } = createComponentWithUrl('/');
+        expect(app.isRouteActive('/')).toBe(true);
+      });
+
+      it('should match dashboard pages', () => {
+        const { app } = createComponentWithUrl('/dashboard/42');
+        expect(app.isRouteActive('/')).toBe(true);
+      });
+
+      it('should not match other routes', () => {
+        const { app } = createComponentWithUrl('/view/issues');
+        expect(app.isRouteActive('/')).toBe(false);
+      });
+    });
+
+    describe('Entity routes', () => {
+      it('should match list page (exact)', () => {
+        const { app } = createComponentWithUrl('/view/issues');
+        expect(app.isRouteActive('/view/issues')).toBe(true);
+      });
+
+      it('should match detail page (with ID)', () => {
+        const { app } = createComponentWithUrl('/view/issues/123');
+        expect(app.isRouteActive('/view/issues')).toBe(true);
+      });
+
+      it('should match create page for same entity', () => {
+        const { app } = createComponentWithUrl('/create/issues');
+        expect(app.isRouteActive('/view/issues')).toBe(true);
+      });
+
+      it('should match edit page for same entity', () => {
+        const { app } = createComponentWithUrl('/edit/issues/123');
+        expect(app.isRouteActive('/view/issues')).toBe(true);
+      });
+
+      it('should not match different entity', () => {
+        const { app } = createComponentWithUrl('/view/users');
+        expect(app.isRouteActive('/view/issues')).toBe(false);
+      });
+
+      it('should not match different entity create page', () => {
+        const { app } = createComponentWithUrl('/create/users');
+        expect(app.isRouteActive('/view/issues')).toBe(false);
+      });
+
+      it('should not match different entity edit page', () => {
+        const { app } = createComponentWithUrl('/edit/users/456');
+        expect(app.isRouteActive('/view/issues')).toBe(false);
+      });
+    });
+
+    describe('Admin routes', () => {
+      it('should match schema-erd page', () => {
+        const { app } = createComponentWithUrl('/schema-erd');
+        expect(app.isRouteActive('/schema-erd')).toBe(true);
+      });
+
+      it('should match entity-management page', () => {
+        const { app } = createComponentWithUrl('/entity-management');
+        expect(app.isRouteActive('/entity-management')).toBe(true);
+      });
+
+      it('should match property-management page', () => {
+        const { app } = createComponentWithUrl('/property-management');
+        expect(app.isRouteActive('/property-management')).toBe(true);
+      });
+
+      it('should match permissions page', () => {
+        const { app } = createComponentWithUrl('/permissions');
+        expect(app.isRouteActive('/permissions')).toBe(true);
+      });
+
+      it('should not match partial admin route names', () => {
+        const { app } = createComponentWithUrl('/permissions');
+        expect(app.isRouteActive('/entity-management')).toBe(false);
+      });
     });
   });
 });

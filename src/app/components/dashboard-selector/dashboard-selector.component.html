@@ -17,7 +17,7 @@
       <li>
         <a
           (click)="selectDefaultDashboard()"
-          [class.active]="currentDashboardId() === undefined"
+          [class.menu-active]="currentDashboardId() === undefined"
           class="flex items-center"
         >
           <span class="material-symbols-outlined">home</span>
@@ -37,7 +37,7 @@
         <li>
           <a
             (click)="selectDashboard(dashboard.id)"
-            [class.active]="currentDashboardId() === dashboard.id"
+            [class.menu-active]="currentDashboardId() === dashboard.id"
             class="flex items-center"
           >
             <span class="material-symbols-outlined">

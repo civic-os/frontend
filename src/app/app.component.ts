@@ -110,6 +110,29 @@ export class AppComponent implements AfterViewInit {
     this.drawerOpen = false;
   }
 
+  /**
+   * Check if a route is currently active
+   * For entity routes, also matches create/edit pages for the same table
+   */
+  public isRouteActive(route: string): boolean {
+    // Special case for home route - exact match only
+    if (route === '/') {
+      return this.router.url === '/' || this.router.url.startsWith('/dashboard');
+    }
+
+    // For entity view routes, also match create/edit for same table
+    if (route.startsWith('/view/')) {
+      const tableName = route.replace('/view/', '');
+      return this.router.url === route ||
+             this.router.url.startsWith(route + '/') ||
+             this.router.url.startsWith('/create/' + tableName) ||
+             this.router.url.startsWith('/edit/' + tableName + '/');
+    }
+
+    // For other routes, match exact or with trailing path
+    return this.router.url === route || this.router.url.startsWith(route + '/');
+  }
+
   public getMenuKeys(menuItems: OpenAPIV2.DefinitionsObject | undefined) : string[] {
     if(menuItems) {
       return Object.keys(menuItems).sort();
