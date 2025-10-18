@@ -25,8 +25,13 @@ import { environment } from '../environments/environment';
 import { WidgetComponentRegistry } from './services/widget-component-registry.service';
 import { MarkdownWidgetComponent } from './components/widgets/markdown-widget/markdown-widget.component';
 import { provideMarkdown } from 'ngx-markdown';
+import { ConfigService } from './services/config.service';
 
-const escapedUrl = environment.postgrestUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Get runtime config (loaded from /assets/config.js in production, or environment.ts in dev)
+// This is available immediately because config.js is loaded via script tag in index.html
+const runtimeConfig = (window as any).civicOsConfig || environment;
+
+const escapedUrl = runtimeConfig.postgrestUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const urlCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
   urlPattern: new RegExp(`^(${escapedUrl})(.*)?$`, 'i'),
   bearerPrefix: 'Bearer'
@@ -52,9 +57,9 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideKeycloak({
       config: {
-        url: environment.keycloak.url,
-        realm: environment.keycloak.realm,
-        clientId: environment.keycloak.clientId
+        url: runtimeConfig.keycloak.url,
+        realm: runtimeConfig.keycloak.realm,
+        clientId: runtimeConfig.keycloak.clientId
       },
       initOptions: {
         onLoad: 'check-sso',

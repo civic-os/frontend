@@ -159,6 +159,119 @@ Docker Compose runs PostgreSQL 17 with PostGIS 3.5 and PostgREST locally with Ke
 
 **PostGIS**: Installed in dedicated `postgis` schema (not `public`) to keep the public schema clean. Functions accessible via `search_path`. In init scripts, use schema-qualified references: `postgis.geography(Point, 4326)` and `postgis.ST_AsText()`.
 
+## Production Deployment & Containerization
+
+Civic OS provides production-ready Docker containers with runtime configuration via environment variables, following the 12-factor app methodology.
+
+### Container Images
+
+Two container images are automatically built and published to GitHub Container Registry on every push to `main`:
+
+1. **Frontend Container** (`ghcr.io/civic-os/frontend`)
+   - Multi-stage build: Angular build + nginx alpine
+   - Runtime configuration via environment variables
+   - Security headers, gzip compression, SPA routing
+   - Multi-architecture support (amd64, arm64)
+
+2. **PostgREST Container** (`ghcr.io/civic-os/postgrest`)
+   - Based on official PostgREST image
+   - Automatic JWKS fetching from Keycloak on startup
+   - Multi-architecture support (amd64, arm64)
+
+### Version Tagging
+
+Containers are automatically tagged with:
+- `latest` - Most recent build
+- `v0.3.0` - Semantic version from `package.json`
+- `0.3.0` - Version without 'v' prefix
+- `sha-abc1234` - Git commit SHA (for precise rollback)
+
+To release a new version:
+```bash
+npm version patch   # 0.3.0 → 0.3.1
+npm version minor   # 0.3.0 → 0.4.0
+npm version major   # 0.3.0 → 1.0.0
+git push
+# GitHub Actions automatically builds and publishes new version
+```
+
+### Runtime Configuration
+
+**Frontend Environment Variables:**
+- `POSTGREST_URL` - PostgREST API endpoint (e.g., `http://localhost:3000/`)
+- `KEYCLOAK_URL` - Keycloak server URL
+- `KEYCLOAK_REALM` - Keycloak realm name
+- `KEYCLOAK_CLIENT_ID` - Keycloak client ID
+- `MAP_TILE_URL`, `MAP_ATTRIBUTION` - Map configuration
+- `MAP_DEFAULT_LAT`, `MAP_DEFAULT_LNG`, `MAP_DEFAULT_ZOOM` - Map defaults
+
+**PostgREST Environment Variables:**
+- `PGRST_DB_URI` - PostgreSQL connection string
+- `KEYCLOAK_URL` - Keycloak server URL (for JWKS fetching)
+- `KEYCLOAK_REALM` - Keycloak realm name
+- `PGRST_DB_SCHEMA` - Exposed schemas (default: `public,metadata`)
+- `PGRST_DB_ANON_ROLE` - Anonymous role (default: `web_anon`)
+- `PGRST_DB_PRE_REQUEST` - Pre-request function (default: `public.check_jwt`)
+
+### ConfigService Architecture
+
+The frontend uses `ConfigService` (`src/app/services/config.service.ts`) to provide runtime configuration:
+
+1. **Docker entrypoint** generates `/assets/config.js` from environment variables using `envsubst`
+2. **index.html** loads `config.js` via script tag before Angular bootstrap
+3. **ConfigService** provides configuration to Angular services:
+   - `DataService` - Gets PostgREST URL
+   - `app.config.ts` - Gets Keycloak configuration
+   - `GeoPointMapComponent` - Gets map defaults
+
+**Development vs Production:**
+- Development: Falls back to `src/environments/environment.ts`
+- Production: Uses runtime `config.js` generated from ENV vars
+
+### Quick Deployment
+
+**Using Docker Compose:**
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit with your configuration
+nano .env
+
+# Start all services
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+**Using Pre-Built Images:**
+```bash
+docker pull ghcr.io/civic-os/frontend:v0.3.0
+docker pull ghcr.io/civic-os/postgrest:v0.3.0
+```
+
+**Building Locally:**
+```bash
+docker build -t civic-os-frontend:local -f docker/frontend/Dockerfile .
+docker build -t civic-os-postgrest:local -f docker/postgrest/Dockerfile .
+```
+
+### GitHub Actions CI/CD
+
+The `.github/workflows/build-containers.yml` workflow automatically:
+1. Extracts version from `package.json`
+2. Builds both containers for amd64 and arm64
+3. Publishes to GitHub Container Registry with semantic version tags
+4. Caches layers for faster subsequent builds
+
+**Workflow triggers:**
+- Push to `main` branch
+- Manual workflow dispatch
+
+### Additional Resources
+
+- **docker/README.md** - Comprehensive Docker documentation
+- **docker-compose.prod.yml** - Production deployment example
+- **docs/deployment/PRODUCTION.md** - Complete production deployment guide
+
 ## PostgREST Integration
 
 All API calls use PostgREST conventions:

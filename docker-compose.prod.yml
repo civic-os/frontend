@@ -1,0 +1,96 @@
+# Copyright (C) 2023-2025 Civic OS, L3C
+# AGPL-3.0-or-later
+
+# Production Docker Compose Configuration
+# This file demonstrates how to deploy Civic OS using pre-built container images
+# from GitHub Container Registry
+
+services:
+  # PostgreSQL Database with PostGIS
+  postgres:
+    image: postgis/postgis:17-3.5-alpine
+    container_name: civic_os_postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Mount init scripts for first-time setup
+      - ./postgres:/civic-os-core:ro
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - civic-os-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # PostgREST API with automatic JWKS fetching
+  postgrest:
+    image: ghcr.io/${GITHUB_ORG:-civic-os}/postgrest:${VERSION:-latest}
+    container_name: civic_os_postgrest
+    restart: unless-stopped
+    ports:
+      - "${POSTGREST_PORT:-3000}:3000"
+    environment:
+      # Database connection
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PGRST_DB_SCHEMA: public,metadata
+      PGRST_DB_ANON_ROLE: web_anon
+      PGRST_DB_PRE_REQUEST: public.check_jwt
+
+      # Keycloak configuration (for JWKS fetching)
+      KEYCLOAK_URL: ${KEYCLOAK_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+
+      # JWT settings
+      PGRST_JWT_SECRET: "@/etc/postgrest/jwt-secret.jwks"
+      PGRST_JWT_AUD: account
+
+      # API settings
+      PGRST_OPENAPI_SERVER_PROXY_URI: ${POSTGREST_PUBLIC_URL:-http://localhost:3000}
+      PGRST_LOG_LEVEL: ${POSTGREST_LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - civic-os-network
+
+  # Angular Frontend
+  frontend:
+    image: ghcr.io/${GITHUB_ORG:-civic-os}/frontend:${VERSION:-latest}
+    container_name: civic_os_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    environment:
+      # PostgREST connection (frontend → postgrest)
+      POSTGREST_URL: ${FRONTEND_POSTGREST_URL:-http://localhost:3000/}
+
+      # Keycloak configuration
+      KEYCLOAK_URL: ${KEYCLOAK_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+
+      # Map configuration (optional overrides)
+      MAP_TILE_URL: ${MAP_TILE_URL:-https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png}
+      MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:-&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors}
+      MAP_DEFAULT_LAT: ${MAP_DEFAULT_LAT:-43.0125}
+      MAP_DEFAULT_LNG: ${MAP_DEFAULT_LNG:--83.6875}
+      MAP_DEFAULT_ZOOM: ${MAP_DEFAULT_ZOOM:-13}
+    depends_on:
+      - postgrest
+    networks:
+      - civic-os-network
+
+volumes:
+  postgres_data:
+
+networks:
+  civic-os-network:
+    driver: bridge

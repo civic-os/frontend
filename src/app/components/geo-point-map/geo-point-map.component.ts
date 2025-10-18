@@ -19,6 +19,7 @@ import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStra
 import * as L from 'leaflet';
 import { environment } from '../../../environments/environment';
 import { ThemeService } from '../../services/theme.service';
+import { ConfigService } from '../../services/config.service';
 import { Subscription } from 'rxjs';
 
 export interface MapMarker {
@@ -69,6 +70,7 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   private themeSubscription?: Subscription; // Track theme changes
 
   private themeService = inject(ThemeService);
+  private config = inject(ConfigService);
 
   constructor() {
     // Watch for markers array changes
@@ -164,15 +166,16 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     }
 
     // Determine initial center
+    const mapConfig = this.config.getMapConfig();
     const center: [number, number] = (this.currentLat !== undefined && this.currentLng !== undefined)
       ? [this.currentLat, this.currentLng]
-      : environment.map.defaultCenter;
+      : mapConfig.defaultCenter;
 
     // Create map with default options
     // Controls will be enabled/disabled reactively based on mode
     const mapOptions: L.MapOptions = {
       center: center,
-      zoom: mode === 'display' ? 15 : environment.map.defaultZoom,
+      zoom: mode === 'display' ? 15 : mapConfig.defaultZoom,
       zoomSnap: 1,
       zoomDelta: 1,
     };
