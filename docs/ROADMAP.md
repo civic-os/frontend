@@ -56,6 +56,8 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] ADA/WCAG Compatibility
 - [ ] SOC II Compliance
 - [ ] Allow Angular app to be configured at container runtime (for flexible deployments)
+- [ ] Save selected Theme in localstorage and use on reload
+- [ ] Allow user profile editing (through keycloak?)
 
 ## Phase 2: Introspection Tools
 
@@ -64,6 +66,12 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Permit other relationship types (one-to-one, many-to-many)
 - [ ] Advanced Form Validation by use of RPCs
 - [ ] Add customizable template pages (primarily for PDF)
+- [ ] Research safe database schema editing, sandboxing
+- [ ] One-to-One relationship created as child record
+  - [ ] Grouped on Detail Page
+  - [ ] Grouped on ERD
+  - [ ] Multi-step create forms
+- [ ] ERD zoom and pan
 
 ### Workflow
 - [ ] Build automatic generation of Workflow diagrams showing how workflows operate
