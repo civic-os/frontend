@@ -74,19 +74,18 @@ export class EditPropertyComponent {
     }
 
     // Load User options
-    // Fetch both public and private display names (private only visible if user has permission)
+    // Fetch both public and private display names (full_name only visible if user has permission)
     if(this.propType() == EntityPropertyType.User) {
       this.selectOptions$ = this.data.getData({
         key: 'civic_os_users',
-        fields: ['id', 'display_name', 'private:civic_os_users_private(display_name,phone,email)'],
+        fields: ['id', 'display_name', 'full_name', 'phone', 'email'],
         orderField: 'display_name',
         orderDirection: 'asc'
       })
       .pipe(map(data => {
         return data.map(d => {
-          // Prefer private display name (full name) if available, otherwise use public (shortened)
-          // Using bracket notation because 'private' is a dynamic property not in EntityData interface
-          const displayName = (d as any)['private']?.display_name || d.display_name;
+          // Prefer full_name if available (authorized), otherwise use display_name (public)
+          const displayName = (d as any).full_name || d.display_name;
           return {
             id: d.id,
             text: displayName,

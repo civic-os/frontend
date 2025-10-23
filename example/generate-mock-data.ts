@@ -103,7 +103,7 @@ const DEFAULT_CONFIG: MockDataConfig = {
   excludeTables: ['civic_os_users', 'civic_os_users_private', 'IssueStatus', 'WorkPackageStatus'],
   outputFormat: 'insert',
   outputPath: './init-scripts/05_mock_data.sql.deprecated',
-  generateUsers: false,
+  generateUsers: true,  // Generate users by default so FK references work
   userCount: 10,
 };
 
@@ -225,15 +225,56 @@ class MockDataGenerator {
   private async getExistingRecords(tableName: string): Promise<any[]> {
     if (!this.client) throw new Error('Database not connected');
 
-    const result = await this.client.query(`SELECT * FROM public."${tableName}"`);
+    // Use metadata schema for civic_os_users tables, public for everything else
+    const schema = (tableName === 'civic_os_users' || tableName === 'civic_os_users_private') ? 'metadata' : 'public';
+    const result = await this.client.query(`SELECT * FROM ${schema}."${tableName}"`);
     return result.rows;
   }
 
   private async getUserIds(): Promise<string[]> {
     if (!this.client) throw new Error('Database not connected');
 
-    const result = await this.client.query('SELECT id FROM public.civic_os_users');
+    const result = await this.client.query('SELECT id FROM metadata.civic_os_users');
     return result.rows.map(row => row.id);
+  }
+
+  /**
+   * Truncate all tables to ensure clean data generation
+   * Truncates in reverse dependency order to handle foreign keys
+   */
+  private async truncateAllTables(): Promise<void> {
+    if (!this.client) throw new Error('Database not connected');
+
+    console.log('Truncating existing data...\n');
+
+    // Get all table names in reverse dependency order
+    const sortedEntities = this.sortEntitiesByDependency().reverse();
+
+    for (const entity of sortedEntities) {
+      if (this.config.excludeTables?.includes(entity.table_name)) {
+        continue;
+      }
+
+      try {
+        await this.client.query(`TRUNCATE TABLE public."${entity.table_name}" CASCADE`);
+        console.log(`  Truncated ${entity.table_name}`);
+      } catch (err: any) {
+        console.warn(`  Warning: Could not truncate ${entity.table_name}: ${err.message}`);
+      }
+    }
+
+    // Truncate user tables if we're regenerating them
+    if (this.config.generateUsers) {
+      try {
+        await this.client.query(`TRUNCATE TABLE metadata.civic_os_users CASCADE`);
+        await this.client.query(`TRUNCATE TABLE metadata.civic_os_users_private CASCADE`);
+        console.log(`  Truncated civic_os_users tables`);
+      } catch (err: any) {
+        console.warn(`  Warning: Could not truncate user tables: ${err.message}`);
+      }
+    }
+
+    console.log('');
   }
 
   /**
@@ -681,6 +722,11 @@ class MockDataGenerator {
   async generate() {
     console.log('Starting mock data generation...\n');
 
+    // Truncate existing data if in insert mode
+    if (this.config.outputFormat === 'insert' && this.client) {
+      await this.truncateAllTables();
+    }
+
     // Generate mock users if enabled
     let userIds: string[] = [];
     if (this.config.generateUsers) {
@@ -856,6 +902,18 @@ class MockDataGenerator {
       // Generate SQL INSERT statements
       if (records.length > 0) {
         this.generateInsertSQL(tableName, records);
+
+        // If in insert mode, insert immediately and fetch actual IDs
+        // This ensures subsequent FK references use real database IDs
+        if (this.config.outputFormat === 'insert' && this.client) {
+          const lastSql = this.sqlStatements[this.sqlStatements.length - 1];
+          await this.client.query(lastSql);
+          console.log(`  Inserted ${tableName}, fetching actual IDs...`);
+
+          // Fetch actual records with database-generated IDs
+          const actualRecords = await this.getExistingRecords(tableName);
+          this.generatedData.set(tableName, actualRecords);
+        }
       }
     }
 
@@ -904,7 +962,9 @@ class MockDataGenerator {
       return `  (${valueList.join(', ')})`;
     });
 
-    const sql = `-- Insert mock data for ${tableName}\nINSERT INTO "public"."${tableName}" (${columnList}) VALUES\n${values.join(',\n')};\n`;
+    // Use metadata schema for civic_os_users tables, public for everything else
+    const schema = (tableName === 'civic_os_users' || tableName === 'civic_os_users_private') ? 'metadata' : 'public';
+    const sql = `-- Insert mock data for ${tableName}\nINSERT INTO "${schema}"."${tableName}" (${columnList}) VALUES\n${values.join(',\n')};\n`;
     this.sqlStatements.push(sql);
   }
 
@@ -937,17 +997,29 @@ class MockDataGenerator {
   async insertDirectly() {
     if (!this.client) throw new Error('Database not connected');
 
+    // When in insert mode, data is already inserted during generation
+    // This method is only used for SQL file output mode
+    if (this.config.outputFormat === 'insert') {
+      console.log('\nData already inserted during generation.');
+      return;
+    }
+
     console.log('\nInserting data directly into database...');
 
     // If users were already inserted, skip them
     let startIndex = 0;
-    if (this.config.generateUsers && this.config.outputFormat === 'insert') {
+    if (this.config.generateUsers) {
       // Skip the first 2 statements (civic_os_users and civic_os_users_private)
       startIndex = 2;
     }
 
     for (let i = startIndex; i < this.sqlStatements.length; i++) {
-      await this.client.query(this.sqlStatements[i]);
+      const sql = this.sqlStatements[i];
+      // Extract table name from INSERT statement for logging
+      const tableMatch = sql.match(/INSERT INTO "(?:public|metadata)"\."([^"]+)"/);
+      const tableName = tableMatch ? tableMatch[1] : `statement ${i}`;
+      console.log(`  Inserting into ${tableName}...`);
+      await this.client.query(sql);
     }
 
     console.log('Data inserted successfully!');

@@ -14,7 +14,7 @@ CREATE TABLE "public"."TABLE_NAME" (
 	-- Example:
 	-- "description" TEXT,
 	-- "status" BIGINT,
-	-- "owner" UUID REFERENCES public.civic_os_users(id),
+	-- "owner" UUID REFERENCES metadata.civic_os_users(id),
 	CONSTRAINT "TABLE_NAME_pkey" PRIMARY KEY ("id")
 );
 

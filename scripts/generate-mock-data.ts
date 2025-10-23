@@ -241,14 +241,16 @@ class MockDataGenerator {
   private async getExistingRecords(tableName: string): Promise<any[]> {
     if (!this.client) throw new Error('Database not connected');
 
-    const result = await this.client.query(`SELECT * FROM public."${tableName}"`);
+    // Use metadata schema for civic_os_users tables, public for everything else
+    const schema = (tableName === 'civic_os_users' || tableName === 'civic_os_users_private') ? 'metadata' : 'public';
+    const result = await this.client.query(`SELECT * FROM ${schema}."${tableName}"`);
     return result.rows;
   }
 
   private async getUserIds(): Promise<string[]> {
     if (!this.client) throw new Error('Database not connected');
 
-    const result = await this.client.query('SELECT id FROM public.civic_os_users');
+    const result = await this.client.query('SELECT id FROM metadata.civic_os_users');
     return result.rows.map(row => row.id);
   }
 
@@ -875,7 +877,9 @@ class MockDataGenerator {
       return `  (${valueList.join(', ')})`;
     });
 
-    const sql = `-- Insert mock data for ${tableName}\nINSERT INTO "public"."${tableName}" (${columnList}) VALUES\n${values.join(',\n')};\n`;
+    // Use metadata schema for civic_os_users tables, public for everything else
+    const schema = (tableName === 'civic_os_users' || tableName === 'civic_os_users_private') ? 'metadata' : 'public';
+    const sql = `-- Insert mock data for ${tableName}\nINSERT INTO "${schema}"."${tableName}" (${columnList}) VALUES\n${values.join(',\n')};\n`;
     this.sqlStatements.push(sql);
   }
 

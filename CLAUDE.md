@@ -32,7 +32,10 @@ Civic OS is a meta-application framework that automatically generates CRUD (Crea
 
 The `EntityPropertyType` enum maps PostgreSQL types to UI components:
 - `ForeignKeyName`: Integer/UUID with `join_column` → Dropdown with related entity's display_name
-- `User`: UUID with `join_table = 'civic_os_users'` → User display component
+- `User`: UUID with `join_table = 'civic_os_users'` → User display component with unified view access
+  - **Unified View Architecture**: The `civic_os_users` view in `public` schema combines data from `metadata.civic_os_users` (public profile) and `metadata.civic_os_users_private` (private contact info)
+  - **API Response**: `{id, display_name, full_name, phone, email}` where private fields (`full_name`, `phone`, `email`) are NULL unless user views own record or has `civic_os_users_private:read` permission
+  - **Storage**: Actual tables reside in `metadata` schema for namespace organization; view provides backward-compatible API surface
 - `DateTime`, `DateTimeLocal`, `Date`: Timestamp types → Date/time inputs
 - `Boolean`: `bool` → Checkbox
 - `Money`: `money` → Currency input (ngx-currency)
@@ -140,11 +143,13 @@ ng generate component pages/page-name --type=page  # Use "page" suffix by conven
 
 **Mock Data Generation:**
 ```bash
-# Generate and insert mock data directly to database (RECOMMENDED)
-set -a && source example/.env && set +a && npm run generate:mock
+# For the Pot Hole example project:
+set -a && source example/.env && set +a && npm run generate:mock:example
+set -a && source example/.env && set +a && npm run generate:mock:example:sql  # SQL file only
 
-# Or generate SQL file (legacy, use only for reference)
-set -a && source example/.env && set +a && npm run generate:mock -- --sql
+# For the Broader Impacts (UMFlint) project:
+set -a && source broader-impacts/.env && set +a && npm run generate:mock:bi
+set -a && source broader-impacts/.env && set +a && npm run generate:mock:bi:sql  # SQL file only
 ```
 
 The mock data generator is **validation-aware**: it fetches validation rules from `metadata.validations` and generates compliant data (respects min/max, minLength/maxLength, pattern constraints). Configure `scripts/mock-data-config.json` to control record counts and geography bounds. See `scripts/README.md` for details.

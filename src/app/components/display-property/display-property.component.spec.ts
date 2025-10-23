@@ -217,12 +217,10 @@ describe('DisplayPropertyComponent', () => {
     it('should render user with private information', () => {
       fixture.componentRef.setInput('property', MOCK_PROPERTIES.user);
       fixture.componentRef.setInput('datum', {
-        display_name: 'John Doe',
-        private: {
-          display_name: 'John Doe',
-          email: 'john@example.com',
-          phone: '555-1234'
-        }
+        display_name: 'John D.',  // Public shortened name
+        full_name: 'John Doe',    // Private full name (visible if authorized)
+        email: 'john@example.com',
+        phone: '555-1234'
       });
       fixture.detectChanges();
 

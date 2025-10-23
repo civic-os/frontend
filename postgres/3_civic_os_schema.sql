@@ -1,26 +1,32 @@
 -- =====================================================
--- Civic OS User Tables
+-- Metadata Schema (Create First)
+-- =====================================================
+
+CREATE SCHEMA IF NOT EXISTS metadata;
+
+-- =====================================================
+-- Civic OS User Tables (Metadata Schema)
 -- =====================================================
 
 -- Public user information
-CREATE TABLE public.civic_os_users (
+CREATE TABLE metadata.civic_os_users (
   id UUID PRIMARY KEY,
   display_name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE public.civic_os_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE metadata.civic_os_users ENABLE ROW LEVEL SECURITY;
 
 -- Everyone can read public user info
 CREATE POLICY "Everyone can read users"
-  ON public.civic_os_users
+  ON metadata.civic_os_users
   FOR SELECT
   TO PUBLIC
   USING (true);
 
 -- Private user information
-CREATE TABLE public.civic_os_users_private (
+CREATE TABLE metadata.civic_os_users_private (
   id UUID PRIMARY KEY,
   display_name TEXT NOT NULL,
   phone VARCHAR(255),
@@ -28,29 +34,29 @@ CREATE TABLE public.civic_os_users_private (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT civic_os_users_private_user_id FOREIGN KEY (id)
-    REFERENCES public.civic_os_users (id)
+    REFERENCES metadata.civic_os_users (id)
     ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
-ALTER TABLE public.civic_os_users_private ENABLE ROW LEVEL SECURITY;
+ALTER TABLE metadata.civic_os_users_private ENABLE ROW LEVEL SECURITY;
 
 -- Anonymous users see no private data (prevents permission errors on LEFT JOINs)
 CREATE POLICY "Anonymous users see no private data"
-  ON public.civic_os_users_private
+  ON metadata.civic_os_users_private
   FOR SELECT
   TO web_anon
   USING (false);
 
 -- Users can only read their own private info
 CREATE POLICY "Users can read own private info"
-  ON public.civic_os_users_private
+  ON metadata.civic_os_users_private
   FOR SELECT
   TO authenticated
   USING (id = public.current_user_id());
 
 -- Permitted roles (editor, admin, etc.) can see all private data
 CREATE POLICY "Permitted roles see all private data"
-  ON public.civic_os_users_private
+  ON metadata.civic_os_users_private
   FOR SELECT
   TO authenticated
   USING (public.has_permission('civic_os_users_private', 'read'));
@@ -123,6 +129,46 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- =====================================================
+-- Unified User View (Public API Surface)
+-- =====================================================
+
+-- Combines civic_os_users and civic_os_users_private into a single view
+-- Private fields (full_name, phone, email) are NULL unless user has access
+-- Access rules: view own data OR have 'civic_os_users_private:read' permission
+CREATE VIEW public.civic_os_users AS
+SELECT
+  u.id,
+  u.display_name,                     -- Public shortened name ("John D.")
+  u.created_at,
+  u.updated_at,
+  -- Private fields: visible only to self or authorized roles
+  CASE
+    WHEN u.id = public.current_user_id()
+         OR public.has_permission('civic_os_users_private', 'read')
+    THEN p.display_name
+    ELSE NULL
+  END AS full_name,                   -- Private full name ("John Doe")
+  CASE
+    WHEN u.id = public.current_user_id()
+         OR public.has_permission('civic_os_users_private', 'read')
+    THEN p.email
+    ELSE NULL
+  END AS email,
+  CASE
+    WHEN u.id = public.current_user_id()
+         OR public.has_permission('civic_os_users_private', 'read')
+    THEN p.phone
+    ELSE NULL
+  END AS phone
+FROM metadata.civic_os_users u
+LEFT JOIN metadata.civic_os_users_private p ON p.id = u.id;
+
+-- Security invoker ensures permission checks use caller's role
+ALTER VIEW public.civic_os_users SET (security_invoker = true);
+
+GRANT SELECT ON public.civic_os_users TO web_anon, authenticated;
+
+-- =====================================================
 -- User Refresh Function
 -- =====================================================
 
@@ -130,12 +176,12 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- Automatically creates/updates user records from authentication token
 -- Can be called via PostgREST: POST /rpc/refresh_current_user
 CREATE OR REPLACE FUNCTION public.refresh_current_user()
-RETURNS public.civic_os_users AS $$
+RETURNS metadata.civic_os_users AS $$
 DECLARE
   v_user_id UUID;
   v_display_name TEXT;
   v_email TEXT;
-  v_result public.civic_os_users;
+  v_result metadata.civic_os_users;
 BEGIN
   -- Get claims from JWT
   v_user_id := public.current_user_id();
@@ -153,14 +199,14 @@ BEGIN
 
   -- Upsert into civic_os_users (public profile)
   -- Store shortened name (e.g., "John D.") for privacy
-  INSERT INTO public.civic_os_users (id, display_name, created_at, updated_at)
+  INSERT INTO metadata.civic_os_users (id, display_name, created_at, updated_at)
   VALUES (v_user_id, public.format_public_display_name(v_display_name), NOW(), NOW())
   ON CONFLICT (id) DO UPDATE
     SET display_name = EXCLUDED.display_name,
         updated_at = NOW();
 
   -- Upsert into civic_os_users_private (private profile)
-  INSERT INTO public.civic_os_users_private (id, display_name, email, created_at, updated_at)
+  INSERT INTO metadata.civic_os_users_private (id, display_name, email, created_at, updated_at)
   VALUES (v_user_id, v_display_name, v_email, NOW(), NOW())
   ON CONFLICT (id) DO UPDATE
     SET display_name = EXCLUDED.display_name,
@@ -169,7 +215,7 @@ BEGIN
 
   -- Return the public user record
   SELECT * INTO v_result
-  FROM public.civic_os_users
+  FROM metadata.civic_os_users
   WHERE id = v_user_id;
 
   RETURN v_result;
@@ -205,10 +251,8 @@ CREATE DOMAIN phone_number AS VARCHAR(10)
 COMMENT ON DOMAIN phone_number IS 'US phone number as 10 digits (e.g., 5551234567)';
 
 -- =====================================================
--- Metadata Schema (Civic OS Core)
+-- Metadata Tables (Entity/Property Configuration)
 -- =====================================================
-
-CREATE SCHEMA IF NOT EXISTS metadata;
 
 -- Entity metadata table
 CREATE TABLE metadata.entities (
@@ -417,7 +461,6 @@ FROM information_schema.tables
 LEFT JOIN metadata.entities ON entities.table_name = tables.table_name::name
 WHERE tables.table_schema::name = 'public'::name
   AND tables.table_type::text = 'BASE TABLE'::text
-  AND tables.table_name::name <> ALL (ARRAY['civic_os_users'::name, 'civic_os_users_private'::name])
 ORDER BY COALESCE(entities.sort_order, 0), tables.table_name;
 
 ALTER VIEW public.schema_entities SET (security_invoker = true);
@@ -592,22 +635,22 @@ $$ LANGUAGE plpgsql;
 
 -- Apply triggers to user tables
 CREATE TRIGGER set_created_at_trigger
-  BEFORE INSERT ON public.civic_os_users
+  BEFORE INSERT ON metadata.civic_os_users
   FOR EACH ROW
   EXECUTE FUNCTION public.set_created_at();
 
 CREATE TRIGGER set_updated_at_trigger
-  BEFORE INSERT OR UPDATE ON public.civic_os_users
+  BEFORE INSERT OR UPDATE ON metadata.civic_os_users
   FOR EACH ROW
   EXECUTE FUNCTION public.set_updated_at();
 
 CREATE TRIGGER set_created_at_trigger
-  BEFORE INSERT ON public.civic_os_users_private
+  BEFORE INSERT ON metadata.civic_os_users_private
   FOR EACH ROW
   EXECUTE FUNCTION public.set_created_at();
 
 CREATE TRIGGER set_updated_at_trigger
-  BEFORE INSERT OR UPDATE ON public.civic_os_users_private
+  BEFORE INSERT OR UPDATE ON metadata.civic_os_users_private
   FOR EACH ROW
   EXECUTE FUNCTION public.set_updated_at();
 
@@ -788,8 +831,14 @@ GRANT EXECUTE ON FUNCTION public.update_property_sort_order(NAME, NAME, INT) TO 
 -- =====================================================
 
 GRANT USAGE ON SCHEMA public TO web_anon, authenticated;
-GRANT SELECT ON public.civic_os_users TO web_anon, authenticated;
-GRANT SELECT ON public.civic_os_users_private TO web_anon, authenticated;
+
+-- Grant access to metadata user tables
+-- web_anon needs SELECT for the public view to work (security_invoker = true)
+GRANT SELECT ON metadata.civic_os_users TO web_anon, authenticated;
+GRANT SELECT ON metadata.civic_os_users_private TO web_anon, authenticated;
+-- Only authenticated users can modify user data
+GRANT INSERT, UPDATE ON metadata.civic_os_users TO authenticated;
+GRANT INSERT, UPDATE ON metadata.civic_os_users_private TO authenticated;
 
 -- Notify PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

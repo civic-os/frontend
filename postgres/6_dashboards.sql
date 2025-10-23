@@ -37,7 +37,7 @@ CREATE TABLE metadata.dashboards (
   is_default BOOLEAN DEFAULT FALSE,  -- System default dashboard
   is_public BOOLEAN DEFAULT TRUE,    -- Visible to all users
   sort_order INT DEFAULT 0,
-  created_by UUID REFERENCES civic_os_users(id),
+  created_by UUID REFERENCES metadata.civic_os_users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -193,7 +193,7 @@ GRANT USAGE, SELECT ON SEQUENCE metadata.dashboard_widgets_id_seq TO authenticat
 -- User Dashboard Preferences (Schema - Phase 3 functionality)
 -- =====================================================
 CREATE TABLE metadata.user_dashboard_preferences (
-  user_id UUID PRIMARY KEY REFERENCES civic_os_users(id) ON DELETE CASCADE,
+  user_id UUID PRIMARY KEY REFERENCES metadata.civic_os_users(id) ON DELETE CASCADE,
   default_dashboard_id INT REFERENCES metadata.dashboards(id) ON DELETE SET NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

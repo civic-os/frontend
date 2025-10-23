@@ -63,10 +63,10 @@
     }
     @if (propType() == EntityPropertyType.User) {
       <div class="break-words">
-        @if (datum()?.private) {
-          {{ datum().private.display_name }} ({{ datum().private.email }})
+        @if (datum()?.full_name) {
+          {{ datum().full_name }} ({{ datum().email }})
         }
-        @if (datum() && !datum().private) {
+        @if (datum() && !datum().full_name) {
           {{ datum().display_name }}
         }
       </div>

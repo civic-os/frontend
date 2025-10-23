@@ -111,7 +111,7 @@ ALTER TABLE "public"."WorkPackageStatus" ADD CONSTRAINT "WorkPackageStatus_pkey"
 
 -- Add foreign key constraints
 ALTER TABLE "public"."Bid" ADD CONSTRAINT "Bid_owner_fkey"
-  FOREIGN KEY (owner) REFERENCES public.civic_os_users(id) NOT VALID;
+  FOREIGN KEY (owner) REFERENCES metadata.civic_os_users(id) NOT VALID;
 ALTER TABLE "public"."Bid" VALIDATE CONSTRAINT "Bid_owner_fkey";
 
 ALTER TABLE "public"."Bid" ADD CONSTRAINT "Bid_work_package_fkey"
@@ -119,7 +119,7 @@ ALTER TABLE "public"."Bid" ADD CONSTRAINT "Bid_work_package_fkey"
 ALTER TABLE "public"."Bid" VALIDATE CONSTRAINT "Bid_work_package_fkey";
 
 ALTER TABLE "public"."Issue" ADD CONSTRAINT "Issue_created_user_fkey"
-  FOREIGN KEY (created_user) REFERENCES public.civic_os_users(id) NOT VALID;
+  FOREIGN KEY (created_user) REFERENCES metadata.civic_os_users(id) NOT VALID;
 ALTER TABLE "public"."Issue" VALIDATE CONSTRAINT "Issue_created_user_fkey";
 
 ALTER TABLE "public"."Issue" ADD CONSTRAINT "Issue_status_fkey"
@@ -134,7 +134,7 @@ ALTER TABLE "public"."IssueStatus" ADD CONSTRAINT "IssueStatus_display_name_key"
   UNIQUE USING INDEX "IssueStatus_display_name_key";
 
 ALTER TABLE "public"."WorkDetail" ADD CONSTRAINT "WorkDetail_added_by_fkey"
-  FOREIGN KEY (added_by) REFERENCES public.civic_os_users(id) NOT VALID;
+  FOREIGN KEY (added_by) REFERENCES metadata.civic_os_users(id) NOT VALID;
 ALTER TABLE "public"."WorkDetail" VALIDATE CONSTRAINT "WorkDetail_added_by_fkey";
 
 ALTER TABLE "public"."WorkDetail" ADD CONSTRAINT "WorkDetail_issue_fkey"

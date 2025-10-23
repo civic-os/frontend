@@ -283,7 +283,7 @@ describe('SchemaService', () => {
 
     it('should build special select for User type', () => {
       const result = SchemaService.propertyToSelectString(MOCK_PROPERTIES.user);
-      expect(result).toBe('assigned_to:civic_os_users!assigned_to(id,display_name,private:civic_os_users_private(display_name,phone,email))');
+      expect(result).toBe('assigned_to:civic_os_users!assigned_to(id,display_name,full_name,phone,email)');
     });
 
     it('should build computed field select for GeoPoint', () => {
