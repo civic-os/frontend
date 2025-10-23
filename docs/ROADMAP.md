@@ -18,6 +18,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] Add File/Image data types (Priority 1: Unlocks many use cases)
 - [x] Live update page as Schema is updated
 - [x] Add Color PropertyType
+- [ ] Configurable Entity Menu (Nesting, Hiding, Singular/Plural names)
 
 - [ ] Prevent duplicate/cancelled dropdown queries (not changed)
 
@@ -54,10 +55,13 @@ This document outlines the development roadmap for Civic OS, organized by phases
 
 ### General
 - [ ] ADA/WCAG Compatibility
-- [ ] SOC II Compliance
 - [ ] Allow Angular app to be configured at container runtime (for flexible deployments)
 - [ ] Save selected Theme in localstorage and use on reload
 - [ ] Allow user profile editing (through keycloak?)
+- [ ] App and Database update deployments
+- [ ] Automatically assign new users the "user" role
+- [ ] Title updates (configure base from Angular Runtime)
+- [ ] Application Logging from frontend and pattern for SQL logging
 
 ## Phase 2: Introspection Tools
 
@@ -72,6 +76,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
   - [ ] Grouped on ERD
   - [ ] Multi-step create forms
 - [ ] ERD zoom and pan
+- [ ] Use postgres Schemas to builder larger, modular apps
 
 ### Workflow
 - [ ] Build automatic generation of Workflow diagrams showing how workflows operate
@@ -87,6 +92,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 ### Schema
 - [ ] Build GUI editor for Entity Relationship Diagrams
 - [ ] Allow creating new columns on an existing entity
+- [ ] Allow creation/modification of text search columns
 
 ### Workflow
 - [ ] Build GUI editor for Workflow diagrams showing how workflows operate

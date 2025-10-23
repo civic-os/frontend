@@ -184,6 +184,74 @@ Contributions are welcome! Please ensure:
 - Tests pass (`npm test`)
 - Commit messages are clear and concise
 
+## Built With
+
+Civic OS stands on the shoulders of giants. We're grateful to the following open source projects that make this framework possible:
+
+### Core Infrastructure
+
+- **[PostgreSQL](https://www.postgresql.org/)** - Powerful open source relational database
+- **[PostgREST](https://postgrest.org/)** - Automatic REST API from PostgreSQL schemas
+- **[PostGIS](https://postgis.net/)** - Spatial database extension for PostgreSQL
+- **[Docker](https://www.docker.com/)** - Containerization platform
+- **[nginx](https://nginx.org/)** - High-performance web server and reverse proxy
+
+### Frontend Framework
+
+- **[Angular](https://angular.dev/)** - Modern web application framework with signals and reactive patterns
+- **[TypeScript](https://www.typescriptlang.org/)** - Strongly typed programming language built on JavaScript
+- **[RxJS](https://rxjs.dev/)** - Reactive extensions library for composing asynchronous and event-based programs
+- **[Angular CLI](https://angular.dev/tools/cli)** - Command-line interface for Angular development
+
+### Authentication & Security
+
+- **[Keycloak](https://www.keycloak.org/)** - Open source identity and access management
+- **[keycloak-angular](https://github.com/mauriciovigolo/keycloak-angular)** - Angular adapter for Keycloak
+- **[keycloak-js](https://www.keycloak.org/docs/latest/securing_apps/#_javascript_adapter)** - Official Keycloak JavaScript adapter
+
+### UI & Styling
+
+- **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first CSS framework
+- **[DaisyUI](https://daisyui.com/)** - Component library for Tailwind CSS with theming support
+- **[@tailwindcss/typography](https://github.com/tailwindlabs/tailwindcss-typography)** - Beautiful typographic defaults for Tailwind
+
+### Maps & Geospatial
+
+- **[Leaflet](https://leafletjs.com/)** - Open source JavaScript library for mobile-friendly interactive maps
+
+### Forms & Input Components
+
+- **[Angular CDK](https://material.angular.io/cdk/categories)** - Component Dev Kit for advanced UI patterns
+- **[ngx-currency](https://github.com/nbfontana/ngx-currency)** - Currency input masking for Angular
+- **[ngx-mask](https://github.com/JsDaddy/ngx-mask)** - Input masking library for Angular
+- **[@texel/color](https://github.com/texel-org/color)** - Color manipulation library
+
+### Documentation & Visualization
+
+- **[Mermaid](https://mermaid.js.org/)** - Diagramming and charting tool using markdown-like syntax
+- **[ngx-markdown](https://github.com/jfcere/ngx-markdown)** - Angular markdown component with Mermaid support
+
+### Data Processing
+
+- **[SheetJS (xlsx)](https://sheetjs.com/)** - Spreadsheet data parser and writer
+- **[pg](https://node-postgres.com/)** - PostgreSQL client for Node.js
+
+### Development & Testing
+
+- **[Karma](https://karma-runner.github.io/)** - Test runner for JavaScript
+- **[Jasmine](https://jasmine.github.io/)** - Behavior-driven testing framework
+- **[ts-node](https://typestrong.org/ts-node/)** - TypeScript execution engine for Node.js
+- **[@faker-js/faker](https://fakerjs.dev/)** - Modern fake data generator for JavaScript
+- **[karma-chrome-launcher](https://github.com/karma-runner/karma-chrome-launcher)** - Launcher for Chrome and Chromium browsers
+- **[karma-coverage](https://github.com/karma-runner/karma-coverage)** - Code coverage plugin for Karma
+- **[karma-jasmine](https://github.com/karma-runner/karma-jasmine)** - Jasmine adapter for Karma
+- **[karma-jasmine-html-reporter](https://github.com/dfederm/karma-jasmine-html-reporter)** - Reporter that shows test results in browser
+
+### Node.js Ecosystem
+
+- **[Node.js](https://nodejs.org/)** - JavaScript runtime built on Chrome's V8 engine
+- **[npm](https://www.npmjs.com/)** - Package manager for JavaScript
+
 ## License
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
