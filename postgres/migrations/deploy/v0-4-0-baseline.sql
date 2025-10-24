@@ -47,10 +47,14 @@ NOTIFY pgrst, 'reload schema';
 -- =====================================================
 -- PREREQUISITES: Before running migrations, create the authenticator role manually:
 --
---   CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';
+--   DO $$ BEGIN
+--     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN
+--       CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';
+--     END IF;
+--   END $$;
 --
--- The migration will create web_anon and authenticated roles (using IF NOT EXISTS
--- for multi-tenant compatibility where multiple schemas share these roles).
+-- The migration will create web_anon and authenticated roles (checking for existence
+-- first for multi-tenant compatibility where multiple schemas share these roles).
 --
 -- For development setup: see example/init-scripts/00_create_authenticator.sh
 -- For production setup: see docs/deployment/PRODUCTION.md
@@ -59,9 +63,17 @@ NOTIFY pgrst, 'reload schema';
 -- PostgREST Role Setup
 -- =====================================================
 
--- Create PostgREST roles
-CREATE ROLE IF NOT EXISTS web_anon NOLOGIN;
-CREATE ROLE IF NOT EXISTS authenticated NOLOGIN;
+-- Create PostgREST roles (with multi-tenant support)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'web_anon') THEN
+    CREATE ROLE web_anon NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN;
+  END IF;
+END
+$$;
 
 -- Grant role switching to authenticator
 GRANT web_anon TO authenticator;

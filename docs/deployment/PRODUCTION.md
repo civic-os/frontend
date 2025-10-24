@@ -62,7 +62,11 @@ Before deploying Civic OS, the PostgreSQL database must have the `authenticator`
 psql postgres://superuser:password@db.example.com:5432/postgres
 
 # Create the authenticator role (required once per cluster)
-CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';
+  END IF;
+END $$;
 
 # Grant connection to your application database
 GRANT CONNECT ON DATABASE civic_os_prod TO authenticator;

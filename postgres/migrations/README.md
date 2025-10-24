@@ -45,7 +45,7 @@ The example docker-compose setup automatically creates the authenticator role vi
 
 **Production (manual):**
 ```bash
-psql $DATABASE_URL -c "CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';"
+psql $DATABASE_URL -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password'; END IF; END \$\$;"
 ```
 
 **Important Notes:**
@@ -60,13 +60,17 @@ In multi-tenant setups where multiple Civic OS instances share a PostgreSQL clus
 
 - The `authenticator`, `web_anon`, and `authenticated` roles are **shared** across all tenants
 - Each tenant uses a separate schema (e.g., `tenant1.public`, `tenant2.public`)
-- The v0.4.1+ migrations use `IF NOT EXISTS` to prevent role conflicts
+- The v0.4.1+ migrations check for role existence before creation to prevent conflicts
 - Reverting one tenant's migrations does NOT drop shared roles
 
 **Example multi-tenant setup:**
 ```sql
 -- Create authenticator once (shared)
-CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'shared-password';
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'shared-password';
+  END IF;
+END $$;
 
 -- Run migrations for each tenant
 psql tenant1_db -c "SELECT sqitch.deploy();"
