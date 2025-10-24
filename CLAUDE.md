@@ -158,11 +158,54 @@ The mock data generator is **validation-aware**: it fetches validation rules fro
 
 ## Database Setup
 
-Docker Compose runs PostgreSQL 17 with PostGIS 3.5 and PostgREST locally with Keycloak authentication. Init scripts in `postgres/` directory run in alphabetical order to create PostgREST roles, RBAC functions, Civic OS metadata schema, and dynamic views. See `example/README.md` for complete setup instructions.
+Docker Compose runs PostgreSQL 17 with PostGIS 3.5 and PostgREST locally with Keycloak authentication. The development environment uses **Sqitch migrations** (same as production) to set up the core Civic OS schema, ensuring dev/prod parity.
 
-**Important**: Init scripts only run on first database creation. To apply changes, either recreate the database (`docker-compose down -v && docker-compose up -d`) or apply changes manually (`docker exec postgres_db psql ...`).
+**Migration Flow** (automatic on first `docker-compose up`):
+1. Postgres container builds custom image with Sqitch installed (`docker/dev-postgres/Dockerfile`)
+2. Init script creates authenticator role (`example/init-scripts/00_create_authenticator.sh`)
+3. Init script runs Sqitch migrations to deploy core schema (`postgres/migrations/`)
+4. Example-specific scripts run (pothole tables, permissions, etc.)
 
-**PostGIS**: Installed in dedicated `postgis` schema (not `public`) to keep the public schema clean. Functions accessible via `search_path`. In init scripts, use schema-qualified references: `postgis.geography(Point, 4326)` and `postgis.ST_AsText()`.
+**Important**: Schema changes should be made via migrations (see Database Migrations section below). To apply new migrations, recreate the database (`docker-compose down -v && docker-compose up -d`) or run migrations manually via the migrations container.
+
+**PostGIS**: Installed in dedicated `postgis` schema (not `public`) to keep the public schema clean. Functions accessible via `search_path`. Use schema-qualified references: `postgis.geography(Point, 4326)` and `postgis.ST_AsText()`.
+
+## Database Migrations
+
+Civic OS uses **Sqitch** for versioned database schema migrations in **both development and production**. This ensures dev/prod parity and allows upgrading databases safely as new versions are released.
+
+**Key Concepts:**
+- **Core Objects Only**: Migrations manage `metadata.*` schema and core public objects (RPCs, views, domains). User application tables (`public.issues`, `public.tags`, etc.) are not managed by core migrations.
+- **Version-Based Naming**: Migrations use `vX-Y-Z-note` format (e.g., `v0-4-0-add_tags_table`) to tie schema changes to releases.
+- **Rollback Support**: Every migration has deploy/revert/verify scripts for safe upgrades and rollbacks.
+- **Containerized**: Migration container (`ghcr.io/civic-os/migrations`) is versioned alongside frontend/postgrest for guaranteed compatibility.
+
+**Quick Commands:**
+
+```bash
+# Generate new migration
+./scripts/generate-migration.sh add_feature "Add feature X"
+
+# Test locally
+sqitch deploy dev --verify
+sqitch revert dev --to @HEAD^  # Rollback
+sqitch deploy dev --verify      # Re-deploy
+
+# Deploy to production (using versioned container)
+./scripts/migrate-production.sh v0.4.0 $DATABASE_URL
+```
+
+**Important Notes:**
+- Migrations are **automatically tested** in CI/CD on every push
+- Migration container **version must match** frontend/postgrest versions
+- Generated migrations require **manual enhancement** (add metadata insertions, grants, RLS policies)
+- See `postgres/migrations/README.md` for comprehensive documentation
+
+**When to Create Migrations:**
+- Adding/modifying `metadata.*` tables
+- Adding/updating public RPCs or views
+- Adding custom domains
+- Schema changes that affect UI generation
 
 ## Production Deployment & Containerization
 
@@ -170,7 +213,7 @@ Civic OS provides production-ready Docker containers with runtime configuration 
 
 ### Container Images
 
-Two container images are automatically built and published to GitHub Container Registry on every push to `main`:
+Three container images are automatically built and published to GitHub Container Registry on every push to `main`:
 
 1. **Frontend Container** (`ghcr.io/civic-os/frontend`)
    - Multi-stage build: Angular build + nginx alpine
@@ -181,6 +224,12 @@ Two container images are automatically built and published to GitHub Container R
 2. **PostgREST Container** (`ghcr.io/civic-os/postgrest`)
    - Based on official PostgREST image
    - Automatic JWKS fetching from Keycloak on startup
+   - Multi-architecture support (amd64, arm64)
+
+3. **Migrations Container** (`ghcr.io/civic-os/migrations`)
+   - Sqitch-based database migrations
+   - Runs as init container before PostgREST
+   - Version-locked with frontend/postgrest for schema compatibility
    - Multi-architecture support (amd64, arm64)
 
 ### Version Tagging

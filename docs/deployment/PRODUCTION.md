@@ -14,23 +14,27 @@ This guide covers deploying Civic OS to production environments using Docker con
 4. [Environment Configuration](#environment-configuration)
 5. [Docker Compose Deployment](#docker-compose-deployment)
 6. [Kubernetes Deployment](#kubernetes-deployment)
-7. [SSL/TLS Configuration](#ssltls-configuration)
-8. [Database Backups](#database-backups)
-9. [Monitoring & Logging](#monitoring--logging)
-10. [Security Best Practices](#security-best-practices)
-11. [Troubleshooting](#troubleshooting)
+7. [Database Migrations](#database-migrations)
+8. [SSL/TLS Configuration](#ssltls-configuration)
+9. [Database Backups](#database-backups)
+10. [Monitoring & Logging](#monitoring--logging)
+11. [Security Best Practices](#security-best-practices)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
 
-Civic OS uses a containerized architecture with three main components:
+Civic OS uses a containerized architecture with four main components:
 
 1. **Frontend** - Angular SPA served by nginx
 2. **PostgREST** - REST API layer with JWT authentication
-3. **PostgreSQL** - Database with PostGIS extensions
+3. **Migrations** - Sqitch-based database schema migrations (runs before PostgREST)
+4. **PostgreSQL** - Database with PostGIS extensions
 
 All components are configured via environment variables, enabling the same container images to run across dev, staging, and production environments.
+
+**Version Compatibility**: The migrations container version MUST match the frontend/postgrest versions to ensure schema compatibility with the application.
 
 ---
 
@@ -436,6 +440,179 @@ kubectl apply -f postgrest-deployment.yaml
 kubectl apply -f frontend-deployment.yaml
 kubectl apply -f ingress.yaml
 ```
+
+---
+
+## Database Migrations
+
+Civic OS uses **Sqitch** for database schema migrations. The migration system ensures safe, versioned schema upgrades across environments.
+
+### Migration Container
+
+The migrations container (`ghcr.io/civic-os/migrations`) is automatically run as an init container before PostgREST starts. It applies all pending migrations and verifies the schema.
+
+**Critical**: Migration container version MUST match frontend/postgrest versions:
+```yaml
+services:
+  migrations:
+    image: ghcr.io/civic-os/migrations:v0.4.0
+  postgrest:
+    image: ghcr.io/civic-os/postgrest:v0.4.0
+  frontend:
+    image: ghcr.io/civic-os/frontend:v0.4.0
+```
+
+### Initial Deployment
+
+For first-time deployments, the migration container will set up the complete schema:
+
+```bash
+# Pull versioned images
+docker pull ghcr.io/civic-os/migrations:v0.4.0
+docker pull ghcr.io/civic-os/postgrest:v0.4.0
+docker pull ghcr.io/civic-os/frontend:v0.4.0
+
+# Start database
+docker-compose -f docker-compose.prod.yml up -d postgres
+
+# Run migrations (automatic with docker-compose)
+docker-compose -f docker-compose.prod.yml up migrations
+
+# Start application
+docker-compose -f docker-compose.prod.yml up -d postgrest frontend
+```
+
+### Upgrading to New Version
+
+When upgrading Civic OS to a new version:
+
+```bash
+# 1. Update docker-compose.prod.yml with new version
+# Change VERSION=v0.4.0 to VERSION=v0.5.0 in .env
+
+# 2. Pull new images
+docker-compose -f docker-compose.prod.yml pull
+
+# 3. Run migrations
+docker-compose -f docker-compose.prod.yml up migrations
+
+# 4. Restart application services
+docker-compose -f docker-compose.prod.yml up -d postgrest frontend
+```
+
+### Manual Migration Execution
+
+For manual control or non-Docker Compose deployments:
+
+```bash
+# Deploy migrations
+./scripts/migrate-production.sh v0.5.0 postgres://user:pass@host:5432/civic_os
+
+# Check migration status
+docker run --rm \
+  -e PGRST_DB_URI="postgres://user:pass@host:5432/civic_os" \
+  ghcr.io/civic-os/migrations:v0.5.0 \
+  status
+
+# Run with full verification (recommended for production)
+docker run --rm \
+  -e PGRST_DB_URI="postgres://user:pass@host:5432/civic_os" \
+  -e CIVIC_OS_VERIFY_FULL="true" \
+  ghcr.io/civic-os/migrations:v0.5.0
+```
+
+### Rollback Procedure
+
+If issues arise after upgrading:
+
+```bash
+# 1. Stop application services
+docker-compose -f docker-compose.prod.yml stop postgrest frontend
+
+# 2. Revert database migrations
+docker run --rm \
+  -e PGRST_DB_URI="postgres://user:pass@host:5432/civic_os" \
+  ghcr.io/civic-os/migrations:v0.5.0 \
+  revert --to @HEAD^
+
+# 3. Downgrade container versions in docker-compose.prod.yml
+# Change VERSION=v0.5.0 back to VERSION=v0.4.0
+
+# 4. Restart with old versions
+docker-compose -f docker-compose.prod.yml up -d postgrest frontend
+```
+
+### Kubernetes Migrations
+
+For Kubernetes deployments, use an init container:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: civic-os-api
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: migrations
+          image: ghcr.io/civic-os/migrations:v0.5.0
+          env:
+            - name: PGRST_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: uri
+            - name: CIVIC_OS_VERIFY_FULL
+              value: "true"
+      containers:
+        - name: postgrest
+          image: ghcr.io/civic-os/postgrest:v0.5.0
+          # ... postgrest configuration
+```
+
+### Migration Monitoring
+
+Monitor migration execution in production:
+
+```bash
+# View migration container logs
+docker logs civic_os_migrations
+
+# Check migration status after deployment
+docker run --rm \
+  -e PGRST_DB_URI="..." \
+  ghcr.io/civic-os/migrations:v0.5.0 \
+  status
+
+# View migration history
+docker run --rm \
+  -e PGRST_DB_URI="..." \
+  ghcr.io/civic-os/migrations:v0.5.0 \
+  log
+```
+
+### Troubleshooting Migrations
+
+**Migration Fails:**
+- Check container logs: `docker logs civic_os_migrations`
+- Verify database connectivity and credentials
+- Check if manual schema changes conflict with migrations
+- Review migration SQL files for errors
+
+**Schema Drift Detected:**
+- Compare actual vs expected schema
+- Identify source of manual changes
+- Create new migration to reconcile differences
+
+**Version Mismatch:**
+- Ensure all containers use same version tag
+- Check GitHub Container Registry for available versions
+- Verify `package.json` version matches deployed containers
+
+For comprehensive migration documentation, see:
+- `postgres/migrations/README.md` - Complete migration system guide
+- `docker/migrations/README.md` - Container usage documentation
 
 ---
 

@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: postgis/postgis:17-3.5-alpine
+    build:
+      context: ..
+      dockerfile: docker/dev-postgres/Dockerfile
     platform: linux/amd64
     container_name: broader_impacts_postgres
     ports:
@@ -11,7 +13,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../postgres:/civic-os-core:ro
+      # Mount Sqitch files for migrations
+      - ../sqitch.conf:/civic-os-migrations/sqitch.conf:ro
+      - ../sqitch.plan:/civic-os-migrations/sqitch.plan:ro
+      - ../postgres/migrations:/civic-os-migrations/postgres/migrations:ro
+      # Mount project-specific init scripts
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - postgrest-network

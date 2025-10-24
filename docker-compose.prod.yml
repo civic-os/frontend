@@ -30,6 +30,21 @@ services:
       timeout: 10s
       retries: 5
 
+  # Database Migrations (runs before PostgREST)
+  # This init container applies Sqitch migrations to ensure schema is up-to-date
+  migrations:
+    image: ghcr.io/${GITHUB_ORG:-civic-os}/migrations:${VERSION:-latest}
+    container_name: civic_os_migrations
+    environment:
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CIVIC_OS_VERIFY_FULL: ${CIVIC_OS_VERIFY_FULL:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - civic-os-network
+    restart: on-failure  # Retry if migration fails transiently
+
   # PostgREST API with automatic JWKS fetching
   postgrest:
     image: ghcr.io/${GITHUB_ORG:-civic-os}/postgrest:${VERSION:-latest}
@@ -58,6 +73,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     networks:
       - civic-os-network
 

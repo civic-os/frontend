@@ -1,0 +1,193 @@
+# Copyright (C) 2023-2025 Civic OS, L3C
+# AGPL-3.0-or-later
+
+name: Test Database Migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'postgres/migrations/**'
+      - 'sqitch.plan'
+      - 'sqitch.conf'
+  pull_request:
+    paths:
+      - 'postgres/migrations/**'
+      - 'sqitch.plan'
+      - 'sqitch.conf'
+  workflow_dispatch:
+
+jobs:
+  test-migrations:
+    name: Test Sqitch Migrations
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: civic_os_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Sqitch and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libdbd-pg-perl \
+            libmodule-build-perl \
+            postgresql-client \
+            cpanminus
+
+          # Install Sqitch
+          sudo cpanm --notest App::Sqitch
+
+      - name: Verify Sqitch installation
+        run: sqitch --version
+
+      - name: Test migration deployment
+        run: |
+          sqitch deploy db:pg://postgres:postgres@localhost:5432/civic_os_test --verify
+        env:
+          PGPASSWORD: postgres
+
+      - name: Show migration status
+        run: |
+          sqitch status db:pg://postgres:postgres@localhost:5432/civic_os_test
+        env:
+          PGPASSWORD: postgres
+
+      - name: Test rollback to previous migration
+        run: |
+          # Get list of migrations
+          MIGRATION_COUNT=$(sqitch plan --format '%n' | wc -l)
+
+          if [ "$MIGRATION_COUNT" -gt 1 ]; then
+            echo "Testing rollback to previous migration"
+            sqitch revert db:pg://postgres:postgres@localhost:5432/civic_os_test --to @HEAD^ -y
+
+            # Show status after revert
+            sqitch status db:pg://postgres:postgres@localhost:5432/civic_os_test
+          else
+            echo "Only one migration found, skipping rollback test"
+          fi
+        env:
+          PGPASSWORD: postgres
+
+      - name: Re-deploy migrations (test idempotency)
+        run: |
+          sqitch deploy db:pg://postgres:postgres@localhost:5432/civic_os_test --verify
+        env:
+          PGPASSWORD: postgres
+
+      - name: Run full schema verification
+        run: |
+          # Get the latest migration name
+          LATEST_MIGRATION=$(sqitch plan --format '%n' | tail -1)
+
+          if [ -n "$LATEST_MIGRATION" ]; then
+            echo "Testing full verification for: $LATEST_MIGRATION"
+
+            # Check if verify-full script exists
+            if [ -f "postgres/migrations/scripts/verify-full.sh" ]; then
+              CIVIC_OS_VERIFY_FULL=true \
+              SQITCH_TARGET="db:pg://postgres:postgres@localhost:5432/civic_os_test" \
+              ./postgres/migrations/scripts/verify-full.sh "$LATEST_MIGRATION"
+            else
+              echo "Full verification script not found, skipping"
+            fi
+          fi
+        env:
+          PGPASSWORD: postgres
+
+      - name: Check for uncommitted schema changes
+        run: |
+          # Export schema and check if it matches expected
+          LATEST_MIGRATION=$(sqitch plan --format '%n' | tail -1)
+
+          if [ -f "postgres/migrations/verify/${LATEST_MIGRATION}.expected.sql" ]; then
+            pg_dump postgres://postgres:postgres@localhost:5432/civic_os_test \
+              --schema-only \
+              --no-owner \
+              --no-privileges \
+              --exclude-schema=information_schema \
+              --exclude-schema=pg_catalog \
+              --exclude-table=spatial_ref_sys \
+              > /tmp/actual_schema.sql
+
+            if diff -u \
+              --ignore-all-space \
+              --ignore-blank-lines \
+              --ignore-matching-lines="^--" \
+              "postgres/migrations/verify/${LATEST_MIGRATION}.expected.sql" \
+              /tmp/actual_schema.sql; then
+              echo "✓ Schema matches expected"
+            else
+              echo "✗ Schema does not match expected"
+              echo "This may indicate uncommitted schema changes or migration issues"
+              exit 1
+            fi
+          fi
+        env:
+          PGPASSWORD: postgres
+
+  test-migration-container:
+    name: Test Migration Container Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build migration container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/migrations/Dockerfile
+          push: false
+          tags: civic-os-migrations:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test migration container with PostgreSQL
+        run: |
+          # Start PostgreSQL
+          docker run -d \
+            --name test-postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=civic_os_test \
+            --network host \
+            postgis/postgis:17-3.5
+
+          # Wait for PostgreSQL to be ready
+          for i in {1..30}; do
+            if docker exec test-postgres pg_isready -U postgres; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            sleep 1
+          done
+
+          # Run migration container
+          docker run --rm \
+            --network host \
+            -e PGRST_DB_URI="postgres://postgres:postgres@localhost:5432/civic_os_test" \
+            civic-os-migrations:test deploy --verify
+
+          # Cleanup
+          docker stop test-postgres
+          docker rm test-postgres
