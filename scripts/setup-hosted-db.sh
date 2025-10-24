@@ -2,18 +2,29 @@
 set -e
 
 # =====================================================
-# Civic OS - Hosted Database Setup Script
+# Civic OS - Application-Specific Database Setup Script
 # =====================================================
 #
-# This script consolidates all Civic OS core scripts and example-specific
-# scripts into a single deployment package for hosted PostgreSQL databases.
+# This script consolidates example-specific scripts into a single deployment
+# package for hosted PostgreSQL databases.
+#
+# PREREQUISITES:
+#   - Civic OS core schema must be deployed first via Sqitch migrations
+#   - PostgreSQL with PostGIS extension
+#   - Authenticator role must be created
+#
+# To deploy core Civic OS schema:
+#   docker run --rm -e PGRST_DB_URI="your-connection-string" \
+#     ghcr.io/civic-os/migrations:latest deploy
+#
+# After core deployment, run this script to set up application-specific tables.
 #
 # USAGE:
 #   Run this script from any example folder (example/, broader-impacts/, etc.)
 #
 #   Generate consolidated SQL file:
 #     cd example/
-#     ../scripts/setup-hosted-db.sh --output setup.sql
+#     ../scripts/setup-hosted-db.sh --output pothole.sql
 #
 #   Execute directly on hosted database:
 #     cd example/
@@ -21,21 +32,19 @@ set -e
 #     DB_NAME=civic_os_db \
 #     DB_USER=doadmin \
 #     DB_PASSWORD=yourpassword \
-#     AUTHENTICATOR_PASSWORD=authrolepassword \
 #     ../scripts/setup-hosted-db.sh
 #
 # ENVIRONMENT VARIABLES:
-#   DB_HOST                - Database host (e.g., db-postgresql-nyc3-12345.ondigitalocean.com)
-#   DB_PORT                - Database port (default: 5432)
-#   DB_NAME                - Database name (default: defaultdb for DigitalOcean)
-#   DB_USER                - Database user (e.g., doadmin)
-#   DB_PASSWORD            - Database password
-#   AUTHENTICATOR_PASSWORD - Password for PostgREST authenticator role
-#   SSLMODE                - SSL mode (default: require)
+#   DB_HOST    - Database host (e.g., db-postgresql-nyc3-12345.ondigitalocean.com)
+#   DB_PORT    - Database port (default: 5432)
+#   DB_NAME    - Database name (default: defaultdb for DigitalOcean)
+#   DB_USER    - Database user (e.g., doadmin)
+#   DB_PASSWORD - Database password
+#   SSLMODE    - SSL mode (default: require)
 #
 # OPTIONS:
-#   --output FILE          - Generate consolidated SQL file instead of executing
-#   --help                 - Show this help message
+#   --output FILE - Generate consolidated SQL file instead of executing
+#   --help        - Show this help message
 #
 # NOTES:
 #   - Run from an example folder (must have init-scripts/ subdirectory)
@@ -108,15 +117,6 @@ if [ ! -d "init-scripts" ]; then
     exit 1
 fi
 
-# Find project root (directory containing postgres/)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-if [ ! -d "$PROJECT_ROOT/postgres" ]; then
-    error "Could not find postgres/ directory in project root: $PROJECT_ROOT"
-    exit 1
-fi
-
 # Get current example folder name
 EXAMPLE_NAME="$(basename "$(pwd)")"
 info "Detected example: $EXAMPLE_NAME"
@@ -128,19 +128,18 @@ SSLMODE="${SSLMODE:-require}"
 
 # Validate required variables for direct execution
 if [ -z "$OUTPUT_FILE" ]; then
-    if [ -z "$DB_HOST" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$AUTHENTICATOR_PASSWORD" ]; then
+    if [ -z "$DB_HOST" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
         error "Missing required environment variables for direct execution"
         echo ""
         echo "Required variables:"
-        echo "  DB_HOST                - Database host"
-        echo "  DB_USER                - Database user"
-        echo "  DB_PASSWORD            - Database password"
-        echo "  AUTHENTICATOR_PASSWORD - PostgREST authenticator password"
+        echo "  DB_HOST    - Database host"
+        echo "  DB_USER    - Database user"
+        echo "  DB_PASSWORD - Database password"
         echo ""
         echo "Optional variables:"
-        echo "  DB_PORT                - Database port (default: 5432)"
-        echo "  DB_NAME                - Database name (default: defaultdb)"
-        echo "  SSLMODE                - SSL mode (default: require)"
+        echo "  DB_PORT    - Database port (default: 5432)"
+        echo "  DB_NAME    - Database name (default: defaultdb)"
+        echo "  SSLMODE    - SSL mode (default: require)"
         echo ""
         echo "Alternatively, use --output to generate a SQL file"
         exit 1
@@ -154,17 +153,6 @@ if [ -z "$OUTPUT_FILE" ]; then
     fi
 fi
 
-# Function to process SQL file with variable substitution
-process_sql_file() {
-    local file="$1"
-    if [ -z "$AUTHENTICATOR_PASSWORD" ]; then
-        # No substitution needed if generating SQL file without password
-        cat "$file"
-    else
-        # Replace :'authenticator_password' with actual value
-        sed "s/:'authenticator_password'/'${AUTHENTICATOR_PASSWORD}'/g" "$file"
-    fi
-}
 
 # Function to add section header
 add_header() {
@@ -176,15 +164,8 @@ add_header() {
     echo ""
 }
 
-# Collect all SQL files
-info "Collecting SQL files..."
-
-CORE_SCRIPTS=()
-for script in "$PROJECT_ROOT/postgres"/*.sql; do
-    if [ -f "$script" ]; then
-        CORE_SCRIPTS+=("$script")
-    fi
-done
+# Collect application-specific SQL files
+info "Collecting application-specific SQL files..."
 
 EXAMPLE_SCRIPTS=()
 for script in init-scripts/*.sql; do
@@ -196,7 +177,6 @@ for script in init-scripts/*.sql; do
     fi
 done
 
-info "Found ${#CORE_SCRIPTS[@]} core scripts"
 info "Found ${#EXAMPLE_SCRIPTS[@]} example scripts for $EXAMPLE_NAME"
 
 # Generate or execute SQL
@@ -205,32 +185,25 @@ if [ -n "$OUTPUT_FILE" ]; then
     info "Generating consolidated SQL file: $OUTPUT_FILE"
 
     {
-        add_header "CIVIC OS HOSTED DATABASE SETUP"
+        add_header "CIVIC OS APPLICATION: $(echo "$EXAMPLE_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' ' ')"
         echo "-- Generated: $(date)"
         echo "-- Example: $EXAMPLE_NAME"
         echo "-- "
-        echo "-- This file contains all Civic OS core scripts and example-specific scripts"
-        echo "-- in the correct order for deployment to a hosted PostgreSQL database."
+        echo "-- This file contains application-specific tables, permissions, and mock data for the $EXAMPLE_NAME example."
         echo "-- "
-        echo "-- IMPORTANT: Replace 'YOUR_AUTHENTICATOR_PASSWORD' with a secure password"
-        echo "--            before executing this script."
-
-        # Core scripts
-        add_header "CORE CIVIC OS SCRIPTS"
-        for script in "${CORE_SCRIPTS[@]}"; do
-            echo ""
-            echo "-- Source: $(basename "$script")"
-            echo ""
-            if [[ "$(basename "$script")" == "1_postgrest_setup.sql" ]]; then
-                # This file needs password substitution - leave placeholder
-                sed "s/:'authenticator_password'/'YOUR_AUTHENTICATOR_PASSWORD'/g" "$script"
-            else
-                cat "$script"
-            fi
-        done
+        echo "-- PREREQUISITES:"
+        echo "--   1. Civic OS core schema must be deployed first via Sqitch migrations"
+        echo "--   2. PostgreSQL with PostGIS extension"
+        echo "--   3. Authenticator role must be created"
+        echo "--"
+        echo "-- To deploy core Civic OS schema:"
+        echo "--   docker run --rm -e PGRST_DB_URI=\"your-connection-string\" \\"
+        echo "--     ghcr.io/civic-os/migrations:latest deploy"
+        echo "--"
+        echo "-- After core deployment, run this SQL file to set up the $EXAMPLE_NAME application."
 
         # Example scripts
-        add_header "EXAMPLE: $EXAMPLE_NAME"
+        add_header "APPLICATION-SPECIFIC SCRIPTS"
         for script in "${EXAMPLE_SCRIPTS[@]}"; do
             echo ""
             echo "-- Source: $(basename "$script")"
@@ -241,15 +214,14 @@ if [ -n "$OUTPUT_FILE" ]; then
         add_header "SETUP COMPLETE"
         echo "-- Next steps:"
         echo "-- 1. Review this SQL file"
-        echo "-- 2. Replace 'YOUR_AUTHENTICATOR_PASSWORD' with a secure password"
-        echo "-- 3. Execute against your hosted database:"
+        echo "-- 2. Execute against your hosted database:"
         echo "--    psql 'postgresql://user:password@host:port/dbname?sslmode=require' -f $OUTPUT_FILE"
         echo ""
 
     } > "$OUTPUT_FILE"
 
     success "Consolidated SQL generated: $OUTPUT_FILE"
-    info "Review the file and replace 'YOUR_AUTHENTICATOR_PASSWORD' before executing"
+    info "Execute this file after deploying core Civic OS schema via Sqitch"
 
 else
     # Execute directly
@@ -269,13 +241,7 @@ else
     {
         echo "BEGIN;"
 
-        # Core scripts
-        for script in "${CORE_SCRIPTS[@]}"; do
-            info "Executing: $(basename "$script")"
-            process_sql_file "$script"
-        done
-
-        # Example scripts
+        # Application-specific scripts
         for script in "${EXAMPLE_SCRIPTS[@]}"; do
             info "Executing: $(basename "$script")"
             cat "$script"
@@ -285,8 +251,8 @@ else
 
     } | $PSQL_CMD
 
-    success "Database setup complete!"
-    info "All scripts executed successfully in a single transaction"
+    success "Application setup complete!"
+    info "All application scripts executed successfully in a single transaction"
 fi
 
 # Cleanup

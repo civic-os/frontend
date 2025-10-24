@@ -19,6 +19,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormGroup, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { By } from '@angular/platform-browser';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
 import { of } from 'rxjs';
 import { EditPropertyComponent } from './edit-property.component';
 import { DataService } from '../../services/data.service';
@@ -38,6 +39,7 @@ describe('EditPropertyComponent', () => {
       imports: [EditPropertyComponent, ReactiveFormsModule],
       providers: [
         provideZonelessChangeDetection(),
+        provideHttpClient(),
         { provide: DataService, useValue: mockDataService }
       ]
     })

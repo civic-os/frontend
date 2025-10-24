@@ -340,6 +340,15 @@ export class EditPage {
       const value = transformed[prop.column_name];
       if (value === null || value === undefined) return;
 
+      // File types: Extract UUID from file object or uploaded file reference
+      if ([EntityPropertyType.File, EntityPropertyType.FileImage, EntityPropertyType.FilePDF].includes(prop.type)) {
+        if (typeof value === 'object' && value.id) {
+          // Either embedded file object from initial load, or FileReference from upload
+          transformed[prop.column_name] = value.id;
+        }
+        // If it's already a UUID string, leave it as-is
+      }
+
       // DateTime (timestamp without time zone): Add seconds, no timezone conversion
       if (prop.type === EntityPropertyType.DateTime) {
         if (typeof value === 'string') {

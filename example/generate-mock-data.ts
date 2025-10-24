@@ -4,6 +4,12 @@ import { faker } from '@faker-js/faker';
 import { Client } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Interfaces matching the Angular types
 interface SchemaEntityTable {
@@ -1033,7 +1039,7 @@ async function main() {
 
   // Load config if exists
   let userConfig: Partial<MockDataConfig> = {};
-  const configPath = './mock-data-config.json';
+  const configPath = path.join(__dirname, 'mock-data-config.json');
 
   if (fs.existsSync(configPath)) {
     console.log('Loading configuration from mock-data-config.json...\n');

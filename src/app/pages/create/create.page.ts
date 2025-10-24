@@ -64,10 +64,15 @@ export class CreatePage {
   }));
   public properties$: Observable<SchemaEntityProperty[]> = this.entity$.pipe(mergeMap(e => {
     if(e) {
-      // Filter OUT M:M properties - they can only be edited on Detail page after entity is created
+      // Filter OUT M:M and File properties - they can only be edited on Detail/Edit pages after entity is created
       let props = this.schema.getPropsForCreate(e)
         .pipe(
-          map(props => props.filter(p => p.type !== EntityPropertyType.ManyToMany)),
+          map(props => props.filter(p =>
+            p.type !== EntityPropertyType.ManyToMany &&
+            p.type !== EntityPropertyType.File &&
+            p.type !== EntityPropertyType.FileImage &&
+            p.type !== EntityPropertyType.FilePDF
+          )),
           tap(props => {
             this.currentProps = props;
             this.createForm = new FormGroup(
@@ -141,7 +146,7 @@ export class CreatePage {
           // Transform values back to database format before submission
           const transformedData = this.transformValuesForApi(formData);
 
-          // M:M properties are filtered out, so just create the entity directly
+          // M:M and File properties are filtered out, so just create the entity directly
           this.data.createData(this.entityKey, transformedData)
             .subscribe({
               next: (result) => {

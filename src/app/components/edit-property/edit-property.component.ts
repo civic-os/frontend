@@ -15,11 +15,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Component, inject, input, computed, ChangeDetectionStrategy } from '@angular/core';
-import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
+import { Component, inject, input, computed, ChangeDetectionStrategy, signal } from '@angular/core';
+import { SchemaEntityProperty, EntityPropertyType, FileReference } from '../../interfaces/entity';
 
 import { Observable, map } from 'rxjs';
 import { DataService } from '../../services/data.service';
+import { FileUploadService } from '../../services/file-upload.service';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { NgxCurrencyDirective } from 'ngx-currency';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -44,12 +45,21 @@ import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
 })
 export class EditPropertyComponent {
   private data = inject(DataService);
+  private fileUpload = inject(FileUploadService);
 
   prop = input.required<SchemaEntityProperty>({ alias: 'property' });
   form = input.required<FormGroup>({ alias: 'formGroup' });
+  entityType = input<string>('');
+  entityId = input<string>('');
+
   public selectOptions$?: Observable<{id: number, text: string}[]>;
 
   propType = computed(() => this.prop().type);
+
+  // File upload state
+  uploadingFile = signal(false);
+  uploadError = signal<string | null>(null);
+  currentFile = signal<FileReference | null>(null);
 
   public EntityPropertyType = EntityPropertyType;
 
@@ -92,6 +102,31 @@ export class EditPropertyComponent {
           }
         });
       }));
+    }
+
+    // Load existing file reference if this is a file field
+    // This is a one-time load on init, similar to loading FK options above
+    if (this.propType() === EntityPropertyType.File ||
+        this.propType() === EntityPropertyType.FileImage ||
+        this.propType() === EntityPropertyType.FilePDF) {
+      const fileValue = this.form().get(prop.column_name)?.value;
+
+      if (fileValue) {
+        // Check if it's an embedded file object (from edit page load) or UUID string
+        if (typeof fileValue === 'object' && fileValue.id) {
+          // Already have file metadata from initial load
+          this.currentFile.set(fileValue);
+        } else if (typeof fileValue === 'string') {
+          // Have UUID, need to fetch metadata
+          this.fileUpload.getFile(fileValue).then(fileRef => {
+            if (fileRef) {
+              this.currentFile.set(fileRef);
+            }
+          }).catch(err => {
+            console.error('Failed to load file metadata:', err);
+          });
+        }
+      }
     }
 
     // Note: Value transformation for datetime-local and money inputs
@@ -152,5 +187,107 @@ export class EditPropertyComponent {
     }
 
     input.setSelectionRange(newCursorPos, newCursorPos);
+  }
+
+  /**
+   * Handle file selection and upload
+   */
+  async onFileSelected(event: Event, controlName: string): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const prop = this.prop();
+    const allowedTypes = this.getFileTypeValidation();
+    const maxSize = this.getMaxFileSizeValidation();
+
+    // Validate file
+    const validationError = this.fileUpload.validateFile(file, allowedTypes, maxSize);
+    if (validationError) {
+      this.uploadError.set(validationError);
+      input.value = ''; // Clear input
+      return;
+    }
+
+    // Upload file
+    this.uploadError.set(null);
+    this.uploadingFile.set(true);
+
+    try {
+      const fileRef = await this.fileUpload.uploadFile(
+        file,
+        this.entityType(),
+        this.entityId(),
+        true // Wait for thumbnails
+      );
+
+      // Store file reference ID in form control
+      this.form().get(controlName)?.setValue(fileRef.id);
+      this.form().get(controlName)?.markAsDirty();
+      this.currentFile.set(fileRef);
+
+      // Clear the file input so it doesn't show the old filename
+      input.value = '';
+
+    } catch (error: any) {
+      this.uploadError.set(error.message || 'Upload failed');
+      input.value = ''; // Clear input on error
+    } finally {
+      this.uploadingFile.set(false);
+    }
+  }
+
+  /**
+   * Get allowed file types from validation rules
+   */
+  private getFileTypeValidation(): string | undefined {
+    const rule = this.prop().validation_rules?.find(r => r.type === 'fileType');
+    return rule?.value;
+  }
+
+  /**
+   * Get max file size from validation rules (in bytes)
+   */
+  private getMaxFileSizeValidation(): number | undefined {
+    const rule = this.prop().validation_rules?.find(r => r.type === 'maxFileSize');
+    return rule?.value ? parseInt(rule.value, 10) : undefined;
+  }
+
+  /**
+   * Get accept attribute for file input from validation
+   */
+  getFileAccept(): string {
+    const fileType = this.getFileTypeValidation();
+    if (!fileType) return '*/*';
+
+    // Convert MIME type to accept attribute
+    // e.g., 'image/jpeg' → 'image/jpeg'
+    // e.g., 'image/*' → 'image/*'
+    return fileType;
+  }
+
+  /**
+   * Generate S3 URL from key
+   * For development with MinIO: http://localhost:9000/bucket/key
+   * For production with AWS S3: depends on configuration
+   */
+  getS3Url(s3Key: string | undefined): string | null {
+    if (!s3Key) return null;
+
+    // TODO: Make this configurable via environment
+    const s3Endpoint = 'http://localhost:9000';
+    const s3Bucket = 'civic-os-files';
+
+    return `${s3Endpoint}/${s3Bucket}/${s3Key}`;
+  }
+
+  /**
+   * Clear file selection
+   */
+  onClearFile(controlName: string) {
+    this.form().get(controlName)?.setValue(null);
+    this.form().get(controlName)?.markAsDirty();
+    this.currentFile.set(null);
+    this.uploadError.set(null);
   }
 }

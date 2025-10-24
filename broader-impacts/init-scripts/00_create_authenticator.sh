@@ -36,6 +36,10 @@ cd /civic-os-migrations
 # During init, postgres only accepts Unix socket connections
 export SQITCH_TARGET="db:pg:$POSTGRES_DB"
 
+# Initialize Sqitch registry (creates sqitch schema and tables)
+# This prevents ERROR messages on first run
+sqitch init "$SQITCH_TARGET" 2>/dev/null || true
+
 # Run migrations with verification (using Unix socket)
 sqitch deploy --verify "$SQITCH_TARGET"
 

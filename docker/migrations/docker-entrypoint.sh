@@ -49,6 +49,10 @@ echo "Command: sqitch ${SQITCH_COMMAND} ${SQITCH_FLAGS} ${SQITCH_ARGS}"
 echo "Target: ${SQITCH_TARGET%%:*@*}:****@****"  # Mask password in output
 echo ""
 
+# Initialize Sqitch registry if this is a fresh database
+# This prevents ERROR messages about missing "changes" table
+sqitch init "${SQITCH_TARGET}" 2>/dev/null || true
+
 # Run Sqitch
 sqitch ${SQITCH_COMMAND} ${SQITCH_FLAGS} ${SQITCH_ARGS} "${SQITCH_TARGET}"
 

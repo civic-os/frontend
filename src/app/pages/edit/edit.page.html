@@ -30,7 +30,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 2xl:grid-cols-8 gap-6">
               @for (prop of props; track prop) {
                 <div [class]="'col-span-full sm:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 3) + ' lg:col-span-' + Math.min(SchemaService.getColumnSpan(prop), 6) + ' 2xl:col-span-' + SchemaService.getColumnSpan(prop)">
-                  <app-edit-property [property]="prop" [formGroup]="form"></app-edit-property>
+                  <app-edit-property [property]="prop" [formGroup]="form" [entityType]="entityKey!" [entityId]="entityId!"></app-edit-property>
                 </div>
               }
             </div>

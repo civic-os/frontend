@@ -137,6 +137,20 @@ export class SchemaService {
       );
   }
   private getPropertyType(val: SchemaEntityProperty): EntityPropertyType {
+    // File type detection: UUID foreign key to files table
+    if (val.udt_name === 'uuid' && val.join_table === 'files') {
+      // Check fileType validation to determine specific file type
+      const fileTypeValidation = val.validation_rules?.find(v => v.type === 'fileType');
+      if (fileTypeValidation?.value) {
+        if (fileTypeValidation.value.startsWith('image/')) {
+          return EntityPropertyType.FileImage;
+        } else if (fileTypeValidation.value === 'application/pdf') {
+          return EntityPropertyType.FilePDF;
+        }
+      }
+      return EntityPropertyType.File;
+    }
+
     return (['int4', 'int8'].includes(val.udt_name) && val.join_column != null) ? EntityPropertyType.ForeignKeyName :
       (['uuid'].includes(val.udt_name) && val.join_table == 'civic_os_users') ? EntityPropertyType.User :
       (['geography'].includes(val.udt_name) && val.geography_type == 'Point') ? EntityPropertyType.GeoPoint :
@@ -165,6 +179,11 @@ export class SchemaService {
       return `${prop.column_name}:${meta.junctionTable}!${meta.sourceColumn}(${meta.relatedTable}!${meta.targetColumn}(${fields}))`;
     }
 
+    // File types: Embed file metadata from files table
+    if ([EntityPropertyType.File, EntityPropertyType.FileImage, EntityPropertyType.FilePDF].includes(prop.type)) {
+      return `${prop.column_name}:files!${prop.column_name}(id,file_name,file_type,file_size,s3_key_prefix,s3_original_key,s3_thumbnail_small_key,s3_thumbnail_medium_key,s3_thumbnail_large_key,thumbnail_status,thumbnail_error,created_at)`;
+    }
+
     return (prop.type == EntityPropertyType.User) ? prop.column_name + ':civic_os_users!' + prop.column_name + '(id,display_name,full_name,phone,email)' :
       (prop.join_schema == 'public' && prop.join_column) ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
       (prop.type == EntityPropertyType.GeoPoint) ? prop.column_name + ':' + prop.column_name + '_text' :
@@ -184,6 +203,11 @@ export class SchemaService {
       // The ! syntax tells PostgREST which FK to follow (required when table has multiple FKs)
       const fields = meta.relatedTableHasColor ? 'id,display_name,color' : 'id,display_name';
       return `${prop.column_name}:${meta.junctionTable}!${meta.sourceColumn}(${meta.relatedTable}!${meta.targetColumn}(${fields}))`;
+    }
+
+    // File types: Need full file data to show current file and allow replacement
+    if ([EntityPropertyType.File, EntityPropertyType.FileImage, EntityPropertyType.FilePDF].includes(prop.type)) {
+      return `${prop.column_name}:files!${prop.column_name}(id,file_name,file_type,file_size,s3_key_prefix,s3_original_key,s3_thumbnail_small_key,s3_thumbnail_medium_key,s3_thumbnail_large_key,thumbnail_status,thumbnail_error,created_at)`;
     }
 
     // For FK fields in edit forms, we only need the raw ID value
@@ -349,6 +373,9 @@ export class SchemaService {
     switch (property.type) {
       case EntityPropertyType.TextLong:
       case EntityPropertyType.GeoPoint:
+      case EntityPropertyType.File:
+      case EntityPropertyType.FileImage:
+      case EntityPropertyType.FilePDF:
         return 2;
       default:
         return 1;

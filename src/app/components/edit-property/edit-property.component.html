@@ -102,6 +102,92 @@
     </div>
   }
 
+  @if (propType() == EntityPropertyType.File || propType() == EntityPropertyType.FileImage || propType() == EntityPropertyType.FilePDF) {
+    <div class="space-y-2">
+      <input
+        type="file"
+        class="file-input file-input-bordered w-full"
+        [id]="prop().column_name"
+        [accept]="getFileAccept()"
+        (change)="onFileSelected($event, prop().column_name)"
+        [disabled]="uploadingFile()"
+      />
+
+      <!-- Upload Progress -->
+      @if (uploadingFile()) {
+        <div class="flex items-center gap-2 text-sm">
+          <span class="loading loading-spinner loading-sm"></span>
+          <span>Uploading...</span>
+        </div>
+      }
+
+      <!-- Upload Error -->
+      @if (uploadError()) {
+        <div class="alert alert-error text-sm">
+          <span>{{ uploadError() }}</span>
+        </div>
+      }
+
+      <!-- Current File Preview with Thumbnail -->
+      @if (currentFile(); as file) {
+        @if (!uploadError()) {
+          <div class="space-y-2">
+            <!-- Success Message with Clear Button -->
+            <div class="alert alert-success text-sm flex justify-between items-center">
+              <span>✓ Uploaded: {{ file.file_name }}</span>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                (click)="onClearFile(prop().column_name)"
+                [disabled]="uploadingFile()"
+              >
+                <span class="material-symbols-outlined text-base">close</span>
+                Clear
+              </button>
+            </div>
+
+            <!-- Thumbnail Preview for Images -->
+            @if (file.file_type.startsWith('image/')) {
+              @if (file.thumbnail_status === 'completed' && file.s3_thumbnail_medium_key) {
+                <div class="border rounded-lg px-2 py-1 bg-base-200">
+                  <img
+                    [src]="getS3Url(file.s3_thumbnail_medium_key)"
+                    [alt]="file.file_name"
+                    class="not-prose max-w-full h-auto rounded"
+                    style="max-height: 200px;"
+                  />
+                </div>
+              } @else if (file.thumbnail_status === 'pending' || file.thumbnail_status === 'processing') {
+                <div class="flex items-center gap-2 text-sm text-base-content/60">
+                  <span class="loading loading-spinner loading-sm"></span>
+                  <span>Generating thumbnail...</span>
+                </div>
+              } @else if (file.thumbnail_status === 'failed') {
+                <div class="text-sm text-warning">
+                  <span>⚠ Thumbnail generation failed (image uploaded successfully)</span>
+                </div>
+              }
+            }
+          </div>
+        }
+      }
+
+      <!-- Validation Hints -->
+      <div class="text-xs text-base-content/60">
+        @if (prop().validation_rules) {
+          @for (rule of prop().validation_rules; track rule.type) {
+            @if (rule.type === 'fileType') {
+              <div>Allowed: {{ rule.value }}</div>
+            }
+            @if (rule.type === 'maxFileSize' && rule.value) {
+              <div>Max size: {{ +rule.value / 1048576 | number:'1.0-1' }} MB</div>
+            }
+          }
+        }
+      </div>
+    </div>
+  }
+
   @if (propType() == EntityPropertyType.Unknown) {
   }
 

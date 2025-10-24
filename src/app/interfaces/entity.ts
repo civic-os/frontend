@@ -30,9 +30,30 @@ export interface SchemaEntityTable {
 }
 
 export interface ValidationRule {
-    type: 'required' | 'min' | 'max' | 'minLength' | 'maxLength' | 'pattern';
+    type: 'required' | 'min' | 'max' | 'minLength' | 'maxLength' | 'pattern' | 'fileType' | 'maxFileSize';
     value?: string;
     message: string;
+}
+
+/**
+ * File reference returned from files table
+ */
+export interface FileReference {
+    id: string;
+    entity_type: string;
+    entity_id: string;
+    file_name: string;
+    file_type: string;
+    file_size: number;
+    s3_key_prefix: string;
+    s3_original_key: string;
+    s3_thumbnail_small_key?: string;
+    s3_thumbnail_medium_key?: string;
+    s3_thumbnail_large_key?: string;
+    thumbnail_status: 'pending' | 'processing' | 'completed' | 'failed' | 'not_applicable';
+    thumbnail_error?: string;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface SchemaEntityProperty {
@@ -92,6 +113,9 @@ export enum EntityPropertyType {
     Email,
     Telephone,
     ManyToMany,
+    File,
+    FileImage,
+    FilePDF,
 }
 
 export interface EntityData {

@@ -63,6 +63,91 @@ services:
     networks:
       - postgrest-network
 
+  # MinIO - S3-compatible object storage for local development
+  minio:
+    image: minio/minio:latest
+    container_name: minio_local
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Web Console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - postgrest-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+
+  # MinIO Bucket Initialization - Creates default bucket on startup
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+      mc mb --ignore-existing local/${S3_BUCKET:-civic-os-files};
+      mc anonymous set download local/${S3_BUCKET:-civic-os-files};
+      echo '✅ MinIO bucket initialized with public read access: ${S3_BUCKET:-civic-os-files}';
+      exit 0;
+      "
+    networks:
+      - postgrest-network
+
+  # S3 Signer Service - Generates presigned upload URLs
+  s3-signer:
+    build:
+      context: ../services/s3-signer
+      dockerfile: Dockerfile
+    container_name: s3_signer
+    environment:
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - S3_ENDPOINT=http://minio:9000
+      - S3_PUBLIC_ENDPOINT=http://localhost:9000
+      - S3_BUCKET=${S3_BUCKET:-civic-os-files}
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - AWS_REGION=us-east-1
+      - PORT=3001
+    networks:
+      - postgrest-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Thumbnail Worker - Generates image and PDF thumbnails
+  thumbnail-worker:
+    build:
+      context: ../services/thumbnail-worker
+      dockerfile: Dockerfile
+    container_name: thumbnail_worker
+    environment:
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - S3_ENDPOINT=http://minio:9000
+      - S3_BUCKET=${S3_BUCKET:-civic-os-files}
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - AWS_REGION=us-east-1
+    networks:
+      - postgrest-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   # Optional: Local Keycloak instance for RBAC testing
   # Uncomment this section to run Keycloak locally (recommended for testing roles/permissions)
   # See docs/AUTHENTICATION.md for complete setup instructions
@@ -86,6 +171,7 @@ services:
 volumes:
   postgres_data:
   init-scripts:
+  minio_data:
 
 networks:
   postgrest-network:

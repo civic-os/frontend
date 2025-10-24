@@ -196,8 +196,10 @@ describe('DisplayPropertyComponent', () => {
       fixture.componentRef.setInput('linkRelated', false);
       fixture.detectChanges();
 
-      const link = fixture.debugElement.query(By.css('a'));
-      expect(link).toBeFalsy(); // No link should exist
+      // Check that there's no RouterLink in the main content (excluding modal viewers)
+      const mainDiv = fixture.debugElement.query(By.css('div > div'));
+      const link = mainDiv.query(By.css('a[routerLink]'));
+      expect(link).toBeFalsy(); // No RouterLink should exist for foreign key when linkRelated is false
 
       const textContent = fixture.nativeElement.textContent.trim();
       expect(textContent).toContain('Open');

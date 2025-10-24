@@ -16,11 +16,13 @@
  */
 
 import { CommonModule } from '@angular/common';
-import { Component, input, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
+import { Component, input, signal, computed, ChangeDetectionStrategy, ViewChild } from '@angular/core';
+import { SchemaEntityProperty, EntityPropertyType, FileReference } from '../../interfaces/entity';
 import { RouterModule } from '@angular/router';
 import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
 import { HighlightPipe } from '../../pipes/highlight.pipe';
+import { ImageViewerComponent } from '../image-viewer/image-viewer.component';
+import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
 
 @Component({
     selector: 'app-display-property',
@@ -30,11 +32,16 @@ import { HighlightPipe } from '../../pipes/highlight.pipe';
         RouterModule,
         GeoPointMapComponent,
         HighlightPipe,
+        ImageViewerComponent,
+        PdfViewerComponent,
     ],
     templateUrl: './display-property.component.html',
     styleUrl: './display-property.component.css'
 })
 export class DisplayPropertyComponent {
+  @ViewChild(ImageViewerComponent) imageViewer?: ImageViewerComponent;
+  @ViewChild(PdfViewerComponent) pdfViewer?: PdfViewerComponent;
+
   prop = input.required<SchemaEntityProperty>({ alias: 'property' });
   datum = input<any>();
   linkRelated = input<boolean>(true);
@@ -53,5 +60,41 @@ export class DisplayPropertyComponent {
   formatPhoneNumber(raw: string): string {
     if (!raw || raw.length !== 10) return raw;
     return `(${raw.slice(0, 3)}) ${raw.slice(3, 6)}-${raw.slice(6)}`;
+  }
+
+  /**
+   * Open image in full-screen viewer
+   */
+  onImageClick(file: FileReference) {
+    this.imageViewer?.open(file);
+  }
+
+  /**
+   * Open PDF in embedded viewer
+   */
+  onPdfClick(file: FileReference) {
+    this.pdfViewer?.open(file);
+  }
+
+  /**
+   * Construct S3 URL from key
+   * TODO: Make this configurable via environment
+   */
+  getS3Url(s3Key: string): string {
+    // For development with MinIO
+    const endpoint = 'http://localhost:9000';
+    const bucket = 'civic-os-files';
+    return `${endpoint}/${bucket}/${s3Key}`;
+  }
+
+  /**
+   * Format file size in human-readable format
+   */
+  formatFileSize(bytes: number): string {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   }
 }

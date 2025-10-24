@@ -3,3 +3,4 @@
 %uri=https://github.com/civic-os/frontend
 
 v0-4-0-baseline 2025-10-23T23:18:17Z Daniel Kurin <danielkurin@Daniels-MacBook-Pro.local> # Civic OS v0.4.0 baseline schema
+v0-5-0-add-file-storage [v0-4-0-baseline] 2025-10-24T16:00:00Z Daniel Kurin <danielkurin@Daniels-MacBook-Pro.local> # Add S3-based file storage with UUIDv7 and thumbnail generation
