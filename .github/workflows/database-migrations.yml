@@ -56,6 +56,12 @@ jobs:
       - name: Verify Sqitch installation
         run: sqitch --version
 
+      - name: Create authenticator role
+        run: |
+          psql -h localhost -U postgres -d civic_os_test -c "CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'test-password';"
+        env:
+          PGPASSWORD: postgres
+
       - name: Test migration deployment
         run: |
           sqitch deploy db:pg://postgres:postgres@localhost:5432/civic_os_test --verify
@@ -159,6 +165,7 @@ jobs:
           context: .
           file: docker/migrations/Dockerfile
           push: false
+          load: true
           tags: civic-os-migrations:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -181,6 +188,10 @@ jobs:
             fi
             sleep 1
           done
+
+          # Create authenticator role (required by baseline migration)
+          docker exec test-postgres psql -U postgres -d civic_os_test \
+            -c "CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'test-password';"
 
           # Run migration container
           docker run --rm \
