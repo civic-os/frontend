@@ -34,6 +34,45 @@ This format:
 - ✅ Sorts alphabetically
 - ✅ Makes production tracking clear
 
+## Database Prerequisites
+
+Before running Civic OS migrations, the database must have the `authenticator` role created:
+
+### Creating the Authenticator Role
+
+**Development (automated):**
+The example docker-compose setup automatically creates the authenticator role via init scripts.
+
+**Production (manual):**
+```bash
+psql $DATABASE_URL -c "CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';"
+```
+
+**Important Notes:**
+- The `authenticator` role is a **cluster-level resource** shared across all databases
+- Use a strong, unique password (32+ characters recommended)
+- Store the password securely (use secrets manager in production)
+- The migrations will create `web_anon` and `authenticated` roles automatically
+
+### Multi-Tenant Deployments
+
+In multi-tenant setups where multiple Civic OS instances share a PostgreSQL cluster:
+
+- The `authenticator`, `web_anon`, and `authenticated` roles are **shared** across all tenants
+- Each tenant uses a separate schema (e.g., `tenant1.public`, `tenant2.public`)
+- The v0.4.1+ migrations use `IF NOT EXISTS` to prevent role conflicts
+- Reverting one tenant's migrations does NOT drop shared roles
+
+**Example multi-tenant setup:**
+```sql
+-- Create authenticator once (shared)
+CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'shared-password';
+
+-- Run migrations for each tenant
+psql tenant1_db -c "SELECT sqitch.deploy();"
+psql tenant2_db -c "SELECT sqitch.deploy();"
+```
+
 ## Quick Start
 
 ### Prerequisites

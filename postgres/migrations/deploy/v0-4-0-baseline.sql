@@ -44,22 +44,24 @@ NOTIFY pgrst, 'reload schema';
 
 -- =====================================================
 -- PostgREST Roles and JWT Functions (from 1_postgrest_setup.sql)
--- =====================================================  
--- NOTE: The 'authenticator' role must be created manually before
---       running this migration with a secure password:
+-- =====================================================
+-- PREREQUISITES: Before running migrations, create the authenticator role manually:
 --
---       CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';
+--   CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';
 --
---       For development, see example/init-scripts/00_authenticator_role.sql
---       For production, see docs/deployment/PRODUCTION.md
+-- The migration will create web_anon and authenticated roles (using IF NOT EXISTS
+-- for multi-tenant compatibility where multiple schemas share these roles).
+--
+-- For development setup: see example/init-scripts/00_create_authenticator.sh
+-- For production setup: see docs/deployment/PRODUCTION.md
 
 -- =====================================================
 -- PostgREST Role Setup
 -- =====================================================
 
 -- Create PostgREST roles
-CREATE ROLE web_anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
+CREATE ROLE IF NOT EXISTS web_anon NOLOGIN;
+CREATE ROLE IF NOT EXISTS authenticated NOLOGIN;
 
 -- Grant role switching to authenticator
 GRANT web_anon TO authenticator;

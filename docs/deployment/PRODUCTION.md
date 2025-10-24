@@ -53,6 +53,29 @@ All components are configured via environment variables, enabling the same conta
 - **Monitoring stack** (Prometheus + Grafana)
 - **Backup solution** (pg_dump automated backups)
 
+### Database Setup
+
+Before deploying Civic OS, the PostgreSQL database must have the `authenticator` role:
+
+```bash
+# Connect to your database
+psql postgres://superuser:password@db.example.com:5432/postgres
+
+# Create the authenticator role (required once per cluster)
+CREATE ROLE IF NOT EXISTS authenticator NOINHERIT LOGIN PASSWORD 'your-secure-password';
+
+# Grant connection to your application database
+GRANT CONNECT ON DATABASE civic_os_prod TO authenticator;
+```
+
+**Security Best Practices:**
+- Generate strong password: `openssl rand -base64 32`
+- Store password in secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.)
+- Use connection pooling (PgBouncer) in production
+- The `web_anon` and `authenticated` roles are created automatically by migrations
+
+**Multi-Tenant Note:** If running multiple Civic OS instances on the same PostgreSQL cluster, the `authenticator`, `web_anon`, and `authenticated` roles are shared. Create the authenticator role once, then run migrations for each database/schema.
+
 ---
 
 ## Deployment Architecture

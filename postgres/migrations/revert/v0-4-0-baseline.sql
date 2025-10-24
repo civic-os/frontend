@@ -107,14 +107,18 @@ DROP DOMAIN IF EXISTS hex_color CASCADE;
 DROP SCHEMA IF EXISTS metadata CASCADE;
 
 -- Drop PostgREST roles
--- NOTE: The 'authenticator' role is not dropped by this migration as it was
---       created manually. To fully clean up, run:
---       DROP ROLE IF EXISTS authenticator;
+-- NOTE: In multi-tenant deployments, web_anon and authenticated roles are shared
+--       across multiple Civic OS schemas and should NOT be dropped when reverting
+--       a single tenant's schema. The authenticator role was created manually
+--       and is also NOT dropped by this migration.
+--
+-- To fully clean up roles in a single-tenant scenario, run manually:
+--   DROP ROLE IF EXISTS authenticated;
+--   DROP ROLE IF EXISTS web_anon;
+--   DROP ROLE IF EXISTS authenticator;
 
 REVOKE authenticated FROM authenticator;
 REVOKE web_anon FROM authenticator;
-DROP ROLE IF EXISTS authenticated;
-DROP ROLE IF EXISTS web_anon;
 
 -- Drop PostGIS
 REVOKE USAGE ON SCHEMA postgis FROM PUBLIC;
