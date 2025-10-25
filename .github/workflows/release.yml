@@ -33,7 +33,7 @@ jobs:
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ github.ref }}
-          check-name: 'Build and Push Frontend'
+          check-name: 'Build Frontend Container'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
 
