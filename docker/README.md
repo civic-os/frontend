@@ -96,6 +96,10 @@ docker build -t civic-os-postgrest:local -f docker/postgrest/Dockerfile .
 | `MAP_DEFAULT_LAT` | No | `43.0125` | Default map latitude |
 | `MAP_DEFAULT_LNG` | No | `-83.6875` | Default map longitude |
 | `MAP_DEFAULT_ZOOM` | No | `13` | Default map zoom level |
+| `S3_ENDPOINT` | Yes* | `http://localhost:9000` | S3-compatible storage endpoint (browser-accessible URL) |
+| `S3_BUCKET` | Yes* | `civic-os-files` | S3 bucket name for file storage |
+
+*Required if using file upload features (v0.5.0+)
 
 ### PostgREST Container
 

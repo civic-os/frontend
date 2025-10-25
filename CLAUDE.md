@@ -340,6 +340,7 @@ The frontend uses **semantic helper functions** (`src/app/config/runtime.ts`) to
    - `getPostgrestUrl()` - Returns PostgREST API URL
    - `getKeycloakConfig()` - Returns Keycloak authentication config object
    - `getMapConfig()` - Returns Leaflet map configuration
+   - `getS3Config()` - Returns S3 storage endpoint and bucket configuration
 
 **Usage Example:**
 

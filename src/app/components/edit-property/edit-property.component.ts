@@ -26,6 +26,7 @@ import { NgxCurrencyDirective } from 'ngx-currency';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
+import { getS3Config } from '../../config/runtime';
 
 @Component({
     selector: 'app-edit-property',
@@ -268,17 +269,12 @@ export class EditPropertyComponent {
 
   /**
    * Generate S3 URL from key
-   * For development with MinIO: http://localhost:9000/bucket/key
-   * For production with AWS S3: depends on configuration
    */
   getS3Url(s3Key: string | undefined): string | null {
     if (!s3Key) return null;
 
-    // TODO: Make this configurable via environment
-    const s3Endpoint = 'http://localhost:9000';
-    const s3Bucket = 'civic-os-files';
-
-    return `${s3Endpoint}/${s3Bucket}/${s3Key}`;
+    const s3Config = getS3Config();
+    return `${s3Config.endpoint}/${s3Config.bucket}/${s3Key}`;
   }
 
   /**

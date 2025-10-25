@@ -23,6 +23,7 @@ import { GeoPointMapComponent } from '../geo-point-map/geo-point-map.component';
 import { HighlightPipe } from '../../pipes/highlight.pipe';
 import { ImageViewerComponent } from '../image-viewer/image-viewer.component';
 import { PdfViewerComponent } from '../pdf-viewer/pdf-viewer.component';
+import { getS3Config } from '../../config/runtime';
 
 @Component({
     selector: 'app-display-property',
@@ -78,13 +79,10 @@ export class DisplayPropertyComponent {
 
   /**
    * Construct S3 URL from key
-   * TODO: Make this configurable via environment
    */
   getS3Url(s3Key: string): string {
-    // For development with MinIO
-    const endpoint = 'http://localhost:9000';
-    const bucket = 'civic-os-files';
-    return `${endpoint}/${bucket}/${s3Key}`;
+    const s3Config = getS3Config();
+    return `${s3Config.endpoint}/${s3Config.bucket}/${s3Key}`;
   }
 
   /**

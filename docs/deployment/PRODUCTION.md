@@ -173,6 +173,19 @@ MAP_DEFAULT_LNG=-83.6875
 MAP_DEFAULT_ZOOM=13
 
 # ======================================
+# S3 / File Storage Configuration
+# (Required for v0.5.0+ file upload features)
+# ======================================
+S3_PUBLIC_ENDPOINT=https://s3.yourdomain.com
+S3_BUCKET=civic-os-files-prod
+S3_REGION=us-east-1
+
+# Backend S3 configuration (for s3-signer and thumbnail-worker)
+S3_ENDPOINT=https://s3.amazonaws.com  # Internal endpoint for AWS SDK
+S3_ACCESS_KEY_ID=your-access-key
+S3_SECRET_ACCESS_KEY=your-secret-key
+
+# ======================================
 # Container Registry
 # ======================================
 GITHUB_ORG=your-github-org
@@ -287,6 +300,8 @@ data:
   MAP_DEFAULT_LAT: "43.0125"
   MAP_DEFAULT_LNG: "-83.6875"
   MAP_DEFAULT_ZOOM: "13"
+  S3_ENDPOINT: "https://s3.yourdomain.com"
+  S3_BUCKET: "civic-os-files-prod"
 ```
 
 ### Step 3: Create Secrets

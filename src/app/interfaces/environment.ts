@@ -27,5 +27,9 @@ export interface Environment {
         url: string,
         realm: string,
         clientId: string
+    },
+    s3: {
+        endpoint: string,  // Public S3 endpoint (browser-accessible)
+        bucket: string
     }
 }

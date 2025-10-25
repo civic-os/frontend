@@ -4,6 +4,7 @@
 
 import { Component, ElementRef, ViewChild, signal } from '@angular/core';
 import { FileReference } from '../../interfaces/entity';
+import { getS3Config } from '../../config/runtime';
 
 @Component({
   selector: 'app-image-viewer',
@@ -70,12 +71,9 @@ export class ImageViewerComponent {
 
   /**
    * Construct S3 URL from key
-   * TODO: Make this configurable via environment
    */
   private getS3Url(s3Key: string): string {
-    // For development with MinIO
-    const endpoint = 'http://localhost:9000';
-    const bucket = 'civic-os-files';
-    return `${endpoint}/${bucket}/${s3Key}`;
+    const s3Config = getS3Config();
+    return `${s3Config.endpoint}/${s3Config.bucket}/${s3Key}`;
   }
 }

@@ -150,6 +150,10 @@ services:
       MAP_DEFAULT_LAT: ${MAP_DEFAULT_LAT:-43.0125}
       MAP_DEFAULT_LNG: ${MAP_DEFAULT_LNG:--83.6875}
       MAP_DEFAULT_ZOOM: ${MAP_DEFAULT_ZOOM:-13}
+
+      # S3 configuration (for file storage)
+      S3_ENDPOINT: ${S3_PUBLIC_ENDPOINT}
+      S3_BUCKET: ${S3_BUCKET:-civic-os-files}
     depends_on:
       - postgrest
     networks:

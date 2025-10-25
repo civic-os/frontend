@@ -16,6 +16,8 @@ echo "  KEYCLOAK_CLIENT_ID: $KEYCLOAK_CLIENT_ID"
 echo "  MAP_DEFAULT_LAT: $MAP_DEFAULT_LAT"
 echo "  MAP_DEFAULT_LNG: $MAP_DEFAULT_LNG"
 echo "  MAP_DEFAULT_ZOOM: $MAP_DEFAULT_ZOOM"
+echo "  S3_ENDPOINT: $S3_ENDPOINT"
+echo "  S3_BUCKET: $S3_BUCKET"
 echo ""
 
 # Generate inline config script
@@ -36,6 +38,10 @@ window.civicOsConfig = {
     url: '${KEYCLOAK_URL}',
     realm: '${KEYCLOAK_REALM}',
     clientId: '${KEYCLOAK_CLIENT_ID}'
+  },
+  s3: {
+    endpoint: '${S3_ENDPOINT}',
+    bucket: '${S3_BUCKET}'
   }
 };
 </script>

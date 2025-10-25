@@ -42,6 +42,10 @@ declare global {
         realm: string;
         clientId: string;
       };
+      s3: {
+        endpoint: string;
+        bucket: string;
+      };
     };
   }
 }
@@ -74,4 +78,14 @@ export function getKeycloakConfig() {
  */
 export function getMapConfig() {
   return window.civicOsConfig?.map || environment.map;
+}
+
+/**
+ * Get S3 storage configuration.
+ * Used by file display/edit components to construct S3 object URLs.
+ *
+ * @returns S3 config object with endpoint and bucket
+ */
+export function getS3Config() {
+  return window.civicOsConfig?.s3 || environment.s3;
 }
