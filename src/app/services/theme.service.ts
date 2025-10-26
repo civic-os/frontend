@@ -15,8 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, signal, computed, WritableSignal, Signal } from '@angular/core';
 import { parse, sRGB } from '@texel/color';
 
 export interface MapTileConfig {
@@ -44,35 +43,123 @@ export class ThemeService {
   // Luminance threshold for determining light vs dark themes
   private readonly LUMINANCE_THRESHOLD = 128;
 
-  private themeSubject: BehaviorSubject<string>;
-  public theme$: Observable<string>;
+  // localStorage key for theme persistence
+  private readonly STORAGE_KEY = 'civic-os-theme';
+
+  // Default theme
+  private readonly DEFAULT_THEME = 'corporate';
+
+  // Current theme signal (writable)
+  private readonly _theme: WritableSignal<string>;
+
+  // Public readonly theme signal
+  public readonly theme: Signal<string>;
+
+  // Computed signal for dark theme detection
+  public readonly isDark: Signal<boolean>;
 
   constructor() {
-    // Initialize with current theme from document
-    const currentTheme = this.getCurrentTheme();
-    this.themeSubject = new BehaviorSubject<string>(currentTheme);
-    this.theme$ = this.themeSubject.asObservable();
+    // Load saved theme from localStorage, fallback to default
+    const savedTheme = this.loadThemeFromStorage();
 
-    // Watch for theme attribute changes on document element
+    // Initialize theme signal
+    this._theme = signal<string>(savedTheme);
+    this.theme = this._theme.asReadonly();
+
+    // Set initial theme on document
+    this.applyThemeToDocument(savedTheme);
+
+    // Computed signal for dark theme detection
+    this.isDark = computed(() => {
+      // Trigger recomputation when theme changes
+      const currentTheme = this._theme();
+      return this.calculateIsDarkTheme();
+    });
+
+    // Watch for external theme attribute changes on document element
     this.observeThemeChanges();
   }
 
   /**
-   * Gets the current theme from the data-theme attribute
+   * Loads theme from localStorage
+   * Returns saved theme or default if not found/invalid
    */
-  private getCurrentTheme(): string {
-    return document.documentElement.getAttribute('data-theme') || 'corporate';
+  private loadThemeFromStorage(): string {
+    // Check if we're in browser environment (SSR-safe)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return this.DEFAULT_THEME;
+    }
+
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      return saved || this.DEFAULT_THEME;
+    } catch (error) {
+      // localStorage might be disabled or throw errors
+      console.warn('Failed to load theme from localStorage:', error);
+      return this.DEFAULT_THEME;
+    }
   }
 
   /**
-   * Sets up a MutationObserver to watch for theme changes
+   * Saves theme to localStorage
+   */
+  private saveThemeToStorage(theme: string): void {
+    // Check if we're in browser environment (SSR-safe)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      localStorage.setItem(this.STORAGE_KEY, theme);
+    } catch (error) {
+      // localStorage might be full or disabled
+      console.warn('Failed to save theme to localStorage:', error);
+    }
+  }
+
+  /**
+   * Sets the theme - updates signal, DOM, and localStorage
+   */
+  public setTheme(theme: string): void {
+    // Update signal
+    this._theme.set(theme);
+
+    // Update DOM
+    this.applyThemeToDocument(theme);
+
+    // Persist to localStorage
+    this.saveThemeToStorage(theme);
+  }
+
+  /**
+   * Applies theme to document element's data-theme attribute
+   */
+  private applyThemeToDocument(theme: string): void {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  }
+
+  /**
+   * Sets up a MutationObserver to watch for external theme changes
+   * (e.g., from browser extensions or manual DOM manipulation)
    */
   private observeThemeChanges(): void {
+    // Only set up observer in browser environment
+    if (typeof document === 'undefined') {
+      return;
+    }
+
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-          const newTheme = this.getCurrentTheme();
-          this.themeSubject.next(newTheme);
+          const newTheme = document.documentElement.getAttribute('data-theme') || this.DEFAULT_THEME;
+
+          // Only update if theme actually changed (avoid infinite loops)
+          if (newTheme !== this._theme()) {
+            this._theme.set(newTheme);
+            this.saveThemeToStorage(newTheme);
+          }
         }
       });
     });
@@ -87,10 +174,10 @@ export class ThemeService {
    * Determines if the current theme is dark by calculating the luminance
    * of the base background color (--color-base-100 CSS variable in DaisyUI 5)
    *
-   * Note: Always checks the currently applied theme. To check a different theme,
-   * set it via data-theme attribute first.
+   * Note: This is a private helper used by the isDark computed signal.
+   * Always checks the currently applied theme.
    */
-  public isDarkTheme(): boolean {
+  private calculateIsDarkTheme(): boolean {
     const luminance = this.calculateBackgroundLuminance();
     return luminance < this.LUMINANCE_THRESHOLD;
   }
@@ -150,13 +237,6 @@ export class ThemeService {
    * Gets the appropriate map tile configuration for the current theme
    */
   public getMapTileConfig(): MapTileConfig {
-    return this.isDarkTheme() ? this.DARK_TILE_CONFIG : this.LIGHT_TILE_CONFIG;
-  }
-
-  /**
-   * Gets the current theme value
-   */
-  public getTheme(): string {
-    return this.themeSubject.value;
+    return this.isDark() ? this.DARK_TILE_CONFIG : this.LIGHT_TILE_CONFIG;
   }
 }

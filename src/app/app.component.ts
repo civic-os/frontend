@@ -15,12 +15,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Component, inject, ViewChild, AfterViewInit, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { SchemaService } from './services/schema.service';
 import { VersionService } from './services/version.service';
+import { ThemeService } from './services/theme.service';
 import { Observable } from 'rxjs';
 import { OpenAPIV2 } from 'openapi-types';
 import { CommonModule } from '@angular/common';
@@ -40,11 +41,12 @@ import { DashboardSelectorComponent } from './components/dashboard-selector/dash
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent {
   private schema = inject(SchemaService);
   private version = inject(VersionService);
   private router = inject(Router);
   public auth = inject(AuthService);
+  public themeService = inject(ThemeService);
 
   public drawerOpen: boolean = false;
   title = 'frontend';
@@ -139,21 +141,5 @@ export class AppComponent implements AfterViewInit {
     } else {
       return [];
     }
-  }
-
-  ngAfterViewInit(): void {
-    // Listen for theme changes from DaisyUI theme-controller inputs
-    // DaisyUI's theme-controller is CSS-only and doesn't update data-theme attribute
-    // We need to manually update it so other components can react to theme changes
-    const themeInputs = document.querySelectorAll<HTMLInputElement>('input.theme-controller');
-
-    themeInputs.forEach((input) => {
-      input.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement;
-        if (target.checked) {
-          document.documentElement.setAttribute('data-theme', target.value);
-        }
-      });
-    });
   }
 }

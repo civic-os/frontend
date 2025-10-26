@@ -17,7 +17,7 @@
 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, PLATFORM_ID, ElementRef } from '@angular/core';
+import { provideZonelessChangeDetection, PLATFORM_ID, ElementRef, signal } from '@angular/core';
 import { SchemaErdPage } from './schema-erd.page';
 import { SchemaErdService } from '../../services/schema-erd.service';
 import { ThemeService } from '../../services/theme.service';
@@ -27,7 +27,7 @@ describe('SchemaErdPage', () => {
   let component: SchemaErdPage;
   let fixture: ComponentFixture<SchemaErdPage>;
   let mockErdService: jasmine.SpyObj<SchemaErdService>;
-  let mockThemeService: jasmine.SpyObj<ThemeService>;
+  let mockThemeService: any; // Use 'any' to allow signal properties
 
   const mockMermaidSyntax = `erDiagram
   Issue {
@@ -37,10 +37,15 @@ describe('SchemaErdPage', () => {
 
   beforeEach(async () => {
     mockErdService = jasmine.createSpyObj('SchemaErdService', ['generateMermaidSyntax']);
-    mockThemeService = jasmine.createSpyObj('ThemeService', ['isDarkTheme']);
 
-    // Default to light theme
-    mockThemeService.isDarkTheme.and.returnValue(false);
+    // Mock ThemeService with signals
+    const isDarkSignal = signal(false);
+    const themeSignal = signal('corporate');
+    mockThemeService = {
+      isDark: isDarkSignal,
+      theme: themeSignal,
+      getMapTileConfig: jasmine.createSpy('getMapTileConfig')
+    };
 
     await TestBed.configureTestingModule({
       imports: [SchemaErdPage],
@@ -154,7 +159,7 @@ describe('SchemaErdPage', () => {
       component = fixture.componentInstance;
 
       // Verify theme detection was called during initialization
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       // Verify currentTheme signal was set
       expect(component['currentTheme']()).toBeDefined();
     });
@@ -195,14 +200,14 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
-      mockThemeService.isDarkTheme.and.returnValue(true);
+      mockThemeService.isDark.set(true);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       expect(theme).toBe('neutral');
     });
 
@@ -214,14 +219,14 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
-      mockThemeService.isDarkTheme.and.returnValue(true);
+      mockThemeService.isDark.set(true);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       expect(theme).toBe('neutral');
     });
 
@@ -233,14 +238,14 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
-      mockThemeService.isDarkTheme.and.returnValue(false);
+      mockThemeService.isDark.set(false);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       expect(theme).toBe('default');
     });
 
@@ -252,14 +257,14 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
-      mockThemeService.isDarkTheme.and.returnValue(false);
+      mockThemeService.isDark.set(false);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       expect(theme).toBe('default');
     });
 
@@ -279,7 +284,7 @@ describe('SchemaErdPage', () => {
       const theme = component['detectTheme']();
       expect(theme).toBe('forest');
       // Should NOT call ThemeService for emerald (aesthetic mapping takes precedence)
-      expect(mockThemeService.isDarkTheme).not.toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
     });
 
     it('should use ThemeService when no theme is set', () => {
@@ -289,14 +294,14 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
-      mockThemeService.isDarkTheme.and.returnValue(false);
+      mockThemeService.isDark.set(false);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       expect(theme).toBe('default');
     });
 
@@ -308,14 +313,14 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
-      mockThemeService.isDarkTheme.and.returnValue(false);
+      mockThemeService.isDark.set(false);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       expect(theme).toBe('default');
     });
 
@@ -327,14 +332,14 @@ describe('SchemaErdPage', () => {
         get: () => mockHtmlElement
       });
 
-      mockThemeService.isDarkTheme.and.returnValue(true);
+      mockThemeService.isDark.set(true);
       mockErdService.generateMermaidSyntax.and.returnValue(of(mockMermaidSyntax));
 
       fixture = TestBed.createComponent(SchemaErdPage);
       component = fixture.componentInstance;
 
       const theme = component['detectTheme']();
-      expect(mockThemeService.isDarkTheme).toHaveBeenCalled();
+      // isDark is now a signal, not a spy method
       expect(theme).toBe('neutral');
     });
   });

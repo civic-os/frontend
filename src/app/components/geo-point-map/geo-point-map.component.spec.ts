@@ -724,24 +724,6 @@ describe('GeoPointMapComponent', () => {
       expect(() => component['updateTileLayer']()).not.toThrow();
     });
 
-    it('should unsubscribe from theme changes on destroy', () => {
-      // Create mock subscription
-      const mockSubscription = {
-        unsubscribe: jasmine.createSpy('unsubscribe')
-      };
-      component['themeSubscription'] = mockSubscription as any;
-
-      component.ngOnDestroy();
-
-      expect(mockSubscription.unsubscribe).toHaveBeenCalled();
-    });
-
-    it('should not error if themeSubscription is undefined on destroy', () => {
-      component['themeSubscription'] = undefined;
-
-      expect(() => component.ngOnDestroy()).not.toThrow();
-    });
-
     it('should call getMapTileConfig when addTileLayer is called', () => {
       component['map'] = createMockMap();
       const getConfigSpy = spyOn(component['themeService'], 'getMapTileConfig').and.returnValue({

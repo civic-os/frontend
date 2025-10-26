@@ -19,7 +19,6 @@ import { Component, input, output, AfterViewInit, OnDestroy, ChangeDetectionStra
 import * as L from 'leaflet';
 import { ThemeService } from '../../services/theme.service';
 import { getMapConfig } from '../../config/runtime';
-import { Subscription } from 'rxjs';
 
 export interface MapMarker {
   id: number;
@@ -66,7 +65,6 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
   private pendingAnimations: number[] = []; // Track setTimeout IDs for cleanup
   private pendingFrames: number[] = []; // Track requestAnimationFrame IDs for cleanup
   private tileLayer?: L.TileLayer; // Track current tile layer for theme switching
-  private themeSubscription?: Subscription; // Track theme changes
 
   private themeService = inject(ThemeService);
 
@@ -86,6 +84,20 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
         this.updateHighlightedMarker(highlightedId);
       }
     });
+
+    // Watch for theme changes to update tile layer
+    effect(() => {
+      // Read theme signal to establish dependency
+      const currentTheme = this.themeService.theme();
+
+      if (this.map) {
+        // Wait for CSS recalculation before updating tiles
+        const frameId = requestAnimationFrame(() => {
+          this.updateTileLayer();
+        });
+        this.pendingFrames.push(frameId);
+      }
+    });
   }
 
   ngAfterViewInit() {
@@ -102,11 +114,6 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
     // Cancel pending animation frames to prevent errors when destroying during tests
     this.pendingFrames.forEach(id => cancelAnimationFrame(id));
     this.pendingFrames = [];
-
-    // Unsubscribe from theme changes
-    if (this.themeSubscription) {
-      this.themeSubscription.unsubscribe();
-    }
 
     if (this.map) {
       this.map.remove();
@@ -208,15 +215,6 @@ export class GeoPointMapComponent implements AfterViewInit, OnDestroy {
 
     // Add theme-aware tile layer
     this.addTileLayer();
-
-    // Subscribe to theme changes to update tile layer
-    this.themeSubscription = this.themeService.theme$.subscribe(() => {
-      // Wait for CSS recalculation before updating tiles
-      const frameId = requestAnimationFrame(() => {
-        this.updateTileLayer();
-      });
-      this.pendingFrames.push(frameId);
-    });
 
     // Add existing marker if coordinates exist
     if (this.currentLat !== undefined && this.currentLng !== undefined) {

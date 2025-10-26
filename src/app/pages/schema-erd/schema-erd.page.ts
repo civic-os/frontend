@@ -159,7 +159,7 @@ export class SchemaErdPage implements OnDestroy {
 
     // For all other themes, use dynamic luminance detection
     // Dark themes → 'neutral' (better aesthetics for ERD diagrams), Light themes → 'default'
-    const isDark = this.themeService.isDarkTheme();
+    const isDark = this.themeService.isDark();
     return isDark ? 'neutral' : 'default';
   }
 }

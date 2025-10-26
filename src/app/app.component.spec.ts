@@ -16,16 +16,18 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { AppComponent } from './app.component';
 import { AuthService } from './services/auth.service';
+import { ThemeService } from './services/theme.service';
 import { Location } from '@angular/common';
 
 describe('AppComponent', () => {
   let mockAuthService: jasmine.SpyObj<AuthService>;
+  let mockThemeService: jasmine.SpyObj<ThemeService>;
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
@@ -34,6 +36,13 @@ describe('AppComponent', () => {
     });
     mockAuthService.authenticated.and.returnValue(false);
 
+    // Mock ThemeService with signal
+    const themeSignal = signal('corporate');
+    mockThemeService = jasmine.createSpyObj('ThemeService', ['setTheme', 'getMapTileConfig'], {
+      theme: themeSignal,
+      isDark: signal(false)
+    });
+
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
@@ -41,7 +50,8 @@ describe('AppComponent', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: mockAuthService }
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ThemeService, useValue: mockThemeService }
       ]
     }).compileComponents();
 
@@ -98,46 +108,96 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('frontend');
   });
 
-  it('should update data-theme attribute when theme-controller input changes', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
+  describe('Theme Integration', () => {
+    it('should inject ThemeService', () => {
+      const fixture = TestBed.createComponent(AppComponent);
+      const app = fixture.componentInstance;
 
-    // Create mock theme-controller inputs in the DOM
-    const themeInput = document.createElement('input');
-    themeInput.type = 'radio';
-    themeInput.className = 'theme-controller';
-    themeInput.value = 'dark';
-    document.body.appendChild(themeInput);
+      // Handle HTTP requests
+      const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+      schemaEntitiesReqs.forEach(req => req.flush([]));
+      const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+      versionReqs.forEach(req => req.flush([
+        { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+        { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+      ]));
+      const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+      dashboardReqs.forEach(req => req.flush([]));
 
-    // Trigger change detection to run ngAfterViewInit
-    fixture.detectChanges();
+      expect(app.themeService).toBe(mockThemeService);
+    });
 
-    // Handle HTTP requests made during component initialization
-    const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
-    schemaEntitiesReqs.forEach(req => req.flush([]));
-    const schemaPropsReqs = httpMock.match(req => req.url.includes('schema_properties'));
-    schemaPropsReqs.forEach(req => req.flush([]));
+    it('should render theme dropdown with bindings', () => {
+      const fixture = TestBed.createComponent(AppComponent);
 
-    // Handle version check request (VersionService.init())
-    const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
-    versionReqs.forEach(req => req.flush([
-      { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
-      { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
-    ]));
+      // Handle HTTP requests
+      const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+      schemaEntitiesReqs.forEach(req => req.flush([]));
+      const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+      versionReqs.forEach(req => req.flush([
+        { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+        { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+      ]));
+      const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+      dashboardReqs.forEach(req => req.flush([]));
 
-    // Handle dashboard requests from DashboardSelectorComponent
-    const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
-    dashboardReqs.forEach(req => req.flush([]));
+      fixture.detectChanges();
 
-    // Simulate theme change
-    themeInput.checked = true;
-    themeInput.dispatchEvent(new Event('change'));
+      const compiled = fixture.nativeElement as HTMLElement;
+      const themeInputs = compiled.querySelectorAll('.theme-controller');
 
-    // Verify data-theme attribute was updated
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+      // Should have 5 theme options (corporate, light, dark, nord, emerald)
+      expect(themeInputs.length).toBe(5);
+    });
 
-    // Cleanup
-    document.body.removeChild(themeInput);
+    it('should mark corporate theme as checked by default', () => {
+      const fixture = TestBed.createComponent(AppComponent);
+
+      // Handle HTTP requests
+      const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+      schemaEntitiesReqs.forEach(req => req.flush([]));
+      const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+      versionReqs.forEach(req => req.flush([
+        { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+        { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+      ]));
+      const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+      dashboardReqs.forEach(req => req.flush([]));
+
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const corporateInput = compiled.querySelector('input[value="corporate"]') as HTMLInputElement;
+
+      expect(corporateInput).toBeTruthy();
+      expect(corporateInput.checked).toBe(true);
+    });
+
+    it('should call themeService.setTheme when theme radio button changes', () => {
+      const fixture = TestBed.createComponent(AppComponent);
+
+      // Handle HTTP requests
+      const schemaEntitiesReqs = httpMock.match(req => req.url.includes('schema_entities'));
+      schemaEntitiesReqs.forEach(req => req.flush([]));
+      const versionReqs = httpMock.match(req => req.url.includes('schema_cache_versions'));
+      versionReqs.forEach(req => req.flush([
+        { cache_name: 'entities', version: '2025-01-01T00:00:00Z' },
+        { cache_name: 'properties', version: '2025-01-01T00:00:00Z' }
+      ]));
+      const dashboardReqs = httpMock.match(req => req.url.includes('rpc/get_dashboards'));
+      dashboardReqs.forEach(req => req.flush([]));
+
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const darkInput = compiled.querySelector('input[value="dark"]') as HTMLInputElement;
+
+      // Simulate clicking the dark theme radio button
+      darkInput.click();
+
+      // Verify setTheme was called with 'dark'
+      expect(mockThemeService.setTheme).toHaveBeenCalledWith('dark');
+    });
   });
 
   /**

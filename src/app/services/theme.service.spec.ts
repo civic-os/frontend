@@ -21,11 +21,20 @@ import { ThemeService, MapTileConfig } from './theme.service';
 
 describe('ThemeService', () => {
   let service: ThemeService;
+  let localStorageSpy: jasmine.SpyObj<Storage>;
 
   beforeEach(() => {
+    // Mock localStorage
+    localStorageSpy = jasmine.createSpyObj('localStorage', ['getItem', 'setItem', 'removeItem', 'clear']);
+    spyOnProperty(window, 'localStorage', 'get').and.returnValue(localStorageSpy);
+
     TestBed.configureTestingModule({
       providers: [provideZonelessChangeDetection()]
     });
+
+    // Default: no saved theme (returns null)
+    localStorageSpy.getItem.and.returnValue(null);
+
     service = TestBed.inject(ThemeService);
   });
 
@@ -33,17 +42,65 @@ describe('ThemeService', () => {
     expect(service).toBeTruthy();
   });
 
-  describe('isDarkTheme (dynamic luminance detection)', () => {
+  describe('theme signal', () => {
+    it('should return default theme when no saved theme exists', () => {
+      expect(service.theme()).toBe('corporate');
+    });
+
+    it('should load saved theme from localStorage on init', () => {
+      // Destroy current service
+      TestBed.resetTestingModule();
+
+      // Setup new test with saved theme
+      localStorageSpy.getItem.and.returnValue('dark');
+      TestBed.configureTestingModule({
+        providers: [provideZonelessChangeDetection()]
+      });
+
+      const newService = TestBed.inject(ThemeService);
+      expect(newService.theme()).toBe('dark');
+      expect(localStorageSpy.getItem).toHaveBeenCalledWith('civic-os-theme');
+    });
+  });
+
+  describe('setTheme', () => {
+    it('should update theme signal', () => {
+      service.setTheme('nord');
+      expect(service.theme()).toBe('nord');
+    });
+
+    it('should save theme to localStorage', () => {
+      service.setTheme('emerald');
+      expect(localStorageSpy.setItem).toHaveBeenCalledWith('civic-os-theme', 'emerald');
+    });
+
+    it('should update data-theme attribute on document', () => {
+      service.setTheme('light');
+      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    });
+
+    it('should handle multiple theme changes', () => {
+      service.setTheme('dark');
+      expect(service.theme()).toBe('dark');
+      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+
+      service.setTheme('light');
+      expect(service.theme()).toBe('light');
+      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    });
+  });
+
+  describe('isDark computed signal (dynamic luminance detection)', () => {
     it('should return a boolean value', () => {
-      const result = service.isDarkTheme();
+      const result = service.isDark();
       expect(typeof result).toBe('boolean');
     });
 
     it('should calculate luminance based on current theme', (done) => {
-      // Set a theme and verify the method executes without errors
+      // Set a theme and verify the computed signal executes without errors
       document.documentElement.setAttribute('data-theme', 'corporate');
       setTimeout(() => {
-        const result = service.isDarkTheme();
+        const result = service.isDark();
         expect(typeof result).toBe('boolean');
         done();
       }, 50);
@@ -53,7 +110,7 @@ describe('ThemeService', () => {
       // Mock calculateBackgroundLuminance to return dark value
       spyOn<any>(service, 'calculateBackgroundLuminance').and.returnValue(100);
 
-      const result = service.isDarkTheme();
+      const result = service.isDark();
       expect(result).toBe(true);
     });
 
@@ -61,7 +118,7 @@ describe('ThemeService', () => {
       // Mock calculateBackgroundLuminance to return light value
       spyOn<any>(service, 'calculateBackgroundLuminance').and.returnValue(200);
 
-      const result = service.isDarkTheme();
+      const result = service.isDark();
       expect(result).toBe(false);
     });
 
@@ -69,7 +126,7 @@ describe('ThemeService', () => {
       // Mock calculateBackgroundLuminance to return exact threshold
       spyOn<any>(service, 'calculateBackgroundLuminance').and.returnValue(128);
 
-      const result = service.isDarkTheme();
+      const result = service.isDark();
       expect(result).toBe(false);
     });
 
@@ -77,7 +134,7 @@ describe('ThemeService', () => {
       // Mock calculateBackgroundLuminance to return just below threshold
       spyOn<any>(service, 'calculateBackgroundLuminance').and.returnValue(127);
 
-      const result = service.isDarkTheme();
+      const result = service.isDark();
       expect(result).toBe(true);
     });
   });
@@ -135,25 +192,26 @@ describe('ThemeService', () => {
     });
   });
 
-  describe('getTheme', () => {
-    it('should return a theme string', () => {
-      const theme = service.getTheme();
-      expect(typeof theme).toBe('string');
-      expect(theme.length).toBeGreaterThan(0);
-    });
-  });
+  describe('localStorage persistence', () => {
+    it('should handle localStorage errors gracefully', () => {
+      localStorageSpy.setItem.and.throwError('QuotaExceededError');
 
-  describe('theme$ Observable', () => {
-    it('should be defined', () => {
-      expect(service.theme$).toBeDefined();
+      // Should not throw error
+      expect(() => service.setTheme('dark')).not.toThrow();
     });
 
-    it('should be an observable that emits string values', () => {
-      // Just verify the observable is set up correctly
-      // We can't easily test emission in a test environment due to MutationObserver
-      expect(service.theme$).toBeDefined();
-      expect(service.getTheme()).toBeDefined();
-      expect(typeof service.getTheme()).toBe('string');
+    it('should fall back to default theme when localStorage is unavailable', () => {
+      // localStorage.getItem throws error
+      localStorageSpy.getItem.and.throwError('SecurityError');
+
+      // Create new service instance
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideZonelessChangeDetection()]
+      });
+
+      const newService = TestBed.inject(ThemeService);
+      expect(newService.theme()).toBe('corporate');
     });
   });
 
@@ -370,32 +428,24 @@ describe('ThemeService', () => {
   });
 
   describe('MutationObserver Integration', () => {
-    it('should emit new theme value when data-theme changes', (done) => {
-      let emissionCount = 0;
+    it('should update signal when data-theme attribute changes externally', (done) => {
+      const initialTheme = service.theme();
 
-      service.theme$.subscribe((theme) => {
-        emissionCount++;
-        // First emission is initial value, second is after change
-        if (emissionCount === 2) {
-          expect(theme).toBe('dark');
-          done();
-        }
-      });
-
-      // Change theme
+      // Change theme externally (simulates browser extension or manual DOM change)
       setTimeout(() => {
         document.documentElement.setAttribute('data-theme', 'dark');
+
+        // Give MutationObserver time to fire
+        setTimeout(() => {
+          expect(service.theme()).toBe('dark');
+          expect(localStorageSpy.setItem).toHaveBeenCalledWith('civic-os-theme', 'dark');
+          done();
+        }, 50);
       }, 50);
     });
 
-    it('should emit correct theme for multiple rapid changes', (done) => {
-      const emissions: string[] = [];
-
-      service.theme$.subscribe((theme) => {
-        emissions.push(theme);
-      });
-
-      // Make multiple rapid changes
+    it('should handle multiple rapid external theme changes', (done) => {
+      // Make multiple rapid external changes
       setTimeout(() => {
         document.documentElement.setAttribute('data-theme', 'light');
       }, 50);
@@ -409,18 +459,40 @@ describe('ThemeService', () => {
       }, 150);
 
       setTimeout(() => {
-        // Should have received: initial + 3 changes
-        expect(emissions.length).toBeGreaterThanOrEqual(3);
-        expect(emissions[emissions.length - 1]).toBe('emerald');
+        // Should reflect the final theme
+        expect(service.theme()).toBe('emerald');
         done();
       }, 250);
     });
 
+    it('should not create infinite loop when setTheme updates attribute', (done) => {
+      const initialCallCount = localStorageSpy.setItem.calls.count();
+
+      // Call setTheme (which updates attribute)
+      service.setTheme('nord');
+
+      // Wait for any potential MutationObserver callback
+      setTimeout(() => {
+        const firstCheckCount = localStorageSpy.setItem.calls.count();
+        // Should have some calls (at least 1 from setTheme)
+        expect(firstCheckCount).toBeGreaterThan(initialCallCount);
+
+        // Wait again to verify count isn't still increasing (which would indicate infinite loop)
+        setTimeout(() => {
+          const secondCheckCount = localStorageSpy.setItem.calls.count();
+          // Count should stabilize (no infinite loop)
+          expect(secondCheckCount).toBe(firstCheckCount);
+          done();
+        }, 100);
+      }, 100);
+    });
+
     it('should observe document.documentElement for theme changes', () => {
       // MutationObserver is set up in constructor
-      // Verify it exists by checking that theme changes are detected
-      const initialTheme = service.getTheme();
+      // Verify theme signal is accessible
+      const initialTheme = service.theme();
       expect(initialTheme).toBeDefined();
+      expect(typeof initialTheme).toBe('string');
     });
   });
 });
