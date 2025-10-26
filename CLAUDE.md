@@ -36,6 +36,7 @@ The `EntityPropertyType` enum maps PostgreSQL types to UI components:
   - **Unified View Architecture**: The `civic_os_users` view in `public` schema combines data from `metadata.civic_os_users` (public profile) and `metadata.civic_os_users_private` (private contact info)
   - **API Response**: `{id, display_name, full_name, phone, email}` where private fields (`full_name`, `phone`, `email`) are NULL unless user views own record or has `civic_os_users_private:read` permission
   - **Storage**: Actual tables reside in `metadata` schema for namespace organization; view provides backward-compatible API surface
+  - **Profile Management**: User profile data (name, email, phone) is managed in Keycloak (single source of truth) and synced to Civic OS on login via `refresh_current_user()` RPC. The "Account Settings" menu item links to Keycloak's account console with referrer params for easy return. Phone number requires custom user attribute and JWT mapper configuration (see `docs/AUTHENTICATION.md` Step 5).
 - `DateTime`, `DateTimeLocal`, `Date`: Timestamp types → Date/time inputs
 - `Boolean`: `bool` → Checkbox
 - `Money`: `money` → Currency input (ngx-currency)

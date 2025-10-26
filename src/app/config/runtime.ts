@@ -89,3 +89,18 @@ export function getMapConfig() {
 export function getS3Config() {
   return window.civicOsConfig?.s3 || environment.s3;
 }
+
+/**
+ * Get Keycloak account management console URL.
+ * Includes referrer parameters so users can return to the exact page they were on.
+ *
+ * @returns Full URL to Keycloak account console with referrer params
+ * @example
+ * // Returns: "https://auth.civic-os.org/realms/civic-os-dev/account?referrer=myclient&referrer_uri=http%3A%2F%2Flocalhost%3A4200%2Fview%2Fissues"
+ * const accountUrl = getKeycloakAccountUrl();
+ */
+export function getKeycloakAccountUrl(): string {
+  const config = getKeycloakConfig();
+  const referrerUri = encodeURIComponent(window.location.href);
+  return `${config.url}/realms/${config.realm}/account?referrer=${config.clientId}&referrer_uri=${referrerUri}`;
+}

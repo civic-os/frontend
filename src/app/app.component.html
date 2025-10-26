@@ -30,13 +30,17 @@
             <li><input type="radio" name="theme-dropdown" class="theme-controller btn btn-sm btn-block btn-ghost justify-start" aria-label="Emerald" value="emerald" [checked]="themeService.theme() === 'emerald'" (change)="themeService.setTheme('emerald')"/></li>
           </ul>
         </div>
-        <details class="dropdown dropdown-end">
+        <details id="profile-dropdown" class="dropdown dropdown-end">
           <summary class="btn m-1 btn-ghost">
-            <span class="material-symbols-outlined">more_vert</span>
+            @if (this.auth.authenticated()) {
+              <span class="material-symbols-outlined">account_circle</span>
+            } @else {
+              <span class="material-symbols-outlined">person</span>
+            }
           </summary>
           <ul class="menu dropdown-content bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
             @if (this.auth.authenticated()) {
-              <li><a>Account</a></li>
+              <li><a [href]="getKeycloakAccountUrl()">Account Settings</a></li>
               <li><a (click)="this.auth.logout()">Logout</a></li>
             } @else {
               <li><a (click)="this.auth.login()">Log In</a></li>

@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ElementRef, HostListener } from '@angular/core';
 
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
@@ -29,6 +29,7 @@ import { FormsModule } from '@angular/forms';
 import { SchemaEntityTable } from './interfaces/entity';
 import { AuthService } from './services/auth.service';
 import { DashboardSelectorComponent } from './components/dashboard-selector/dashboard-selector.component';
+import { getKeycloakAccountUrl } from './config/runtime';
 
 @Component({
     selector: 'app-root',
@@ -45,6 +46,7 @@ export class AppComponent {
   private schema = inject(SchemaService);
   private version = inject(VersionService);
   private router = inject(Router);
+  private elementRef = inject(ElementRef);
   public auth = inject(AuthService);
   public themeService = inject(ThemeService);
 
@@ -53,6 +55,9 @@ export class AppComponent {
 
   // Track if current route is a dashboard page (home or /dashboard/:id)
   isDashboardRoute = signal(false);
+
+  // Expose Keycloak account URL helper to template
+  public getKeycloakAccountUrl = getKeycloakAccountUrl;
 
   // Initialize schema and version tracking on app startup
   private _schemaInit = this.schema.init();
@@ -80,6 +85,20 @@ export class AppComponent {
     this.isDashboardRoute.set(
       url === '/' || url.startsWith('/dashboard')
     );
+  }
+
+  /**
+   * Close profile dropdown when clicking outside of it
+   */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const profileDropdown = this.elementRef.nativeElement.querySelector('#profile-dropdown');
+    if (profileDropdown) {
+      const clickedInside = profileDropdown.contains(event.target as Node);
+      if (!clickedInside && profileDropdown.open) {
+        profileDropdown.open = false;
+      }
+    }
   }
 
   public navigateToHome() {

@@ -212,7 +212,58 @@ Ensure roles appear in JWT tokens so Civic OS can read them.
    - **Add to userinfo**: ON
    - Click "Save"
 
-### Step 5: Create Test Users
+### Step 5: Configure User Profile (Phone Number)
+
+Civic OS syncs user profile data from Keycloak JWT claims to the database. To enable phone number management, add a custom user attribute and JWT mapper.
+
+#### 5a. Add Phone Number User Attribute
+
+1. **Navigate to Realm Settings**
+   - In left sidebar: Realm settings → User profile tab
+
+2. **Create Attribute**
+   - Click "Create attribute"
+   - **Attribute name**: `phoneNumber`
+   - **Display name**: `Phone number`
+   - **Validation**: (Optional) Add phone number format validation
+   - **Required for**: Select "users" and "admins" if you want to make it required
+   - **Permissions**: "Users can view" and "Users can edit"
+   - Click "Create"
+
+#### 5b. Create JWT Token Mapper for Phone
+
+1. **Navigate to Client Scopes**
+   - In left sidebar: Client scopes → `profile`
+
+2. **Add Phone Mapper**
+   - Click "Mappers" tab
+   - Click "Add mapper" → "By configuration"
+   - Select "User Attribute"
+
+3. **Configure Mapper**
+   - **Name**: `phone number`
+   - **User Attribute**: `phoneNumber`
+   - **Token Claim Name**: `phone_number`
+   - **Claim JSON Type**: String
+   - **Add to ID token**: ON
+   - **Add to access token**: ON
+   - **Add to userinfo**: ON
+   - Click "Save"
+
+#### 5c. Verify Phone Sync
+
+After configuring the mapper:
+
+1. **Create or Edit a User** and set their phone number
+2. **Login to Civic OS** as that user
+3. **Check Database** - Phone should appear in `civic_os_users` view:
+   ```sql
+   SELECT id, display_name, phone FROM civic_os_users WHERE phone IS NOT NULL;
+   ```
+
+> **Note**: Phone numbers are synced from Keycloak on login. Users manage their phone number via Keycloak's account console (accessible from the "Account Settings" menu in Civic OS).
+
+### Step 6: Create Test Users
 
 1. **Navigate to Users**
    - In left sidebar: Users → Create new user
@@ -245,7 +296,7 @@ Ensure roles appear in JWT tokens so Civic OS can read them.
    - Create `editor-user` with `user` and `editor` roles
    - Create `regular-user` with only `user` role
 
-### Step 6: Verify Role Configuration
+### Step 7: Verify Role Configuration
 
 It's critical to verify roles are included in JWT tokens:
 

@@ -13,9 +13,9 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Build scheme for editable Properties, default values, etc.
 - [x] Add Form Validation Messages
 - [x] Allow sorting/layout of Property Views/Lists
-- [ ] Add User Profile and management
+- [x] Add User Profile and management (via Keycloak account console)
 - [x] Add Login/Logout Screens (uses Keycloak Auth)
-- [ ] Add File/Image data types (Priority 1: Unlocks many use cases)
+- [x] Add File/Image data types (S3-based with thumbnails)
 - [x] Live update page as Schema is updated
 - [x] Add Color PropertyType
 - [ ] Configurable Entity Menu (Nesting, Hiding, Singular/Plural names)
@@ -55,9 +55,9 @@ This document outlines the development roadmap for Civic OS, organized by phases
 
 ### General
 - [ ] ADA/WCAG Compatibility
-- [ ] Allow Angular app to be configured at container runtime (for flexible deployments)
-- [ ] Save selected Theme in localstorage and use on reload
-- [ ] Allow user profile editing (through keycloak?)
+- [x] Allow Angular app to be configured at container runtime (for flexible deployments)
+- [x] Save selected Theme in localstorage and use on reload
+- [x] Allow user profile editing (via Keycloak account console with JWT sync)
 - [ ] App and Database update deployments
 - [ ] Automatically assign new users the "user" role
 - [ ] Title updates (configure base from Angular Runtime)
