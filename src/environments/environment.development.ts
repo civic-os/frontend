@@ -29,5 +29,9 @@ export const environment: Environment = {
         url: 'https://auth.civic-os.org',
         realm: 'civic-os-dev',
         clientId: 'myclient'
+    },
+    s3: {
+        endpoint: 'http://localhost:9000',
+        bucket: 'civic-os-files'
     }
 };
