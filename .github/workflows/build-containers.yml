@@ -392,3 +392,95 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-postgrest, build-migrations, build-s3-signer, build-thumbnail-worker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate container image URLs
+        id: images
+        run: |
+          ORG=${{ github.repository_owner }}
+          VERSION=${{ steps.version.outputs.version }}
+
+          cat > release-notes-footer.md <<EOF
+
+          ## Container Images
+
+          All containers for this release have been published to GitHub Container Registry:
+
+          ### Frontend
+          \`\`\`bash
+          docker pull ghcr.io/${ORG}/frontend:v${VERSION}
+          docker pull ghcr.io/${ORG}/frontend:${VERSION}
+          \`\`\`
+
+          ### PostgREST API
+          \`\`\`bash
+          docker pull ghcr.io/${ORG}/postgrest:v${VERSION}
+          docker pull ghcr.io/${ORG}/postgrest:${VERSION}
+          \`\`\`
+
+          ### Database Migrations
+          \`\`\`bash
+          docker pull ghcr.io/${ORG}/migrations:v${VERSION}
+          docker pull ghcr.io/${ORG}/migrations:${VERSION}
+          \`\`\`
+
+          ### S3 Signer Service
+          \`\`\`bash
+          docker pull ghcr.io/${ORG}/s3-signer:v${VERSION}
+          docker pull ghcr.io/${ORG}/s3-signer:${VERSION}
+          \`\`\`
+
+          ### Thumbnail Worker
+          \`\`\`bash
+          docker pull ghcr.io/${ORG}/thumbnail-worker:v${VERSION}
+          docker pull ghcr.io/${ORG}/thumbnail-worker:${VERSION}
+          \`\`\`
+
+          ## Documentation
+
+          - [Production Deployment Guide](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/docs/deployment/PRODUCTION.md)
+          - [Docker Documentation](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/docker/README.md)
+          - [Database Migrations](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/postgres/migrations/README.md)
+
+          ## Upgrading
+
+          To upgrade from a previous version:
+
+          1. Update your \`.env\` file: \`VERSION=v${VERSION}\`
+          2. Pull new images: \`docker-compose pull\`
+          3. Run migrations: \`docker-compose up migrations\`
+          4. Restart services: \`docker-compose up -d\`
+
+          See the [Production Deployment Guide](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/docs/deployment/PRODUCTION.md#upgrading-to-new-version) for detailed upgrade instructions.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Version ${{ steps.version.outputs.version }}
+          body_path: release-notes-footer.md
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

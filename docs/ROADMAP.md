@@ -62,6 +62,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] Automatically assign new users the "user" role
 - [ ] Title updates (configure base from Angular Runtime)
 - [ ] Application Logging from frontend and pattern for SQL logging
+- [ ] Application Analytics
 
 ## Phase 2: Introspection Tools
 
