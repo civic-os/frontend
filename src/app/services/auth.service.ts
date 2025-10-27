@@ -55,8 +55,13 @@ export class AuthService {
           });
         }
 
-        // Refresh schema cache when auth state is determined
-        this.schema.refreshCache();
+        // IMPORTANT: Do NOT call schema.refreshCache() here
+        // Calling refreshCache() on Ready event causes duplicate HTTP requests:
+        //   1. App init → SchemaService loads schema (first request)
+        //   2. Keycloak Ready → refreshCache() clears cache (happens almost immediately)
+        //   3. Components re-subscribe → SchemaService loads schema again (duplicate request)
+        // Schema cache is loaded on-demand when components first request it.
+        // The schemaVersionGuard handles subsequent updates when RBAC permissions change.
       }
 
       if (keycloakEvent.type === KeycloakEventType.AuthLogout) {

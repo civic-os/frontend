@@ -836,6 +836,82 @@ describe('SchemaService', () => {
     });
   });
 
+  describe('In-Flight Request Tracking', () => {
+    it('should prevent concurrent getEntities() calls from triggering duplicate HTTP requests', () => {
+      const mockEntities = [MOCK_ENTITIES.issue, MOCK_ENTITIES.status];
+
+      // Simulate 3 components all calling getEntities() simultaneously
+      const sub1 = service.getEntities().subscribe();
+      const sub2 = service.getEntities().subscribe();
+      const sub3 = service.getEntities().subscribe();
+
+      // Should only make ONE HTTP request despite 3 subscriptions
+      const requests = httpMock.match(req => req.url.includes('schema_entities'));
+      expect(requests.length).toBe(1);
+
+      // Flush the single request
+      requests[0].flush(mockEntities);
+
+      // All subscribers should receive the data
+      sub1.unsubscribe();
+      sub2.unsubscribe();
+      sub3.unsubscribe();
+    });
+
+    it('should prevent concurrent getProperties() calls from triggering duplicate HTTP requests', () => {
+      const mockEntities = [MOCK_ENTITIES.issue];
+      const mockProperties = [MOCK_PROPERTIES.textShort, MOCK_PROPERTIES.integer];
+
+      // First ensure entities are loaded (getProperties depends on getEntities)
+      service.getEntities().subscribe();
+      const entitiesReq = httpMock.expectOne(req => req.url.includes('schema_entities'));
+      entitiesReq.flush(mockEntities);
+
+      // Now simulate 3 components calling getProperties() simultaneously
+      const sub1 = service.getProperties().subscribe();
+      const sub2 = service.getProperties().subscribe();
+      const sub3 = service.getProperties().subscribe();
+
+      // Should only make ONE HTTP request for properties despite 3 subscriptions
+      const requests = httpMock.match(req => req.url.includes('schema_properties'));
+      expect(requests.length).toBe(1);
+
+      // Flush the single request
+      requests[0].flush(mockProperties);
+
+      // All subscribers should receive the processed data
+      sub1.unsubscribe();
+      sub2.unsubscribe();
+      sub3.unsubscribe();
+    });
+
+    it('should allow refreshCache() to trigger new requests after initial load completes', () => {
+      const mockEntities = [MOCK_ENTITIES.issue];
+      const mockProperties = [MOCK_PROPERTIES.textShort];
+
+      // Initial load
+      service.getEntities().subscribe();
+      const req1 = httpMock.expectOne(req => req.url.includes('schema_entities'));
+      req1.flush(mockEntities);
+
+      // Refresh cache
+      service.refreshCache();
+
+      // Should make new requests (cache was cleared)
+      const requests = httpMock.match(req => req.url.includes('schema_entities') || req.url.includes('schema_properties'));
+      expect(requests.length).toBe(2); // Both entities and properties should refetch
+
+      // Flush both requests
+      requests.forEach(req => {
+        if (req.request.url.includes('schema_entities')) {
+          req.flush(mockEntities);
+        } else {
+          req.flush(mockProperties);
+        }
+      });
+    });
+  });
+
   describe('Many-to-Many Detection', () => {
     it('should detect junction table with exactly 2 FKs and only metadata columns', () => {
       const tables = [createMockEntity({ table_name: 'issue_tags' })];

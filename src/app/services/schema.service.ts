@@ -16,8 +16,9 @@
  */
 
 import { HttpClient } from '@angular/common/http';
-import { effect, inject, Injectable, signal } from '@angular/core';
-import { Observable, combineLatest, filter, map, of, ReplaySubject, tap } from 'rxjs';
+import { inject, Injectable, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { Observable, combineLatest, filter, map, of, tap, shareReplay, finalize } from 'rxjs';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable, InverseRelationshipMeta, ManyToManyMeta } from '../interfaces/entity';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { getPostgrestUrl } from '../config/runtime';
@@ -30,21 +31,36 @@ export class SchemaService {
 
   public properties?: SchemaEntityProperty[];
   private tables = signal<SchemaEntityTable[] | undefined>(undefined);
-  private tablesSubject = new ReplaySubject<SchemaEntityTable[]>(1);
 
-  // Sync signal to subject for backward compatibility with Observable API
-  private _syncEffect = effect(() => {
-    const tables = this.tables();
-    if (tables !== undefined) {
-      this.tablesSubject.next(tables);
-    }
-  });
+  // Cached observables for HTTP requests (with shareReplay)
+  private schemaCache$?: Observable<SchemaEntityTable[]>;
+  private propertiesCache$?: Observable<SchemaEntityProperty[]>;
+
+  // In-flight request tracking to prevent duplicate concurrent requests
+  private loadingEntities = false;
+  private loadingProperties = false;
+
+  // Observable from signal - created once in injection context
+  private tables$ = toObservable(this.tables).pipe(
+    filter(tables => tables !== undefined),
+    map(tables => tables!)
+  );
 
   private getSchema() {
-    return this.http.get<SchemaEntityTable[]>(getPostgrestUrl() + 'schema_entities')
-    .pipe(tap(tables => {
-      this.tables.set(tables);
-    }));
+    if (!this.schemaCache$) {
+      this.schemaCache$ = this.http.get<SchemaEntityTable[]>(getPostgrestUrl() + 'schema_entities')
+        .pipe(
+          tap(tables => {
+            this.tables.set(tables);
+          }),
+          finalize(() => {
+            // Reset loading flag when HTTP completes (success or error)
+            this.loadingEntities = false;
+          }),
+          shareReplay({ bufferSize: 1, refCount: false })
+        );
+    }
+    return this.schemaCache$;
   }
 
   public init() {
@@ -53,6 +69,12 @@ export class SchemaService {
   }
 
   public refreshCache() {
+    // Clear cached observables to force fresh HTTP requests
+    this.schemaCache$ = undefined;
+    this.propertiesCache$ = undefined;
+    // Reset loading flags to allow new fetches
+    this.loadingEntities = false;
+    this.loadingProperties = false;
     // Refresh schema in background - new values will emit to subscribers
     this.getSchema().subscribe();
     this.getProperties().subscribe();
@@ -63,6 +85,10 @@ export class SchemaService {
    * Use when metadata.entities, metadata.permissions, or metadata.roles change.
    */
   public refreshEntitiesCache(): void {
+    // Clear cached observable to force fresh HTTP request
+    this.schemaCache$ = undefined;
+    // Reset loading flag to allow new fetch
+    this.loadingEntities = false;
     this.getSchema().subscribe();
   }
 
@@ -71,20 +97,24 @@ export class SchemaService {
    * Use when metadata.properties or metadata.validations change.
    */
   public refreshPropertiesCache(): void {
-    // Clear cached properties to force re-fetch
+    // Clear both the processed cache and the HTTP cache
     this.properties = undefined;
+    this.propertiesCache$ = undefined;
+    // Reset loading flag to allow new fetch
+    this.loadingProperties = false;
     // Trigger fetch - will re-enrich with M:M data
     this.getProperties().subscribe();
   }
 
   public getEntities(): Observable<SchemaEntityTable[]> {
-    // If no data yet, trigger a fetch in the background
-    if (!this.tables()) {
+    // Only trigger fetch if not already loaded AND not currently loading
+    if (!this.tables() && !this.loadingEntities) {
+      this.loadingEntities = true;
       this.getSchema().subscribe();
     }
 
-    // Return observable that's synced with signal via effect
-    return this.tablesSubject.asObservable();
+    // Return pre-created observable that updates when signal changes
+    return this.tables$;
   }
   public getEntity(key: string): Observable<SchemaEntityTable | undefined> {
     return this.getEntities().pipe(map(e => {
@@ -97,9 +127,27 @@ export class SchemaService {
       return of(this.properties);
     }
 
+    // Create cached HTTP observable if it doesn't exist
+    if (!this.propertiesCache$ && !this.loadingProperties) {
+      this.loadingProperties = true;
+      this.propertiesCache$ = this.http.get<SchemaEntityProperty[]>(getPostgrestUrl() + 'schema_properties')
+        .pipe(
+          finalize(() => {
+            // Reset loading flag when HTTP completes (success or error)
+            this.loadingProperties = false;
+          }),
+          shareReplay({ bufferSize: 1, refCount: false })
+        );
+    }
+
     // Fetch both properties and tables to enable M:M enrichment
+    // If cache wasn't created (shouldn't happen but guard against it), return empty
+    if (!this.propertiesCache$) {
+      return of([]);
+    }
+
     return combineLatest([
-      this.http.get<SchemaEntityProperty[]>(getPostgrestUrl() + 'schema_properties'),
+      this.propertiesCache$,
       this.getEntities()
     ]).pipe(
       map(([props, tables]) => {
