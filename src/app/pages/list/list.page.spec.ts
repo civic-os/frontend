@@ -23,6 +23,7 @@ import { provideRouter } from '@angular/router';
 import { ListPage } from './list.page';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { BehaviorSubject, of } from 'rxjs';
 import { take } from 'rxjs/operators';
 import { MOCK_ENTITIES, MOCK_PROPERTIES, createMockProperty } from '../../testing';
@@ -33,6 +34,7 @@ describe('ListPage', () => {
   let fixture: ComponentFixture<ListPage>;
   let mockSchemaService: jasmine.SpyObj<SchemaService>;
   let mockDataService: jasmine.SpyObj<DataService>;
+  let mockAnalyticsService: jasmine.SpyObj<AnalyticsService>;
   let routeParams: BehaviorSubject<any>;
   let queryParams: BehaviorSubject<any>;
 
@@ -46,6 +48,7 @@ describe('ListPage', () => {
       'getPropsForFilter'
     ]);
     mockDataService = jasmine.createSpyObj('DataService', ['getData', 'getDataPaginated']);
+    mockAnalyticsService = jasmine.createSpyObj('AnalyticsService', ['trackEvent']);
 
     // Set default return values to prevent errors when component observables initialize
     mockSchemaService.getEntity.and.returnValue(of(MOCK_ENTITIES.issue));
@@ -61,7 +64,8 @@ describe('ListPage', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { params: routeParams.asObservable(), queryParams: queryParams.asObservable() } },
         { provide: SchemaService, useValue: mockSchemaService },
-        { provide: DataService, useValue: mockDataService }
+        { provide: DataService, useValue: mockDataService },
+        { provide: AnalyticsService, useValue: mockAnalyticsService }
       ]
     })
     .compileComponents();

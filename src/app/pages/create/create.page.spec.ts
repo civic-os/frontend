@@ -24,6 +24,7 @@ import { provideRouter } from '@angular/router';
 import { CreatePage } from './create.page';
 import { SchemaService } from '../../services/schema.service';
 import { DataService } from '../../services/data.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { BehaviorSubject, of } from 'rxjs';
 import { MOCK_ENTITIES, MOCK_PROPERTIES, createMockProperty } from '../../testing';
 import { FormControl, Validators } from '@angular/forms';
@@ -35,6 +36,7 @@ describe('CreatePage', () => {
   let fixture: ComponentFixture<CreatePage>;
   let mockSchemaService: jasmine.SpyObj<SchemaService>;
   let mockDataService: jasmine.SpyObj<DataService>;
+  let mockAnalyticsService: jasmine.SpyObj<AnalyticsService>;
   let mockRouter: jasmine.SpyObj<Router>;
   let mockKeycloak: jasmine.SpyObj<Keycloak>;
   let routeParams: BehaviorSubject<any>;
@@ -47,6 +49,7 @@ describe('CreatePage', () => {
       'getPropsForCreate'
     ]);
     mockDataService = jasmine.createSpyObj('DataService', ['createData', 'getData']);
+    mockAnalyticsService = jasmine.createSpyObj('AnalyticsService', ['trackEvent']);
     mockRouter = jasmine.createSpyObj('Router', ['navigate']);
     mockKeycloak = jasmine.createSpyObj('Keycloak', ['updateToken']);
 
@@ -65,6 +68,7 @@ describe('CreatePage', () => {
         { provide: ActivatedRoute, useValue: { params: routeParams.asObservable() } },
         { provide: SchemaService, useValue: mockSchemaService },
         { provide: DataService, useValue: mockDataService },
+        { provide: AnalyticsService, useValue: mockAnalyticsService },
         { provide: Router, useValue: mockRouter },
         { provide: Keycloak, useValue: mockKeycloak }
       ]

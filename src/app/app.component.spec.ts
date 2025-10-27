@@ -23,11 +23,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { AppComponent } from './app.component';
 import { AuthService } from './services/auth.service';
 import { ThemeService } from './services/theme.service';
+import { AnalyticsService } from './services/analytics.service';
 import { Location } from '@angular/common';
 
 describe('AppComponent', () => {
   let mockAuthService: jasmine.SpyObj<AuthService>;
   let mockThemeService: jasmine.SpyObj<ThemeService>;
+  let mockAnalyticsService: jasmine.SpyObj<AnalyticsService>;
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
@@ -43,6 +45,10 @@ describe('AppComponent', () => {
       isDark: signal(false)
     });
 
+    // Mock AnalyticsService
+    mockAnalyticsService = jasmine.createSpyObj('AnalyticsService', ['trackPageView', 'trackEvent', 'getUserPreference']);
+    mockAnalyticsService.getUserPreference.and.returnValue(true);
+
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
@@ -51,7 +57,8 @@ describe('AppComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: mockAuthService },
-        { provide: ThemeService, useValue: mockThemeService }
+        { provide: ThemeService, useValue: mockThemeService },
+        { provide: AnalyticsService, useValue: mockAnalyticsService }
       ]
     }).compileComponents();
 

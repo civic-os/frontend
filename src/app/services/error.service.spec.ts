@@ -18,14 +18,21 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ErrorService } from './error.service';
+import { AnalyticsService } from './analytics.service';
 import { ApiError } from '../interfaces/api';
 
 describe('ErrorService', () => {
   let service: ErrorService;
+  let mockAnalyticsService: jasmine.SpyObj<AnalyticsService>;
 
   beforeEach(() => {
+    mockAnalyticsService = jasmine.createSpyObj('AnalyticsService', ['trackError']);
+
     TestBed.configureTestingModule({
-      providers: [provideZonelessChangeDetection()]
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: AnalyticsService, useValue: mockAnalyticsService }
+      ]
     });
     service = TestBed.inject(ErrorService);
   });

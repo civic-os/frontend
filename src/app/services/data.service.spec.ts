@@ -20,6 +20,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { DataService } from './data.service';
+import { AnalyticsService } from './analytics.service';
 
 // EWKB test data constants - All using Downtown Flint, MI area coordinates
 // Format: [byte order][type][SRID][X coord][Y coord]
@@ -46,9 +47,13 @@ const EWKB_SAMPLES = {
 describe('DataService', () => {
   let service: DataService;
   let httpMock: HttpTestingController;
+  let mockAnalytics: jasmine.SpyObj<AnalyticsService>;
   const testPostgrestUrl = 'http://test-api.example.com/';
 
   beforeEach(() => {
+    // Mock AnalyticsService
+    mockAnalytics = jasmine.createSpyObj('AnalyticsService', ['trackEvent']);
+
     // Mock runtime configuration
     (window as any).civicOsConfig = {
       postgrestUrl: testPostgrestUrl
@@ -59,6 +64,7 @@ describe('DataService', () => {
         provideZonelessChangeDetection(),
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: AnalyticsService, useValue: mockAnalytics },
         DataService
       ]
     });
