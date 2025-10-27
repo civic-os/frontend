@@ -15,13 +15,45 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { ApiError } from '../interfaces/api';
+import { AnalyticsService } from './analytics.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ErrorService {
+  private analytics = inject(AnalyticsService);
+
+  /**
+   * Parse API error to human-readable message with analytics tracking.
+   * Use this instance method when possible for analytics support.
+   */
+  public parseToHumanWithTracking(err: ApiError): string {
+    const message = ErrorService.parseToHuman(err);
+
+    // Track error with status code or PostgreSQL error code
+    if (err.httpCode) {
+      this.analytics.trackError(`HTTP ${err.httpCode}`, err.httpCode);
+    } else if (err.code) {
+      // Track PostgreSQL error codes as numeric if possible
+      const numericCode = parseInt(err.code);
+      if (!isNaN(numericCode)) {
+        this.analytics.trackError(`PostgreSQL ${err.code}`, numericCode);
+      } else {
+        this.analytics.trackError(`PostgreSQL ${err.code}`);
+      }
+    } else {
+      this.analytics.trackError(message);
+    }
+
+    return message;
+  }
+
+  /**
+   * Parse API error to human-readable message (static version, no tracking).
+   * Kept for backwards compatibility.
+   */
   public static parseToHuman(err: ApiError): string {
     //https://postgrest.org/en/stable/references/errors.html
     if(err.code == '42501') {

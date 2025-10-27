@@ -18,6 +18,9 @@ echo "  MAP_DEFAULT_LNG: $MAP_DEFAULT_LNG"
 echo "  MAP_DEFAULT_ZOOM: $MAP_DEFAULT_ZOOM"
 echo "  S3_ENDPOINT: $S3_ENDPOINT"
 echo "  S3_BUCKET: $S3_BUCKET"
+echo "  MATOMO_URL: $MATOMO_URL"
+echo "  MATOMO_SITE_ID: $MATOMO_SITE_ID"
+echo "  MATOMO_ENABLED: $MATOMO_ENABLED"
 echo ""
 
 # Generate inline config script
@@ -42,6 +45,11 @@ window.civicOsConfig = {
   s3: {
     endpoint: '${S3_ENDPOINT}',
     bucket: '${S3_BUCKET}'
+  },
+  matomo: {
+    url: '${MATOMO_URL}',
+    siteId: '${MATOMO_SITE_ID}',
+    enabled: '${MATOMO_ENABLED}' === 'true'
   }
 };
 </script>
@@ -64,9 +72,10 @@ mv /tmp/index.html.new /usr/share/nginx/html/index.html
 echo "✓ Configuration injected into index.html"
 echo ""
 
-# Substitute KEYCLOAK_URL into nginx configuration
-echo "Updating nginx CSP header with Keycloak URL..."
+# Substitute KEYCLOAK_URL and MATOMO_URL into nginx configuration
+echo "Updating nginx CSP header with Keycloak and Matomo URLs..."
 sed -i "s|KEYCLOAK_URL_PLACEHOLDER|${KEYCLOAK_URL}|g" /etc/nginx/conf.d/default.conf
+sed -i "s|MATOMO_URL_PLACEHOLDER|${MATOMO_URL:-}|g" /etc/nginx/conf.d/default.conf
 echo "✓ Nginx configuration updated"
 echo ""
 

@@ -24,6 +24,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 
 import { DataService } from '../../services/data.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable } from '../../interfaces/entity';
 import { DisplayPropertyComponent } from '../../components/display-property/display-property.component';
 import { FilterBarComponent } from '../../components/filter-bar/filter-bar.component';
@@ -61,6 +62,7 @@ export class ListPage implements OnInit, OnDestroy {
   private router = inject(Router);
   private schema = inject(SchemaService);
   private data = inject(DataService);
+  private analytics = inject(AnalyticsService);
 
   // Pagination constants
   private readonly PAGE_SIZE_STORAGE_KEY = 'civic_os_list_page_size';
@@ -436,6 +438,11 @@ export class ListPage implements OnInit, OnDestroy {
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged())
       .subscribe(value => {
+        // Track search queries (length only, not content for privacy)
+        if (value && value.trim().length > 0 && this.entityKey) {
+          this.analytics.trackEvent('Search', 'Query', this.entityKey, value.trim().length);
+        }
+
         // Navigate to update URL with new search value (reset to page 1)
         this.router.navigate([], {
           relativeTo: this.route,

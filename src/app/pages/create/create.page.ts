@@ -27,6 +27,7 @@ import { EditPropertyComponent } from "../../components/edit-property/edit-prope
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { DialogComponent } from "../../components/dialog/dialog.component";
 
 @Component({
@@ -48,6 +49,7 @@ export class CreatePage {
   private data = inject(DataService);
   private router = inject(Router);
   private keycloak = inject(Keycloak);
+  private analytics = inject(AnalyticsService);
 
   // Expose Math and SchemaService to template
   protected readonly Math = Math;
@@ -151,6 +153,11 @@ export class CreatePage {
             .subscribe({
               next: (result) => {
                 if(result.success === true) {
+                  // Track successful record creation
+                  if (this.entityKey) {
+                    this.analytics.trackEvent('Entity', 'Create', this.entityKey);
+                  }
+
                   if (this.successDialog) {
                     this.successDialog.open();
                   } else {

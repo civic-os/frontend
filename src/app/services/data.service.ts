@@ -17,11 +17,12 @@
 
 import { HttpClient, HttpErrorResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, catchError, filter, forkJoin, map, of } from 'rxjs';
+import { Observable, catchError, filter, forkJoin, map, of, tap } from 'rxjs';
 import { EntityData, InverseRelationshipMeta, InverseRelationshipData, ManyToManyMeta } from '../interfaces/entity';
 import { DataQuery, PaginatedResponse } from '../interfaces/query';
 import { ApiError, ApiResponse } from '../interfaces/api';
 import { ErrorService } from './error.service';
+import { AnalyticsService } from './analytics.service';
 import { getPostgrestUrl } from '../config/runtime';
 
 @Injectable({
@@ -29,6 +30,7 @@ import { getPostgrestUrl } from '../config/runtime';
 })
 export class DataService {
   private http = inject(HttpClient);
+  private analytics = inject(AnalyticsService);
 
   private get(url: string): Observable<any> {
     return this.http.get(getPostgrestUrl() + url);
@@ -189,6 +191,12 @@ export class DataService {
           // Otherwise, it's a successful HTTP delete
           return <ApiResponse>{success: true, body: response};
         }),
+        tap((response) => {
+          // Track successful deletions
+          if (response.success === true) {
+            this.analytics.trackEvent('Entity', 'Delete', entity);
+          }
+        })
       );
   }
 

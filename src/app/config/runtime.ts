@@ -46,6 +46,11 @@ declare global {
         endpoint: string;
         bucket: string;
       };
+      matomo?: {
+        url: string;
+        siteId: string;
+        enabled: boolean;
+      };
     };
   }
 }
@@ -103,4 +108,26 @@ export function getKeycloakAccountUrl(): string {
   const config = getKeycloakConfig();
   const referrerUri = encodeURIComponent(window.location.href);
   return `${config.url}/realms/${config.realm}/account?referrer=${config.clientId}&referrer_uri=${referrerUri}`;
+}
+
+/**
+ * Get Matomo analytics configuration.
+ * Used by AnalyticsService to initialize tracking.
+ *
+ * @returns Matomo config object with url, siteId, and enabled flag. Returns null values if not configured.
+ * @example
+ * const config = getMatomoConfig();
+ * if (config.url && config.siteId) {
+ *   // Initialize tracking
+ * }
+ */
+export function getMatomoConfig(): { url: string | null; siteId: string | null; enabled: boolean } {
+  const config = window.civicOsConfig?.matomo || environment.matomo;
+
+  // Return with null values if not configured
+  return {
+    url: config?.url || null,
+    siteId: config?.siteId || null,
+    enabled: config?.enabled ?? true  // Default to enabled if not specified
+  };
 }

@@ -33,5 +33,10 @@ export const environment: Environment = {
     s3: {
         endpoint: 'http://localhost:9000',
         bucket: 'civic-os-files'
+    },
+    matomo: {
+        url: '',  // Empty = disabled in base environment
+        siteId: '',
+        enabled: false
     }
 };

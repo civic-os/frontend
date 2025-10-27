@@ -40,6 +40,7 @@
           </summary>
           <ul class="menu dropdown-content bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
             @if (this.auth.authenticated()) {
+              <li><a (click)="openSettings()">Preferences</a></li>
               <li><a [href]="getKeycloakAccountUrl()">Account Settings</a></li>
               <li><a (click)="this.auth.logout()">Logout</a></li>
             } @else {
@@ -138,3 +139,9 @@
     }
   </div>
 </div>
+
+<!-- Settings Modal -->
+<app-settings-modal
+  [showModal]="showSettingsModal()"
+  (closeModal)="showSettingsModal.set(false)"
+/>

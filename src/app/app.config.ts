@@ -16,7 +16,7 @@
  */
 
 import { ApplicationConfig, provideZonelessChangeDetection, provideAppInitializer, inject } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withRouterConfig } from '@angular/router';
 
 import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -24,7 +24,10 @@ import { createInterceptorCondition, INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG, In
 import { WidgetComponentRegistry } from './services/widget-component-registry.service';
 import { MarkdownWidgetComponent } from './components/widgets/markdown-widget/markdown-widget.component';
 import { provideMarkdown } from 'ngx-markdown';
-import { getKeycloakConfig, getPostgrestUrl } from './config/runtime';
+import { getKeycloakConfig, getPostgrestUrl, getMatomoConfig } from './config/runtime';
+import { importProvidersFrom } from '@angular/core';
+import { NgxMatomoTrackerModule } from '@ngx-matomo/tracker';
+import { MatomoRouterTrackerService } from './services/matomo-router-tracker.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -54,12 +57,39 @@ export const appConfig: ApplicationConfig = {
 
     provideRouter(routes),
     provideHttpClient(withInterceptors([includeBearerTokenInterceptor])),
+
+    // Matomo analytics - conditionally provided if configured
+    ...(() => {
+      const matomoConfig = getMatomoConfig();
+      if (matomoConfig.url && matomoConfig.siteId && matomoConfig.enabled) {
+        return [
+          importProvidersFrom(
+            NgxMatomoTrackerModule.forRoot({
+              siteId: matomoConfig.siteId,
+              trackerUrl: `${matomoConfig.url}/matomo.php`,
+              scriptUrl: `${matomoConfig.url}/matomo.js`
+            })
+          )
+        ];
+      }
+      return [];
+    })(),
+
     provideMarkdown(),
 
     // Register widget components at startup
     provideAppInitializer(() => {
       const registry = inject(WidgetComponentRegistry);
       registry.register('markdown', MarkdownWidgetComponent);
+    }),
+
+    // Initialize Matomo router tracking (if analytics enabled)
+    provideAppInitializer(() => {
+      const matomoConfig = getMatomoConfig();
+      if (matomoConfig.url && matomoConfig.siteId && matomoConfig.enabled) {
+        // Inject the router tracker service to start listening to navigation events
+        inject(MatomoRouterTrackerService);
+      }
     })
   ]
 };

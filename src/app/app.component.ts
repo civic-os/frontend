@@ -29,6 +29,7 @@ import { FormsModule } from '@angular/forms';
 import { SchemaEntityTable } from './interfaces/entity';
 import { AuthService } from './services/auth.service';
 import { DashboardSelectorComponent } from './components/dashboard-selector/dashboard-selector.component';
+import { SettingsModalComponent } from './components/settings-modal/settings-modal.component';
 import { getKeycloakAccountUrl } from './config/runtime';
 
 @Component({
@@ -37,7 +38,8 @@ import { getKeycloakAccountUrl } from './config/runtime';
     RouterOutlet,
     CommonModule,
     FormsModule,
-    DashboardSelectorComponent
+    DashboardSelectorComponent,
+    SettingsModalComponent
 ],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css'
@@ -55,6 +57,9 @@ export class AppComponent {
 
   // Track if current route is a dashboard page (home or /dashboard/:id)
   isDashboardRoute = signal(false);
+
+  // Control settings modal visibility
+  showSettingsModal = signal(false);
 
   // Expose Keycloak account URL helper to template
   public getKeycloakAccountUrl = getKeycloakAccountUrl;
@@ -129,6 +134,13 @@ export class AppComponent {
   public navigateToSchemaErd() {
     this.router.navigate(['schema-erd']);
     this.drawerOpen = false;
+  }
+
+  /**
+   * Open the settings modal
+   */
+  public openSettings() {
+    this.showSettingsModal.set(true);
   }
 
   /**

@@ -20,6 +20,7 @@ import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType, KeycloakService, ReadyArgs, t
 import Keycloak from 'keycloak-js';
 import { DataService } from './data.service';
 import { SchemaService } from './schema.service';
+import { AnalyticsService } from './analytics.service';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of } from 'rxjs';
 import { getPostgrestUrl } from '../config/runtime';
@@ -32,6 +33,7 @@ export class AuthService {
   private schema = inject(SchemaService);
   private keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
   private http = inject(HttpClient);
+  private analytics = inject(AnalyticsService);
 
   authenticated = signal(false);
   userRoles = signal<string[]>([]);
@@ -53,6 +55,13 @@ export class AuthService {
             },
             error: (err) => console.error('Error refreshing user data:', err)
           });
+
+          // Track login and set user ID for analytics
+          const tokenParsed = this.keycloak.tokenParsed;
+          if (tokenParsed?.sub) {
+            this.analytics.setUserId(tokenParsed.sub);
+          }
+          this.analytics.trackEvent('Auth', 'Login');
         }
 
         // IMPORTANT: Do NOT call schema.refreshCache() here
@@ -67,6 +76,10 @@ export class AuthService {
       if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
         this.authenticated.set(false);
         this.userRoles.set([]);
+
+        // Track logout and reset user ID
+        this.analytics.trackEvent('Auth', 'Logout');
+        this.analytics.resetUserId();
 
         // Refresh schema cache when user logs out
         this.schema.refreshCache();

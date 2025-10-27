@@ -62,7 +62,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [ ] Automatically assign new users the "user" role
 - [ ] Title updates (configure base from Angular Runtime)
 - [ ] Application Logging from frontend and pattern for SQL logging
-- [ ] Application Analytics
+- [x] Application Analytics (external Matomo integration; see Phase 3 for built-in analytics engine)
 
 ## Phase 2: Introspection Tools
 
@@ -100,6 +100,15 @@ This document outlines the development roadmap for Civic OS, organized by phases
 
 ### Logic
 - [ ] Build GUI editor for Block Diagrams showing how Logic works
+
+### Analytics & Observability
+- [ ] Build integrated analytics engine (no external servers required)
+  - [ ] Error logging and tracking
+  - [ ] Usage metrics and user behavior analytics
+  - [ ] Query performance monitoring (detect and log slow queries)
+  - [ ] Database-backed storage for all telemetry data
+  - [ ] Admin dashboard for viewing analytics and trends
+  - [ ] Replace external Matomo dependency with self-contained solution
 
 ---
 

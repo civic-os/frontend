@@ -27,6 +27,7 @@ import { DialogComponent } from '../../components/dialog/dialog.component';
 import Keycloak from 'keycloak-js';
 
 import { EditPropertyComponent } from '../../components/edit-property/edit-property.component';
+import { AnalyticsService } from '../../services/analytics.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -48,6 +49,7 @@ export class EditPage {
   private data = inject(DataService);
   private router = inject(Router);
   private keycloak = inject(Keycloak);
+  private analytics = inject(AnalyticsService);
 
   // Expose Math and SchemaService to template
   protected readonly Math = Math;
@@ -163,6 +165,11 @@ export class EditPage {
             .subscribe({
               next: (result) => {
                 if(result.success === true) {
+                  // Track successful record edit
+                  if (this.entityKey) {
+                    this.analytics.trackEvent('Entity', 'Edit', this.entityKey);
+                  }
+
                   if (this.successDialog) {
                     this.successDialog.open();
                   } else {

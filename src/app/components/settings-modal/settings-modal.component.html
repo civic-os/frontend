@@ -1,0 +1,42 @@
+<dialog [class.modal-open]="showModal()" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4">Settings</h3>
+
+    <!-- Privacy Section -->
+    @if (analyticsConfigured) {
+      <div class="py-4">
+        <h4 class="font-semibold mb-3">Privacy</h4>
+        <label class="label cursor-pointer justify-start gap-3">
+          <input
+            type="checkbox"
+            class="checkbox"
+            [(ngModel)]="analyticsEnabled"
+            (change)="onAnalyticsToggle()"
+          />
+          <span class="label-text">Share anonymous usage data to help improve Civic OS</span>
+        </label>
+        <p class="text-sm opacity-70 mt-2 ml-9">
+          We collect page views and feature usage statistics. No personal information or data content is tracked.
+          You can change this preference at any time.
+        </p>
+      </div>
+    }
+
+    <!-- Future sections can be added here -->
+    <!-- Example:
+    <div class="py-4">
+      <h4 class="font-semibold mb-3">Display</h4>
+      ...
+    </div>
+    -->
+
+    <div class="modal-action">
+      <button class="btn" (click)="close()">Close</button>
+    </div>
+  </div>
+
+  <!-- Backdrop (click to close) -->
+  <form method="dialog" class="modal-backdrop" (click)="close()">
+    <button type="button">close</button>
+  </form>
+</dialog>

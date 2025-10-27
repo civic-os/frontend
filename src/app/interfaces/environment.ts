@@ -31,5 +31,10 @@ export interface Environment {
     s3: {
         endpoint: string,  // Public S3 endpoint (browser-accessible)
         bucket: string
+    },
+    matomo?: {
+        url: string,
+        siteId: string,
+        enabled: boolean
     }
 }
