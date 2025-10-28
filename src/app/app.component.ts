@@ -136,6 +136,11 @@ export class AppComponent {
     this.drawerOpen = false;
   }
 
+  public navigateToSchemaEditorPoc() {
+    this.router.navigate(['schema-editor-poc']);
+    this.drawerOpen = false;
+  }
+
   /**
    * Open the settings modal
    */

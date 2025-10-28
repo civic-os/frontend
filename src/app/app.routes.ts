@@ -45,6 +45,12 @@ export const routes: Routes = [
         canActivate: [schemaVersionGuard]
     },
     {
+        path: 'schema-editor-poc',
+        loadComponent: () => import('./pages/schema-editor-poc/schema-editor-poc.page')
+            .then(m => m.SchemaEditorPocPage),
+        canActivate: [schemaVersionGuard, authGuard]
+    },
+    {
         path: 'permissions',
         component: PermissionsPage,
         canActivate: [schemaVersionGuard, authGuard]

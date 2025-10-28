@@ -133,6 +133,14 @@
                 Permissions
               </a>
             </li>
+            <li (click)="navigateToSchemaEditorPoc()">
+              <a [class.menu-active]="isRouteActive('/schema-editor-poc')"
+                 [class.font-bold]="isRouteActive('/schema-editor-poc')"
+                 [class.opacity-85]="!isRouteActive('/schema-editor-poc')">
+                <span class="material-symbols-outlined">edit_square</span>
+                Schema Editor POC
+              </a>
+            </li>
           }
         </ul>
       </div>

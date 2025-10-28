@@ -1,0 +1,99 @@
+<div class="schema-editor-poc no-prose">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <h1 class="text-2xl font-bold">Schema Editor POC</h1>
+      <span class="badge badge-primary badge-lg ml-4">Proof of Concept</span>
+      @if (!loading() && !error()) {
+        <button class="btn btn-primary ml-4" (click)="autoArrange()">
+          <span class="material-symbols-outlined">auto_awesome</span>
+          Auto-Arrange
+        </button>
+      }
+    </div>
+    <div class="toolbar-right">
+      <div class="stats shadow">
+        <div class="stat">
+          <div class="stat-title">Entities</div>
+          <div class="stat-value text-primary">{{ entityCount() }}</div>
+          <div class="stat-desc">Total in schema</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Selected</div>
+          <div class="stat-value text-secondary">
+            @if (selectedEntity(); as entity) {
+              {{ entity.display_name }}
+            } @else {
+              None
+            }
+          </div>
+          <div class="stat-desc">Click to select</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-container">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <p class="mt-4 text-lg">Loading schema data...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error(); as errorMsg) {
+    <div class="error-container">
+      <div class="alert alert-error">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>{{ errorMsg }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- Canvas Container -->
+  @if (!loading() && !error()) {
+    <div #canvasContainer class="canvas-container"></div>
+
+    <!-- Zoom Controls -->
+    <div class="zoom-controls">
+      <div class="btn-group btn-group-vertical">
+        <button class="btn btn-sm" (click)="zoomIn()" title="Zoom In">
+          <span class="material-symbols-outlined">add</span>
+        </button>
+        <button class="btn btn-sm" (click)="zoomOut()" title="Zoom Out">
+          <span class="material-symbols-outlined">remove</span>
+        </button>
+        <button class="btn btn-sm" (click)="zoomToFit()" title="Zoom to Fit">
+          <span class="material-symbols-outlined">fit_screen</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    @if (showInstructions()) {
+      <div class="instructions">
+        <div class="alert alert-info">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <h3 class="font-bold">Instructions</h3>
+            <ul class="list-disc list-inside text-sm">
+              <li>Click an entity box to select it (check console for logs)</li>
+              <li>Drag entities to reposition them (positions logged to console)</li>
+              <li><strong>Hold Shift and drag</strong> blank area to pan the diagram</li>
+              <li>Lines show foreign key relationships</li>
+              <li>Open browser console (F12) to see interaction logs</li>
+            </ul>
+          </div>
+          <button class="btn btn-sm btn-circle btn-ghost" (click)="showInstructions.set(false)">
+            ✕
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>
