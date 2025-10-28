@@ -72,10 +72,12 @@ mv /tmp/index.html.new /usr/share/nginx/html/index.html
 echo "✓ Configuration injected into index.html"
 echo ""
 
-# Substitute KEYCLOAK_URL and MATOMO_URL into nginx configuration
-echo "Updating nginx CSP header with Keycloak and Matomo URLs..."
+# Substitute runtime URLs into nginx CSP configuration
+echo "Updating nginx CSP header with runtime URLs..."
+sed -i "s|POSTGREST_URL_PLACEHOLDER|${POSTGREST_URL}|g" /etc/nginx/conf.d/default.conf
 sed -i "s|KEYCLOAK_URL_PLACEHOLDER|${KEYCLOAK_URL}|g" /etc/nginx/conf.d/default.conf
 sed -i "s|MATOMO_URL_PLACEHOLDER|${MATOMO_URL:-}|g" /etc/nginx/conf.d/default.conf
+sed -i "s|S3_ENDPOINT_PLACEHOLDER|${S3_ENDPOINT}|g" /etc/nginx/conf.d/default.conf
 echo "✓ Nginx configuration updated"
 echo ""
 
