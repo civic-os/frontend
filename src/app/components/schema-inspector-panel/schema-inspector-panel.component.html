@@ -308,13 +308,131 @@
       <!-- Validations Tab -->
       @if (activeTab() === 'validations') {
         <div role="tabpanel">
-          <div class="text-center py-8 text-base-content/60">
-            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <p class="font-semibold mb-2">Validations Tab</p>
-            <p class="text-sm">Coming soon...</p>
-          </div>
+
+          <!-- Loading State -->
+          @if (loadingProperties()) {
+            <div class="space-y-2">
+              @for (i of [1,2,3]; track i) {
+                <div class="skeleton h-20 w-full"></div>
+              }
+            </div>
+          }
+
+          <!-- Error State -->
+          @else if (propertiesError()) {
+            <div class="alert alert-error">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>{{ propertiesError() }}</span>
+            </div>
+          }
+
+          <!-- Validations List -->
+          @else if (propertiesWithValidations().length > 0) {
+            <div class="space-y-2">
+              @for (property of propertiesWithValidations(); track property.column_name) {
+                <div
+                  class="card bg-base-200 p-3 cursor-pointer hover:bg-base-300 transition-colors"
+                  (click)="togglePropertyExpansion(property.column_name)">
+
+                  <!-- Property Name & Summary (Always Visible) -->
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0 flex items-center gap-2">
+                      <!-- Expand/Collapse Chevron -->
+                      <svg
+                        class="w-4 h-4 flex-shrink-0 transition-transform"
+                        [class.rotate-90]="isPropertyExpanded(property.column_name)"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+
+                      <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-base truncate">{{ property.display_name }}</h4>
+                        <code class="text-xs text-base-content/60">{{ property.column_name }}</code>
+                      </div>
+                    </div>
+
+                    <!-- Validation Indicators -->
+                    <div class="flex items-center gap-2">
+                      @if (property.is_nullable === false) {
+                        <span class="text-error text-lg">⚠️</span>
+                      }
+                      @for (icon of getValidationIcons(property); track icon) {
+                        <span class="text-info text-lg">{{ icon }}</span>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Expanded Validation Details -->
+                  @if (isPropertyExpanded(property.column_name)) {
+                    <div class="mt-3 pt-3 border-t border-base-300 space-y-3">
+                      <!-- Required (if is_nullable === false) -->
+                      @if (property.is_nullable === false) {
+                        <div class="flex items-start gap-3">
+                          <span class="text-error text-lg mt-0.5">⚠️</span>
+                          <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="badge badge-sm badge-error badge-outline">Required</span>
+                            </div>
+                            <p class="font-medium text-base-content">This field is required</p>
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Other Validation Rules -->
+                      @for (rule of property.validation_rules; track $index) {
+                        <div class="flex items-start gap-3">
+                          <!-- Icon based on rule type -->
+                          @if (rule.type === 'pattern') {
+                            <span class="text-info text-lg mt-0.5">📋</span>
+                          } @else if (rule.type === 'min' || rule.type === 'max') {
+                            <span class="text-info text-lg mt-0.5">🔢</span>
+                          } @else if (rule.type === 'minLength' || rule.type === 'maxLength') {
+                            <span class="text-info text-lg mt-0.5">📏</span>
+                          } @else if (rule.type === 'fileType' || rule.type === 'maxFileSize') {
+                            <span class="text-info text-lg mt-0.5">📁</span>
+                          } @else {
+                            <span class="text-info text-lg mt-0.5">ℹ️</span>
+                          }
+
+                          <div class="flex-1">
+                            <!-- Rule Type Badge -->
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="badge badge-sm badge-info badge-outline">{{ formatRuleType(rule.type) }}</span>
+                            </div>
+
+                            <!-- Human-Readable Description -->
+                            <p class="font-medium text-base-content mb-1">
+                              {{ formatConstraintDescription(rule.type, rule.value) }}
+                            </p>
+
+                            <!-- Error Message (secondary) -->
+                            @if (rule.message) {
+                              <p class="text-xs text-base-content/60 italic">{{ rule.message }}</p>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Empty State -->
+          @else {
+            <div class="text-center py-8 text-base-content/60">
+              <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <p class="font-semibold mb-2">No Validations</p>
+              <p class="text-sm">This entity has no validation rules defined.</p>
+            </div>
+          }
         </div>
       }
 

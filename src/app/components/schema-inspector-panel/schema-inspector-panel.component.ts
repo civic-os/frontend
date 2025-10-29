@@ -105,6 +105,14 @@ export class SchemaInspectorPanelComponent {
     );
   });
 
+  // Computed: Properties that have validation rules OR are required
+  propertiesWithValidations = computed(() => {
+    return this.properties().filter(p =>
+      (p.validation_rules && p.validation_rules.length > 0) ||
+      p.is_nullable === false
+    );
+  });
+
   constructor() {
     // Load all properties once for inverse relationship detection
     this.schemaService.getProperties().subscribe({
@@ -265,5 +273,92 @@ export class SchemaInspectorPanelComponent {
    */
   onNavigateToEntity(tableName: string): void {
     this.navigateToEntity.emit(tableName);
+  }
+
+  /**
+   * Format validation rule type for display
+   */
+  formatRuleType(type: string): string {
+    switch (type) {
+      case 'required':
+        return 'Required';
+      case 'min':
+        return 'Min Value';
+      case 'max':
+        return 'Max Value';
+      case 'minLength':
+        return 'Min Length';
+      case 'maxLength':
+        return 'Max Length';
+      case 'pattern':
+        return 'Pattern';
+      case 'fileType':
+        return 'File Type';
+      case 'maxFileSize':
+        return 'Max File Size';
+      default:
+        return type;
+    }
+  }
+
+  /**
+   * Format constraint description in human-readable form
+   */
+  formatConstraintDescription(type: string, value?: string): string {
+    if (!value && type !== 'required') return '';
+
+    switch (type) {
+      case 'required':
+        return 'This field is required';
+      case 'min':
+        return `Must be at least ${value}`;
+      case 'max':
+        return `Must be at most ${value}`;
+      case 'minLength':
+        return `At least ${value} character${value === '1' ? '' : 's'}`;
+      case 'maxLength':
+        return `Up to ${value} character${value === '1' ? '' : 's'}`;
+      case 'pattern':
+        return `Must match pattern: ${value}`;
+      case 'fileType':
+        return `Accepts: ${value}`;
+      case 'maxFileSize':
+        // Convert bytes to human-readable format
+        const bytes = parseInt(value || '0', 10);
+        if (bytes >= 1048576) {
+          return `${(bytes / 1048576).toFixed(1)} MB maximum`;
+        } else if (bytes >= 1024) {
+          return `${(bytes / 1024).toFixed(1)} KB maximum`;
+        }
+        return `${bytes} bytes maximum`;
+      default:
+        return value || '';
+    }
+  }
+
+  /**
+   * Get validation icons for a property
+   * Returns one icon per validation rule
+   */
+  getValidationIcons(property: SchemaEntityProperty): string[] {
+    if (!property.validation_rules) return [];
+
+    return property.validation_rules.map(rule => {
+      switch (rule.type) {
+        case 'min':
+        case 'max':
+          return '🔢';
+        case 'minLength':
+        case 'maxLength':
+          return '📏';
+        case 'pattern':
+          return '📋';
+        case 'fileType':
+        case 'maxFileSize':
+          return '📁';
+        default:
+          return 'ℹ️';
+      }
+    });
   }
 }
