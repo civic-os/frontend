@@ -21,6 +21,7 @@ import { SchemaService } from '../../services/schema.service';
 import { ThemeService } from '../../services/theme.service';
 import { SchemaEntityTable, SchemaEntityProperty } from '../../interfaces/entity';
 import { forkJoin, take } from 'rxjs';
+import { SchemaInspectorPanelComponent } from '../../components/schema-inspector-panel/schema-inspector-panel.component';
 
 /**
  * Proof of Concept page for the interactive Schema Editor using JointJS.
@@ -37,7 +38,7 @@ import { forkJoin, take } from 'rxjs';
 @Component({
   selector: 'app-schema-editor-poc',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, SchemaInspectorPanelComponent],
   templateUrl: './schema-editor-poc.page.html',
   styleUrl: './schema-editor-poc.page.css'
 })
@@ -60,11 +61,51 @@ export class SchemaEditorPocPage implements OnDestroy {
   junctionTables = signal<Set<string>>(new Set());
   selectedEntity = signal<SchemaEntityTable | null>(null);
   showInstructions = signal(true);
+  editMode = signal(false); // Future: enable entity dragging when true
+
+  // Metadata system tables that may be referenced via FK
+  private readonly METADATA_SYSTEM_TABLES = [
+    'files',
+    'civic_os_users'
+  ];
+
+  // Hardcoded metadata entities for diagram display (not in metadata.entities table)
+  private readonly METADATA_ENTITIES: SchemaEntityTable[] = [
+    {
+      table_name: 'files',
+      display_name: 'Files',
+      description: 'File storage system table',
+      sort_order: 900,
+      search_fields: null,
+      show_map: false,
+      map_property_name: null,
+      insert: false,
+      select: true,
+      update: false,
+      delete: false
+    },
+    {
+      table_name: 'civic_os_users',
+      display_name: 'Users',
+      description: 'User accounts',
+      sort_order: 901,
+      search_fields: null,
+      show_map: false,
+      map_property_name: null,
+      insert: false,
+      select: true,
+      update: false,
+      delete: false
+    }
+  ];
 
   // Computed signals
-  entityCount = computed(() => this.entities().length);
+  allEntities = computed(() => {
+    return [...this.entities(), ...this.METADATA_ENTITIES];
+  });
+  entityCount = computed(() => this.allEntities().length);
   visibleEntities = computed(() => {
-    const all = this.entities();
+    const all = this.allEntities();
     const junctions = this.junctionTables();
     return all.filter(e => !junctions.has(e.table_name));
   });
@@ -76,6 +117,10 @@ export class SchemaEditorPocPage implements OnDestroy {
   // Panning state
   private isPanning = false;
   private panStart = { x: 0, y: 0 };
+  private hasPanned = false; // Track if actual panning occurred
+
+  // Track previous selection state for panning
+  private previouslySelected: SchemaEntityTable | null = null;
 
   constructor() {
     // Fetch schema data on initialization
@@ -90,6 +135,40 @@ export class SchemaEditorPocPage implements OnDestroy {
       if (container && !isLoading && hasEntities && isPlatformBrowser(this.platformId)) {
         await this.initializeCanvas(container);
       }
+    });
+
+    // Effect: Pan canvas when inspector opens/closes
+    effect(() => {
+      const selected = this.selectedEntity();
+
+      // Only pan if paper is initialized
+      if (!this.paper) {
+        this.previouslySelected = selected;
+        return;
+      }
+
+      // Detect state transitions
+      const wasOpen = this.previouslySelected !== null;
+      const isOpen = selected !== null;
+
+      // Only pan on state transitions (not on initial load)
+      if (wasOpen !== isOpen) {
+        const panAmount = 200; // Half the inspector width (400px / 2)
+        const currentTranslate = this.paper.translate();
+
+        if (isOpen) {
+          // Inspector opening - pan left
+          this.paper.translate(currentTranslate.tx - panAmount, currentTranslate.ty);
+          console.log('[SchemaEditorPocPage] Panned canvas left by 200px (inspector opened)');
+        } else {
+          // Inspector closing - pan right
+          this.paper.translate(currentTranslate.tx + panAmount, currentTranslate.ty);
+          console.log('[SchemaEditorPocPage] Panned canvas right by 200px (inspector closed)');
+        }
+      }
+
+      // Update previous state
+      this.previouslySelected = selected;
     });
   }
 
@@ -164,7 +243,15 @@ export class SchemaEditorPocPage implements OnDestroy {
         background: {
           color: 'var(--base-200)'
         },
-        interactive: true,
+        // Disable element dragging when not in edit mode
+        interactive: (cellView: any) => {
+          // Only allow interaction with elements if editMode is true
+          if (cellView.model.isElement()) {
+            return this.editMode();
+          }
+          // Always allow interaction with links
+          return true;
+        },
         cellViewNamespace: shapes
       });
 
@@ -230,7 +317,7 @@ export class SchemaEditorPocPage implements OnDestroy {
     const entities = this.visibleEntities();
     const gridColumns = Math.ceil(Math.sqrt(entities.length));
     const cellWidth = 250;
-    const cellHeight = 200;
+    const cellHeight = 100; // Reduced height since we're showing less info
     const padding = 50;
 
     // Get actual theme colors
@@ -242,6 +329,16 @@ export class SchemaEditorPocPage implements OnDestroy {
       const x = col * (cellWidth + padding) + padding;
       const y = row * (cellHeight + padding) + padding;
 
+      // Check if this is a metadata system table
+      const isMetadataTable = this.METADATA_SYSTEM_TABLES.includes(entity.table_name);
+
+      // Truncate description if too long
+      const description = entity.description || 'No description';
+      const maxDescLength = 40;
+      const truncatedDesc = description.length > maxDescLength
+        ? description.substring(0, maxDescLength) + '...'
+        : description;
+
       const entityElement = new shapes.standard.Rectangle({
         position: { x, y },
         size: { width: cellWidth, height: cellHeight },
@@ -251,17 +348,67 @@ export class SchemaEditorPocPage implements OnDestroy {
             stroke: colors.baseContent,
             strokeWidth: 2,
             rx: 8,
-            ry: 8
+            ry: 8,
+            // Add title attribute for tooltip with full description
+            title: entity.description || 'No description'
           },
           label: {
-            text: entity.display_name,
+            text: entity.display_name + '\n' + truncatedDesc,
             fill: colors.baseContent,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: 'bold',
             textAnchor: 'middle',
-            textVerticalAnchor: 'top',
-            refY: 15
+            textVerticalAnchor: 'middle',
+            // Line height to space out the two lines
+            lineHeight: 1.4
           }
+        },
+        markup: [
+          {
+            tagName: 'rect',
+            selector: 'body'
+          },
+          {
+            tagName: 'text',
+            selector: 'nameLabel'
+          },
+          {
+            tagName: 'text',
+            selector: 'descLabel'
+          }
+        ]
+      });
+
+      // Apply styling based on whether it's a metadata table
+      entityElement.attr({
+        body: {
+          fill: isMetadataTable ? colors.base200 : colors.base100,
+          stroke: colors.baseContent,
+          strokeWidth: 2,
+          strokeDasharray: isMetadataTable ? '5, 5' : 'none',
+          opacity: isMetadataTable ? 0.8 : 1,
+          rx: 8,
+          ry: 8
+        },
+        nameLabel: {
+          text: entity.display_name,
+          fill: colors.baseContent,
+          fontSize: 16,
+          fontWeight: 'bold',
+          textAnchor: 'middle',
+          refX: '50%',
+          refY: 25
+        },
+        descLabel: {
+          text: truncatedDesc,
+          fill: colors.baseContent,
+          fontSize: 12,
+          fontWeight: 'normal',
+          fontStyle: entity.description ? 'normal' : 'italic',
+          opacity: 0.7,
+          textAnchor: 'middle',
+          refX: '50%',
+          refY: 55
         }
       });
 
@@ -272,7 +419,7 @@ export class SchemaEditorPocPage implements OnDestroy {
       entityElement.addTo(this.graph);
     });
 
-    console.log(`[SchemaEditorPocPage] Rendered ${entities.length} entities with colors:`, colors);
+    console.log(`[SchemaEditorPocPage] Rendered ${entities.length} entities with name + description`);
   }
 
   /**
@@ -427,9 +574,18 @@ export class SchemaEditorPocPage implements OnDestroy {
 
     // Update all entity boxes
     this.graph.getElements().forEach((element: any) => {
-      element.attr('body/fill', colors.base100);
+      const entityData = element.get('entityData');
+      const isMetadataTable = entityData && this.METADATA_SYSTEM_TABLES.includes(entityData.table_name);
+
+      // Apply different styling for metadata tables
+      element.attr('body/fill', isMetadataTable ? colors.base200 : colors.base100);
       element.attr('body/stroke', colors.baseContent);
-      element.attr('label/fill', colors.baseContent);
+      element.attr('body/strokeDasharray', isMetadataTable ? '5, 5' : 'none');
+      element.attr('body/opacity', isMetadataTable ? 0.8 : 1);
+
+      // Update both name and description labels
+      element.attr('nameLabel/fill', colors.baseContent);
+      element.attr('descLabel/fill', colors.baseContent);
     });
 
     // Update all relationship links
@@ -448,8 +604,13 @@ export class SchemaEditorPocPage implements OnDestroy {
    * Sets up event listeners for click and drag interactions
    */
   private setupEventListeners(): void {
-    // Click to select entity
+    // Click to select entity (only if not panning)
     this.paper.on('cell:pointerclick', (cellView: any) => {
+      // Don't select if we just finished panning
+      if (this.hasPanned) {
+        return;
+      }
+
       const cell = cellView.model;
       if (cell.isElement()) {
         const entityData = cell.get('entityData');
@@ -461,13 +622,15 @@ export class SchemaEditorPocPage implements OnDestroy {
       }
     });
 
-    // Drag end to log new position
+    // Drag end to log new position (only used when editMode is true)
     this.paper.on('cell:pointerup', (cellView: any) => {
-      const cell = cellView.model;
-      if (cell.isElement()) {
-        const position = cell.position();
-        const entityName = cell.get('entityName');
-        console.log(`[SchemaEditorPocPage] Entity "${entityName}" moved to:`, position);
+      if (this.editMode()) {
+        const cell = cellView.model;
+        if (cell.isElement()) {
+          const position = cell.position();
+          const entityName = cell.get('entityName');
+          console.log(`[SchemaEditorPocPage] Entity "${entityName}" moved to:`, position);
+        }
       }
     });
 
@@ -478,11 +641,10 @@ export class SchemaEditorPocPage implements OnDestroy {
       console.log('[SchemaEditorPocPage] Deselected entity');
     });
 
-    // Panning support: Shift + drag on blank area
+    // Panning support: drag anywhere on the canvas
+    // Blank area panning
     this.paper.on('blank:pointerdown', (evt: MouseEvent) => {
-      if (evt.shiftKey) {
-        this.startPanning(evt);
-      }
+      this.startPanning(evt);
     });
 
     this.paper.on('blank:pointermove', (evt: MouseEvent) => {
@@ -496,13 +658,35 @@ export class SchemaEditorPocPage implements OnDestroy {
         this.stopPanning();
       }
     });
+
+    // Entity area panning (when edit mode is off)
+    this.paper.on('cell:pointerdown', (cellView: any, evt: MouseEvent) => {
+      if (!this.editMode()) {
+        this.startPanning(evt);
+      }
+    });
+
+    this.paper.on('cell:pointermove', (cellView: any, evt: MouseEvent) => {
+      if (this.isPanning) {
+        this.updatePanning(evt);
+        // Prevent default to stop entity selection during panning
+        evt.stopPropagation();
+      }
+    });
+
+    this.paper.on('cell:pointerup', () => {
+      if (this.isPanning) {
+        this.stopPanning();
+      }
+    });
   }
 
   /**
-   * Starts panning mode when Shift + drag on blank area
+   * Starts panning mode on drag anywhere
    */
   private startPanning(evt: MouseEvent): void {
     this.isPanning = true;
+    this.hasPanned = false; // Reset at start
     this.panStart = { x: evt.clientX, y: evt.clientY };
     console.log('[SchemaEditorPocPage] Started panning');
   }
@@ -513,6 +697,11 @@ export class SchemaEditorPocPage implements OnDestroy {
   private updatePanning(evt: MouseEvent): void {
     const dx = evt.clientX - this.panStart.x;
     const dy = evt.clientY - this.panStart.y;
+
+    // Track if we actually moved (threshold to distinguish from click)
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      this.hasPanned = true;
+    }
 
     // Get current translate
     const currentTranslate = this.paper.translate();
@@ -530,6 +719,11 @@ export class SchemaEditorPocPage implements OnDestroy {
   private stopPanning(): void {
     this.isPanning = false;
     console.log('[SchemaEditorPocPage] Stopped panning');
+
+    // Reset hasPanned after a short delay to allow click event to check it
+    setTimeout(() => {
+      this.hasPanned = false;
+    }, 10);
   }
 
   /**
@@ -727,26 +921,115 @@ export class SchemaEditorPocPage implements OnDestroy {
   }
 
   /**
-   * Highlights the selected entity by changing its stroke
+   * Highlights the selected entity and its connected relationships
    */
   private highlightSelectedEntity(selectedCell: any): void {
     // Remove highlights from all elements
     this.clearHighlights();
 
     const colors = this.getThemeColors();
+
     // Highlight selected element
     selectedCell.attr('body/stroke', colors.primary);
     selectedCell.attr('body/strokeWidth', 3);
+
+    // Highlight connected relationships (links)
+    const connectedLinks = this.graph.getConnectedLinks(selectedCell);
+    connectedLinks.forEach((link: any) => {
+      link.attr('line/strokeWidth', 3);
+      link.attr('line/stroke', colors.primary);
+      // Also update marker colors to match
+      const attrs = link.attr('line');
+      if (attrs.targetMarker) {
+        link.attr('line/targetMarker/fill', colors.primary);
+      }
+      if (attrs.sourceMarker) {
+        link.attr('line/sourceMarker/fill', colors.primary);
+      }
+    });
+
+    console.log(`[SchemaEditorPocPage] Highlighted ${connectedLinks.length} connected relationships`);
   }
 
   /**
-   * Clears all entity highlights
+   * Clears all entity and relationship highlights
    */
   private clearHighlights(): void {
     const colors = this.getThemeColors();
+
+    // Reset all entity highlights
     this.graph.getElements().forEach((el: any) => {
       el.attr('body/stroke', colors.baseContent);
       el.attr('body/strokeWidth', 2);
     });
+
+    // Reset all link highlights
+    this.graph.getLinks().forEach((link: any) => {
+      link.attr('line/strokeWidth', 2);
+      link.attr('line/stroke', colors.baseContent);
+      // Reset marker colors
+      const attrs = link.attr('line');
+      if (attrs.targetMarker) {
+        link.attr('line/targetMarker/fill', colors.baseContent);
+      }
+      if (attrs.sourceMarker) {
+        link.attr('line/sourceMarker/fill', colors.baseContent);
+      }
+    });
+  }
+
+  /**
+   * Handle inspector panel close event
+   */
+  onInspectorClose(): void {
+    this.selectedEntity.set(null);
+    this.clearHighlights();
+  }
+
+  /**
+   * Navigate to a related entity on the diagram
+   */
+  onNavigateToEntity(tableName: string): void {
+    // Find the entity in our data (includes both regular and metadata entities)
+    const targetEntity = this.allEntities().find(e => e.table_name === tableName);
+
+    if (!targetEntity) {
+      console.warn(`[SchemaEditorPocPage] Entity "${tableName}" not found`);
+      return;
+    }
+
+    // Find the corresponding element on the graph
+    const targetElement = this.graph.getElements().find((el: any) =>
+      el.get('entityName') === tableName
+    );
+
+    if (!targetElement) {
+      console.warn(`[SchemaEditorPocPage] Element for "${tableName}" not found on graph`);
+      return;
+    }
+
+    // Update selection
+    this.selectedEntity.set(targetEntity);
+    this.highlightSelectedEntity(targetElement);
+
+    // Center the target entity in view
+    const position = targetElement.position();
+    const size = targetElement.size();
+    const centerX = position.x + size.width / 2;
+    const centerY = position.y + size.height / 2;
+
+    // Get paper dimensions
+    const paperWidth = this.paper.el.clientWidth;
+    const paperHeight = this.paper.el.clientHeight;
+
+    // Calculate translation to center the entity
+    const currentScale = this.paper.scale();
+    const targetTx = (paperWidth / 2) - (centerX * currentScale.sx);
+    const targetTy = (paperHeight / 2) - (centerY * currentScale.sy);
+
+    // Smoothly pan to the target
+    this.paper.translate(targetTx, targetTy);
+
+    console.log(`[SchemaEditorPocPage] Navigated to entity: ${tableName}`);
   }
 }

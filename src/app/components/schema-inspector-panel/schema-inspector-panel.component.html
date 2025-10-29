@@ -1,0 +1,337 @@
+<!-- Inspector Panel - Right Side -->
+@if (isOpen()) {
+  <div class="h-full flex flex-col bg-base-100 border-l border-base-300 shadow-xl">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between p-4 border-b border-base-300">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-lg font-bold truncate">{{ entity()?.display_name }}</h3>
+        @if (entity()?.description) {
+          <p class="text-sm text-base-content/70 truncate">{{ entity()?.description }}</p>
+        }
+      </div>
+
+      <!-- Close Button -->
+      <button
+        class="btn btn-sm btn-circle btn-ghost ml-2"
+        (click)="onClose()"
+        aria-label="Close inspector panel"
+        title="Close (ESC)">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div role="tablist" class="tabs tabs-bordered px-4 pt-2">
+      @if (!isMetadataTable()) {
+        <button
+          role="tab"
+          class="tab"
+          [class.tab-active]="activeTab() === 'properties'"
+          (click)="setActiveTab('properties')">
+          Properties
+        </button>
+      }
+      <button
+        role="tab"
+        class="tab"
+        [class.tab-active]="activeTab() === 'relations'"
+        (click)="setActiveTab('relations')">
+        Relations
+      </button>
+      @if (!isMetadataTable()) {
+        <button
+          role="tab"
+          class="tab"
+          [class.tab-active]="activeTab() === 'validations'"
+          (click)="setActiveTab('validations')">
+          Validations
+        </button>
+      }
+      <button
+        role="tab"
+        class="tab"
+        [class.tab-active]="activeTab() === 'permissions'"
+        (click)="setActiveTab('permissions')">
+        Permissions
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="flex-1 overflow-y-auto p-4">
+
+      <!-- Properties Tab -->
+      @if (activeTab() === 'properties') {
+        <div role="tabpanel">
+
+          <!-- Loading State -->
+          @if (loadingProperties()) {
+            <div class="space-y-2">
+              @for (i of [1,2,3,4,5]; track i) {
+                <div class="skeleton h-16 w-full"></div>
+              }
+            </div>
+          }
+
+          <!-- Error State -->
+          @else if (propertiesError()) {
+            <div class="alert alert-error">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>{{ propertiesError() }}</span>
+            </div>
+          }
+
+          <!-- Properties List -->
+          @else if (properties().length > 0) {
+            <div class="space-y-2">
+              @for (property of properties(); track property.column_name) {
+                <div
+                  class="card bg-base-200 p-3 cursor-pointer hover:bg-base-300 transition-colors"
+                  (click)="togglePropertyExpansion(property.column_name)">
+
+                  <!-- Property Name & Badges (Always Visible) -->
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0 flex items-center gap-2">
+                      <!-- Expand/Collapse Chevron -->
+                      <svg
+                        class="w-4 h-4 flex-shrink-0 transition-transform"
+                        [class.rotate-90]="isPropertyExpanded(property.column_name)"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+
+                      <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-base truncate">{{ property.display_name }}</h4>
+                      </div>
+                    </div>
+
+                    <!-- Badges -->
+                    <div class="flex flex-wrap gap-1 justify-end">
+                      @for (badgeType of getConstraintBadges(property); track badgeType) {
+                        @let badgeInfo = getBadgeInfo(badgeType);
+                        <span class="badge badge-sm {{ badgeInfo.cssClass }}">
+                          {{ badgeInfo.text }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Expanded Details -->
+                  @if (isPropertyExpanded(property.column_name)) {
+                    <div class="mt-3 pt-3 border-t border-base-300">
+                      <!-- Column Name -->
+                      <div class="text-sm mb-2">
+                        <span class="text-base-content/60">Column:</span>
+                        <code class="ml-2 text-xs text-base-content/80">{{ property.column_name }}</code>
+                      </div>
+
+                      <!-- Data Type -->
+                      <div class="text-sm mb-1">
+                        <span class="text-base-content/60">Type:</span>
+                        <code class="ml-2 bg-base-300 px-2 py-0.5 rounded">{{ formatDataType(property) }}</code>
+                      </div>
+
+                  <!-- Foreign Key Reference -->
+                  @if (property.join_table && !property.many_to_many_meta) {
+                    <div class="text-sm mb-1">
+                      <span class="text-base-content/60">References:</span>
+                      <code class="ml-2 text-secondary">{{ property.join_table }}.{{ property.join_column || 'id' }}</code>
+                    </div>
+                  }
+
+                  <!-- Many-to-Many Reference -->
+                  @if (property.many_to_many_meta) {
+                    <div class="text-sm mb-1">
+                      <span class="text-base-content/60">Related Entity:</span>
+                      <code class="ml-2 text-accent">{{ property.many_to_many_meta.relatedTable }}</code>
+                    </div>
+                    <div class="text-sm mb-1">
+                      <span class="text-base-content/60">Junction Table:</span>
+                      <code class="ml-2 text-base-content/50">{{ property.many_to_many_meta.junctionTable }}</code>
+                    </div>
+                  }
+
+                  <!-- Default Value -->
+                  @if (property.column_default) {
+                    <div class="text-sm mb-1">
+                      <span class="text-base-content/60">Default:</span>
+                      <code class="ml-2 text-accent">{{ property.column_default }}</code>
+                    </div>
+                  }
+
+                      <!-- Description -->
+                      @if (property.description) {
+                        <p class="text-sm text-base-content/70 mt-2 italic">{{ property.description }}</p>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Empty State -->
+          @else {
+            <div class="text-center py-8 text-base-content/60">
+              <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <p>No properties found</p>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Relations Tab -->
+      @if (activeTab() === 'relations') {
+        <div role="tabpanel" class="space-y-4">
+
+          <!-- Belongs To (FK) Relationships -->
+          @if (belongsToRelationships().length > 0) {
+            <div>
+              <h3 class="text-sm font-semibold text-base-content/80 mb-2 flex items-center gap-2">
+                <span class="badge badge-sm badge-secondary">Belongs To</span>
+                <span class="text-xs text-base-content/60">Foreign Key References</span>
+              </h3>
+              <div class="space-y-2">
+                @for (relation of belongsToRelationships(); track relation.column_name) {
+                  <div
+                    class="card bg-base-200 p-3 cursor-pointer hover:bg-base-300 transition-colors"
+                    (click)="onNavigateToEntity(relation.join_table)">
+                    <div class="flex items-center justify-between">
+                      <div class="flex-1">
+                        <h4 class="font-semibold text-base">{{ relation.display_name }}</h4>
+                        <code class="text-xs text-base-content/60">{{ relation.column_name }} → {{ relation.join_table }}.{{ relation.join_column || 'id' }}</code>
+                      </div>
+                      <!-- Target/Crosshair Icon -->
+                      <svg class="w-5 h-5 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                        <line x1="12" y1="3" x2="12" y2="6" stroke-width="2"/>
+                        <line x1="12" y1="18" x2="12" y2="21" stroke-width="2"/>
+                        <line x1="3" y1="12" x2="6" y2="12" stroke-width="2"/>
+                        <line x1="18" y1="12" x2="21" y2="12" stroke-width="2"/>
+                      </svg>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Has Many (Inverse FK) Relationships -->
+          @if (hasManyRelationships().length > 0) {
+            <div>
+              <h3 class="text-sm font-semibold text-base-content/80 mb-2 flex items-center gap-2">
+                <span class="badge badge-sm badge-info">Has Many</span>
+                <span class="text-xs text-base-content/60">Referenced By</span>
+              </h3>
+              <div class="space-y-2">
+                @for (relation of hasManyRelationships(); track relation.table_name + relation.column_name) {
+                  <div
+                    class="card bg-base-200 p-3 cursor-pointer hover:bg-base-300 transition-colors"
+                    (click)="onNavigateToEntity(relation.table_name)">
+                    <div class="flex items-center justify-between">
+                      <div class="flex-1">
+                        <h4 class="font-semibold text-base">{{ relation.table_name }}</h4>
+                        <code class="text-xs text-base-content/60">via {{ relation.column_name }}</code>
+                      </div>
+                      <!-- Target/Crosshair Icon -->
+                      <svg class="w-5 h-5 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                        <line x1="12" y1="3" x2="12" y2="6" stroke-width="2"/>
+                        <line x1="12" y1="18" x2="12" y2="21" stroke-width="2"/>
+                        <line x1="3" y1="12" x2="6" y2="12" stroke-width="2"/>
+                        <line x1="18" y1="12" x2="21" y2="12" stroke-width="2"/>
+                      </svg>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Many-to-Many Relationships -->
+          @if (manyToManyRelationships().length > 0) {
+            <div>
+              <h3 class="text-sm font-semibold text-base-content/80 mb-2 flex items-center gap-2">
+                <span class="badge badge-sm badge-accent">Many-to-Many</span>
+                <span class="text-xs text-base-content/60">Bidirectional</span>
+              </h3>
+              <div class="space-y-2">
+                @for (relation of manyToManyRelationships(); track relation.column_name) {
+                  <div
+                    class="card bg-base-200 p-3 cursor-pointer hover:bg-base-300 transition-colors"
+                    (click)="onNavigateToEntity(relation.many_to_many_meta!.relatedTable)">
+                    <div class="flex items-center justify-between">
+                      <div class="flex-1">
+                        <h4 class="font-semibold text-base">{{ relation.display_name }}</h4>
+                        <code class="text-xs text-base-content/60">via {{ relation.many_to_many_meta?.junctionTable }}</code>
+                      </div>
+                      <!-- Target/Crosshair Icon -->
+                      <svg class="w-5 h-5 text-base-content/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                        <line x1="12" y1="3" x2="12" y2="6" stroke-width="2"/>
+                        <line x1="12" y1="18" x2="12" y2="21" stroke-width="2"/>
+                        <line x1="3" y1="12" x2="6" y2="12" stroke-width="2"/>
+                        <line x1="18" y1="12" x2="21" y2="12" stroke-width="2"/>
+                      </svg>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Empty State -->
+          @if (belongsToRelationships().length === 0 && hasManyRelationships().length === 0 && manyToManyRelationships().length === 0) {
+            <div class="text-center py-8 text-base-content/60">
+              <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              <p class="font-semibold mb-2">No Relationships</p>
+              <p class="text-sm">This entity has no foreign key or many-to-many relationships.</p>
+            </div>
+          }
+
+        </div>
+      }
+
+      <!-- Validations Tab -->
+      @if (activeTab() === 'validations') {
+        <div role="tabpanel">
+          <div class="text-center py-8 text-base-content/60">
+            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p class="font-semibold mb-2">Validations Tab</p>
+            <p class="text-sm">Coming soon...</p>
+          </div>
+        </div>
+      }
+
+      <!-- Permissions Tab -->
+      @if (activeTab() === 'permissions') {
+        <div role="tabpanel">
+          <div class="text-center py-8 text-base-content/60">
+            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+            <p class="font-semibold mb-2">Permissions Tab</p>
+            <p class="text-sm">Coming soon...</p>
+          </div>
+        </div>
+      }
+
+    </div>
+
+  </div>
+}

@@ -20,8 +20,6 @@ This document outlines the development roadmap for Civic OS, organized by phases
 - [x] Add Color PropertyType
 - [ ] Configurable Entity Menu (Nesting, Hiding, Singular/Plural names)
 
-- [ ] Prevent duplicate/cancelled dropdown queries (not changed)
-
 #### List Pages
 - [X] Add pagination
 - [x] Add text search as an indexed column and toggle-able search box
@@ -69,6 +67,22 @@ This document outlines the development roadmap for Civic OS, organized by phases
 ### Schema
 - [x] Build automatic generation of Entity Relationship Diagrams showing how schema works
 - [x] Permit other relationship types (one-to-one, many-to-many)
+- [x] **ERD Interactive Features (POC Complete)** - Schema Editor POC validates JointJS approach
+  - [x] Zoom controls (zoom in, zoom out, zoom to fit)
+  - [x] Pan with Shift+drag
+  - [x] Click to select entities
+  - [x] Drag to reposition entities
+  - [x] M:M relationship visualization
+  - [x] Theme integration (dynamic color updates)
+  - [ ] **Next Steps for Phase 3 Schema Editor**:
+    - [ ] Add property lists inside entity boxes (currently just display_name)
+    - [ ] Show data types and constraints for each property
+    - [ ] Add legend for relationship types (FK, M:M, 1:1)
+    - [ ] Implement entity grouping/nesting (for modules or related entities)
+    - [ ] Add search/filter for large schemas
+    - [ ] Save/restore custom layout positions to user preferences
+    - [ ] Export diagram as image (PNG/SVG)
+    - [ ] Minimap for navigation in large schemas
 - [ ] Advanced Form Validation by use of RPCs
 - [ ] Add customizable template pages (primarily for PDF)
 - [ ] Research safe database schema editing, sandboxing
@@ -76,7 +90,6 @@ This document outlines the development roadmap for Civic OS, organized by phases
   - [ ] Grouped on Detail Page
   - [ ] Grouped on ERD
   - [ ] Multi-step create forms
-- [ ] ERD zoom and pan
 - [ ] Use postgres Schemas to builder larger, modular apps
 
 ### Workflow
@@ -91,7 +104,17 @@ This document outlines the development roadmap for Civic OS, organized by phases
 ## Phase 3: Graphical Editing Tools
 
 ### Schema
-- [ ] Build GUI editor for Entity Relationship Diagrams
+- [ ] **Build GUI editor for Entity Relationship Diagrams** - Extend Phase 2 POC with editing capabilities
+  - [ ] Right-click context menus for entities and relationships
+  - [ ] Add new entity modal with property definitions
+  - [ ] Edit entity properties (name, display_name, description)
+  - [ ] Add/edit/delete properties within entities
+  - [ ] Create relationships by dragging between entities
+  - [ ] Edit relationship properties (FK column name, cascade rules)
+  - [ ] Delete entities and relationships with confirmation
+  - [ ] Undo/redo support for all editing operations
+  - [ ] Live validation and database schema updates
+  - [ ] Migration preview before applying changes
 - [ ] Allow creating new columns on an existing entity
 - [ ] Allow creation/modification of text search columns
 
