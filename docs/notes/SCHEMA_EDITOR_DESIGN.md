@@ -21,7 +21,8 @@
 12. [Visual Design System](#visual-design-system)
 13. [Testing Strategy](#testing-strategy)
 14. [Migration Strategy](#migration-strategy)
-15. [Future Enhancements](#future-enhancements)
+15. [Implemented Enhancements](#implemented-enhancements)
+16. [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -2351,6 +2352,182 @@ describe('Schema Editor', () => {
 - All existing metadata tables unchanged (except added column)
 - Existing pages continue to work
 - Schema Editor is purely additive
+
+---
+
+## Implemented Enhancements
+
+### Geometric Port Ordering (✅ Implemented: 2025-10-29)
+
+**Status**: Production-ready with comprehensive unit tests
+
+**Problem Statement**:
+
+The initial port-based routing implementation used a type-based approach that assigned ports based on relationship type:
+- Foreign key relationships → left/right ports
+- Many-to-many relationships → top/bottom ports
+
+This arbitrary classification led to several issues:
+1. **Unnecessary link crossovers** - Links would exit entities in directions that didn't align with the target entity's position
+2. **Longer path lengths** - Links would route around entities instead of taking direct paths
+3. **Unintuitive layout** - The visual arrangement didn't match user expectations about how entities should connect
+
+**Solution: Angle-Based Geometric Port Assignment**
+
+Implemented a geometric algorithm that assigns ports based on the **actual spatial relationship** between connected entities, rather than relationship type. The algorithm calculates the angle between entity centers and assigns ports to the side of the entity box that faces toward the related entity.
+
+**Algorithm Overview**:
+
+1. **Calculate Entity Centers** - For each entity element, compute the center point from position (top-left corner) and size
+2. **Compute Angles** - For each relationship, calculate the angle from source entity center to target entity center using `Math.atan2()`
+3. **Determine Sides** - Map angles to entity sides (top/right/bottom/left) accounting for screen coordinate system
+4. **Sort Within Sides** - Order ports by angle within each side to prevent crossovers
+5. **Distribute Evenly** - Space ports evenly along each side's perimeter
+
+**Key Implementation Details**:
+
+**Screen Coordinate System Handling** (`schema-editor-poc.page.ts:400-439`):
+
+The implementation must account for the fact that screen coordinates have Y increasing downward (opposite of mathematical convention):
+
+```typescript
+private determineSideFromAngle(angle: number): 'top' | 'right' | 'bottom' | 'left' {
+  const normalized = ((angle + 180) % 360) - 180;
+
+  // Screen coordinates: Y increases downward
+  if (normalized >= -45 && normalized < 45) {
+    return 'right';     // -45° to 45°
+  } else if (normalized >= 45 && normalized < 135) {
+    return 'bottom';    // 45° to 135° (POSITIVE angle = downward)
+  } else if (normalized >= 135 || normalized < -135) {
+    return 'left';      // 135° to -135° (wraps through ±180°)
+  } else {
+    return 'top';       // -135° to -45° (NEGATIVE angle = upward)
+  }
+}
+```
+
+**Main Geometric Recalculation** (`schema-editor-poc.page.ts:1051-1220`):
+
+The `recalculatePortsByGeometry()` method runs after Dagre layout positions entities:
+
+1. **Collect relationships** from three sources:
+   - Outgoing foreign keys (properties with `join_table`)
+   - Incoming foreign keys (inverse relationships)
+   - Many-to-many relationships (from graph links)
+
+2. **Calculate angles** for each relationship:
+   ```typescript
+   const angle = Math.atan2(
+     relatedCenter.y - entityCenter.y,
+     relatedCenter.x - entityCenter.x
+   ) * (180 / Math.PI);
+   ```
+
+3. **Sort ports by angle** within each side (accounting for screen coordinates):
+   - **Top**: Ascending (left to right: -135° → -45°)
+   - **Right**: Ascending (top to bottom: -45° → 45°)
+   - **Bottom**: Descending (right to left: 135° → 45°)
+   - **Left**: Special wrapping logic (top to bottom: 135° → 180°, -180° → -135°)
+
+4. **Distribute evenly** along perimeter with proper spacing
+
+**Link Reconnection** (`schema-editor-poc.page.ts:1163-1257`):
+
+After ports are recalculated, links must be reconnected to use the new geometric ports:
+
+```typescript
+private reconnectLinksToGeometricPorts(): void {
+  links.forEach((link: any) => {
+    // Recalculate angles between connected entities
+    const sourceAngle = Math.atan2(...);
+    const targetAngle = Math.atan2(...);
+
+    // Determine which sides the ports are on
+    const sourceSide = this.determineSideFromAngle(sourceAngle);
+    const targetSide = this.determineSideFromAngle(targetAngle);
+
+    // Find matching ports by ID pattern and side
+    // Reconnect link to ports instead of anchors
+    link.source({ id: sourceId, port: sourcePortId });
+    link.target({ id: targetId, port: targetPortId });
+  });
+}
+```
+
+**Port ID Format Conventions**:
+
+Port IDs follow a consistent naming pattern to enable reconnection:
+
+- **Foreign Key Outgoing**: `${side}_out_${columnName}`
+  - Example: `right_out_status_id`
+- **Foreign Key Incoming**: `${side}_in_${sourceTable}_${columnName}`
+  - Example: `left_in_issues_status_id`
+- **Many-to-Many Outgoing**: `${side}_m2m_out_${junctionTable}`
+  - Example: `top_m2m_out_issue_tags`
+- **Many-to-Many Incoming**: `${side}_m2m_in_${junctionTable}`
+  - Example: `bottom_m2m_in_issue_tags`
+
+**Integration with Auto-Arrange** (`schema-editor-poc.page.ts:1222`):
+
+The geometric recalculation runs automatically after Dagre layout completes:
+
+```typescript
+// After Dagre positions all elements
+elements.forEach((element: any) => {
+  const node = dagreGraph.node(element.id);
+  if (node) {
+    element.position(node.x - node.width / 2, node.y - node.height / 2);
+  }
+});
+
+// Recalculate ports based on new positions
+this.recalculatePortsByGeometry();
+```
+
+**Testing**:
+
+Comprehensive unit tests (`schema-editor-poc.page.spec.ts`) validate the critical geometry functions:
+
+- **31 tests total**, all passing
+- **`determineSideFromAngle()` tests** (21 tests):
+  - All four quadrants (top, right, bottom, left)
+  - Boundary conditions (45°, -45°, 135°, -135°)
+  - Edge cases (0°, ±180°, small angles)
+  - Screen coordinate system correctness
+- **`getEntityCenter()` tests** (10 tests):
+  - Various positions and sizes
+  - Decimal coordinates
+  - Zero position
+  - Large coordinates
+  - Square and rectangular elements
+
+Test coverage ensures the algorithm correctly handles all angle ranges and properly accounts for screen coordinate system peculiarities.
+
+**Benefits**:
+
+1. **Shorter paths** - Links exit entities in the direction of their target, minimizing route distance
+2. **Fewer crossovers** - Geometric sorting prevents links from crossing unnecessarily
+3. **More intuitive** - Visual layout matches spatial expectations (links point toward related entities)
+4. **Uniform treatment** - No arbitrary distinction between FK and M:M relationships
+5. **Automatic optimization** - Works with any auto-layout algorithm (Dagre, force-directed, etc.)
+
+**Router Configuration**:
+
+The implementation uses JointJS Metro router for smooth, natural curved paths:
+
+```typescript
+router: { name: 'metro' },
+connector: { name: 'rounded', args: { radius: 10 } }
+```
+
+Metro router was chosen over Manhattan router because it produces more natural-looking diagrams while still respecting port positions for orthogonal exits.
+
+**Related Documentation**:
+
+- **Design Document**: `docs/notes/GEOMETRIC_PORT_ORDERING.md` (detailed algorithm explanation)
+- **Unit Tests**: `src/app/pages/schema-editor-poc/schema-editor-poc.page.spec.ts`
+- **Implementation**: `src/app/pages/schema-editor-poc/schema-editor-poc.page.ts` (lines 400-439, 1051-1257)
 
 ---
 

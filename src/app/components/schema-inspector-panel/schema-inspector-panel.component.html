@@ -439,13 +439,126 @@
       <!-- Permissions Tab -->
       @if (activeTab() === 'permissions') {
         <div role="tabpanel">
-          <div class="text-center py-8 text-base-content/60">
-            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-            </svg>
-            <p class="font-semibold mb-2">Permissions Tab</p>
-            <p class="text-sm">Coming soon...</p>
-          </div>
+
+          <!-- Loading State -->
+          @if (loadingPermissions()) {
+            <div class="space-y-2">
+              @for (i of [1,2,3]; track i) {
+                <div class="skeleton h-16 w-full"></div>
+              }
+            </div>
+          }
+
+          <!-- Error State -->
+          @else if (permissionsError()) {
+            <div class="alert alert-error">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>{{ permissionsError() }}</span>
+            </div>
+          }
+
+          <!-- Permission Matrix -->
+          @else if (permissionMatrix().length > 0) {
+            <div class="overflow-x-auto">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th class="bg-base-200">Role</th>
+                    <th class="bg-base-200 text-center">
+                      <div class="flex flex-col items-center gap-1">
+                        <span>📖</span>
+                        <span class="text-xs">Read</span>
+                      </div>
+                    </th>
+                    <th class="bg-base-200 text-center">
+                      <div class="flex flex-col items-center gap-1">
+                        <span>➕</span>
+                        <span class="text-xs">Create</span>
+                      </div>
+                    </th>
+                    <th class="bg-base-200 text-center">
+                      <div class="flex flex-col items-center gap-1">
+                        <span>✏️</span>
+                        <span class="text-xs">Update</span>
+                      </div>
+                    </th>
+                    <th class="bg-base-200 text-center">
+                      <div class="flex flex-col items-center gap-1">
+                        <span>🗑️</span>
+                        <span class="text-xs">Delete</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of permissionMatrix(); track row.role.id) {
+                    <tr class="hover">
+                      <td class="font-medium">
+                        <div class="flex flex-col">
+                          <span>{{ row.role.display_name }}</span>
+                          @if (row.role.description) {
+                            <span class="text-xs text-base-content/60">{{ row.role.description }}</span>
+                          }
+                        </div>
+                      </td>
+                      <td class="text-center">
+                        @if (row.read) {
+                          <span class="text-success text-xl">✓</span>
+                        } @else {
+                          <span class="text-base-content/20 text-xl">✗</span>
+                        }
+                      </td>
+                      <td class="text-center">
+                        @if (row.create) {
+                          <span class="text-success text-xl">✓</span>
+                        } @else {
+                          <span class="text-base-content/20 text-xl">✗</span>
+                        }
+                      </td>
+                      <td class="text-center">
+                        @if (row.update) {
+                          <span class="text-success text-xl">✓</span>
+                        } @else {
+                          <span class="text-base-content/20 text-xl">✗</span>
+                        }
+                      </td>
+                      <td class="text-center">
+                        @if (row.delete) {
+                          <span class="text-success text-xl">✓</span>
+                        } @else {
+                          <span class="text-base-content/20 text-xl">✗</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Future Note -->
+            <div class="alert alert-info mt-4">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div class="text-sm">
+                <p class="font-semibold">Read-only view</p>
+                <p>This displays role-based permissions. Custom RLS policies will be shown here in the future.</p>
+              </div>
+            </div>
+          }
+
+          <!-- Empty State -->
+          @else {
+            <div class="text-center py-8 text-base-content/60">
+              <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+              <p class="font-semibold mb-2">No Permissions</p>
+              <p class="text-sm">No roles or permissions are configured for this entity.</p>
+            </div>
+          }
         </div>
       }
 

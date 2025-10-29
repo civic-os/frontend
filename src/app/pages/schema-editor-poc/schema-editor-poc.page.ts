@@ -15,11 +15,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Geometric port ordering implementation
 import { Component, inject, signal, computed, effect, viewChild, ElementRef, OnDestroy, ChangeDetectionStrategy, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { SchemaService } from '../../services/schema.service';
 import { ThemeService } from '../../services/theme.service';
-import { SchemaEntityTable, SchemaEntityProperty } from '../../interfaces/entity';
+import { SchemaEntityTable, SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { forkJoin, take } from 'rxjs';
 import { SchemaInspectorPanelComponent } from '../../components/schema-inspector-panel/schema-inspector-panel.component';
 
@@ -311,6 +312,133 @@ export class SchemaEditorPocPage implements OnDestroy {
   }
 
   /**
+   * Determines if an entity should use port-based routing.
+   * All entities now use ports to prevent link overlap at entry/exit points.
+   *
+   * @param entity The entity to check
+   * @returns Always true - all entities use port-based routing
+   */
+  private isHubEntity(entity: SchemaEntityTable): boolean {
+    // All entities use port-based routing to ensure links never overlap at entity boundaries
+    return true;
+  }
+
+  /**
+   * Generates JointJS port configuration with simplified side-based groups.
+   * Ports are initially empty and will be populated geometrically after layout.
+   *
+   * @param entity The entity to generate ports for
+   * @returns Port configuration object for JointJS with 4 side-based groups
+   */
+  private generatePortsForEntity(entity: SchemaEntityTable): any {
+    // Return empty port configuration with 4 side-based groups
+    // Actual ports will be calculated geometrically after Dagre layout
+    return {
+      groups: {
+        'top': {
+          position: { name: 'top' },
+          attrs: {
+            circle: {
+              r: 0,  // Hide port visuals
+              fill: 'transparent'
+            }
+          },
+          markup: [{
+            tagName: 'circle',
+            selector: 'circle'
+          }]
+        },
+        'right': {
+          position: { name: 'right' },
+          attrs: {
+            circle: {
+              r: 0,
+              fill: 'transparent'
+            }
+          },
+          markup: [{
+            tagName: 'circle',
+            selector: 'circle'
+          }]
+        },
+        'bottom': {
+          position: { name: 'bottom' },
+          attrs: {
+            circle: {
+              r: 0,
+              fill: 'transparent'
+            }
+          },
+          markup: [{
+            tagName: 'circle',
+            selector: 'circle'
+          }]
+        },
+        'left': {
+          position: { name: 'left' },
+          attrs: {
+            circle: {
+              r: 0,
+              fill: 'transparent'
+            }
+          },
+          markup: [{
+            tagName: 'circle',
+            selector: 'circle'
+          }]
+        }
+      },
+      items: []  // Empty initially, will be populated geometrically
+    };
+  }
+
+  /**
+   * Calculates the center point of a JointJS element.
+   *
+   * @param element The JointJS element
+   * @returns Center coordinates { x, y }
+   */
+  private getEntityCenter(element: any): { x: number; y: number } {
+    const position = element.position();
+    const size = element.size();
+    return {
+      x: position.x + size.width / 2,
+      y: position.y + size.height / 2
+    };
+  }
+
+  /**
+   * Determines which side of an entity a port should be placed on based on the angle
+   * to the related entity. Uses geometric principles to create physically intuitive connections.
+   *
+   * IMPORTANT: Screen coordinates have Y increasing downward, opposite of mathematical convention.
+   *
+   * @param angle Angle in degrees from Math.atan2() (-180 to 180)
+   * @returns The side ('top' | 'right' | 'bottom' | 'left') where the port should be placed
+   */
+  private determineSideFromAngle(angle: number): 'top' | 'right' | 'bottom' | 'left' {
+    // Normalize angle to -180 to 180 range (though atan2 already returns this)
+    const normalized = ((angle + 180) % 360) - 180;
+
+    // Divide the circle into 4 quadrants with 90° spans
+    // Screen coordinates: Y increases downward, so positive angles = downward direction
+    // -45° to 45° = right (facing east)
+    // 45° to 135° = bottom (facing south - positive Y)
+    // 135° to 180° or -180° to -135° = left (facing west)
+    // -135° to -45° = top (facing north - negative Y)
+
+    if (normalized >= -45 && normalized < 45) {
+      return 'right';
+    } else if (normalized >= 45 && normalized < 135) {
+      return 'bottom';  // Swapped: positive angle = downward in screen coords
+    } else if (normalized >= 135 || normalized < -135) {
+      return 'left';
+    } else {
+      return 'top';  // Swapped: negative angle = upward in screen coords
+    }
+  }
+
+  /**
    * Renders entity boxes on the canvas
    */
   private renderEntities(shapes: any): void {
@@ -416,6 +544,14 @@ export class SchemaEditorPocPage implements OnDestroy {
       entityElement.set('entityName', entity.table_name);
       entityElement.set('entityData', entity);
 
+      // Add ports for hub entities (>5 relationships)
+      const isHub = this.isHubEntity(entity);
+      if (isHub) {
+        const portsConfig = this.generatePortsForEntity(entity);
+        entityElement.set('ports', portsConfig);
+        console.log(`[SchemaEditorPocPage] Hub entity detected: ${entity.table_name}, ports:`, portsConfig.items.length);
+      }
+
       entityElement.addTo(this.graph);
     });
 
@@ -423,7 +559,9 @@ export class SchemaEditorPocPage implements OnDestroy {
   }
 
   /**
-   * Renders relationship lines between entities
+   * Renders relationship lines between entities using Metro router.
+   * Links are created with perpendicular anchors initially, then reconnected
+   * to geometric ports after layout.
    */
   private renderRelationships(shapes: any): void {
     const properties = this.properties();
@@ -440,20 +578,15 @@ export class SchemaEditorPocPage implements OnDestroy {
 
         if (sourceElement && targetElement) {
           const link = new shapes.standard.Link({
-            source: {
-              id: sourceElement.id,
-              anchor: { name: 'perpendicular' }
-            },
-            target: {
-              id: targetElement.id,
-              anchor: { name: 'perpendicular' }
-            },
+            source: { id: sourceElement.id, anchor: { name: 'perpendicular' } },
+            target: { id: targetElement.id, anchor: { name: 'perpendicular' } },
             router: { name: 'metro' },
             connector: { name: 'rounded', args: { radius: 10 } },
             attrs: {
               line: {
                 stroke: colors.baseContent,
                 strokeWidth: 2,
+                opacity: 0.7,
                 targetMarker: {
                   type: 'path',
                   d: 'M 10 -5 0 0 10 5 z',
@@ -465,6 +598,8 @@ export class SchemaEditorPocPage implements OnDestroy {
 
           link.set('relationshipType', 'foreignKey');
           link.set('columnName', prop.column_name);
+          link.set('sourceTable', prop.table_name);
+          link.set('targetTable', prop.join_table);
           link.addTo(this.graph);
           foreignKeyCount++;
         }
@@ -488,30 +623,25 @@ export class SchemaEditorPocPage implements OnDestroy {
           const targetElement = this.findElementByTableName(targetTable);
 
           if (sourceElement && targetElement) {
-            // Create M:M link with double-ended arrows (solid line)
+            // Create M:M link with double-ended arrows
             const link = new shapes.standard.Link({
-              source: {
-                id: sourceElement.id,
-                anchor: { name: 'perpendicular' }
-              },
-              target: {
-                id: targetElement.id,
-                anchor: { name: 'perpendicular' }
-              },
+              source: { id: sourceElement.id, anchor: { name: 'perpendicular' } },
+              target: { id: targetElement.id, anchor: { name: 'perpendicular' } },
               router: { name: 'metro' },
               connector: { name: 'rounded', args: { radius: 10 } },
               attrs: {
                 line: {
                   stroke: colors.baseContent,
                   strokeWidth: 2,
+                  opacity: 0.7,
                   sourceMarker: {
                     type: 'path',
-                    d: 'M 10 -5 0 0 10 5 z', // Arrow pointing toward source
+                    d: 'M 10 -5 0 0 10 5 z',
                     fill: colors.baseContent
                   },
                   targetMarker: {
                     type: 'path',
-                    d: 'M 10 -5 0 0 10 5 z', // Arrow pointing toward target
+                    d: 'M 10 -5 0 0 10 5 z',
                     fill: colors.baseContent
                   }
                 }
@@ -520,6 +650,8 @@ export class SchemaEditorPocPage implements OnDestroy {
 
             link.set('relationshipType', 'manyToMany');
             link.set('junctionTable', junctionTableName);
+            link.set('sourceTable', sourceTable);
+            link.set('targetTable', targetTable);
             link.addTo(this.graph);
             manyToManyCount++;
           }
@@ -536,6 +668,89 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   private findElementByTableName(tableName: string): any {
     return this.graph.getElements().find((el: any) => el.get('entityName') === tableName);
+  }
+
+  /**
+   * Adjusts link vertices to prevent overlapping when multiple links connect same endpoints.
+   * Works in combination with port-based routing: ports distribute connection points spatially,
+   * and this function offsets parallel link paths to prevent visual convergence.
+   *
+   * Based on JointJS tutorial: https://resources.jointjs.com/tutorials/joint/tutorials/multiple-links-between-elements.html
+   */
+  private async adjustVertices(graph: any, cell: any): Promise<void> {
+    const { g } = await import('@joint/core');
+    const GAP = 35; // Increased from 20 for better separation
+
+    if (cell.isElement()) {
+      const links = graph.getConnectedLinks(cell);
+      for (const link of links) {
+        await this.adjustVertices(graph, link);
+      }
+      return;
+    }
+
+    const link = cell;
+    const sourceId = link.get('source').id;
+    const targetId = link.get('target').id;
+
+    if (!sourceId || !targetId) return;
+
+    const siblings = graph.getLinks().filter((l: any) => {
+      const src = l.get('source').id;
+      const tgt = l.get('target').id;
+      return (src === sourceId && tgt === targetId) || (src === targetId && tgt === sourceId);
+    });
+
+    if (siblings.length <= 1) {
+      link.set('vertices', []);
+      return;
+    }
+
+    const sourceElement = graph.getCell(sourceId);
+    const targetElement = graph.getCell(targetId);
+
+    if (!sourceElement || !targetElement) return;
+
+    const sourceBBox = sourceElement.getBBox();
+    const targetBBox = targetElement.getBBox();
+    const sourceCenter = sourceBBox.center();
+    const targetCenter = targetBBox.center();
+    const midPoint = new g.Line(sourceCenter, targetCenter).midpoint();
+    const theta = sourceCenter.theta(targetCenter);
+
+    siblings.forEach((siblingLink: any, index: number) => {
+      if (index === 0) {
+        siblingLink.set('vertices', []);
+        return;
+      }
+
+      const offset = GAP * Math.ceil(index / 2);
+      const sign = (index % 2 === 0) ? 1 : -1;
+      const angle = g.toRad(theta + (sign * 90));
+      const vertex = g.Point.fromPolar(offset, angle, midPoint);
+
+      siblingLink.set('vertices', [{ x: vertex.x, y: vertex.y }]);
+    });
+
+    if (siblings.length % 2 === 0) {
+      const shift = GAP / 2;
+      const shiftAngle = g.toRad(theta - 90);
+      const shiftVector = g.Point.fromPolar(shift, shiftAngle);
+
+      siblings.forEach((siblingLink: any) => {
+        const vertices = siblingLink.get('vertices') || [];
+        if (vertices.length > 0) {
+          const newVertices = vertices.map((v: any) => ({
+            x: v.x + shiftVector.x,
+            y: v.y + shiftVector.y
+          }));
+          siblingLink.set('vertices', newVertices);
+        } else {
+          const vertex = midPoint.clone().offset(shiftVector.x, shiftVector.y);
+          siblingLink.set('vertices', [{ x: vertex.x, y: vertex.y }]);
+        }
+      });
+    }
   }
 
   /**
@@ -630,6 +845,9 @@ export class SchemaEditorPocPage implements OnDestroy {
           const position = cell.position();
           const entityName = cell.get('entityName');
           console.log(`[SchemaEditorPocPage] Entity "${entityName}" moved to:`, position);
+
+          // Recalculate link vertices after moving an element
+          this.adjustVertices(this.graph, cell);
         }
       }
     });
@@ -677,6 +895,41 @@ export class SchemaEditorPocPage implements OnDestroy {
     this.paper.on('cell:pointerup', () => {
       if (this.isPanning) {
         this.stopPanning();
+      }
+    });
+
+    // Graph events for link vertex adjustment
+    // Recalculate vertices when links are added or removed
+    this.graph.on('add', (cell: any) => {
+      if (cell.isLink()) {
+        this.adjustVertices(this.graph, cell);
+      }
+    });
+
+    this.graph.on('remove', (cell: any) => {
+      if (cell.isLink()) {
+        // When a link is removed, recalculate vertices for remaining sibling links
+        const sourceId = cell.get('source').id;
+        const targetId = cell.get('target').id;
+
+        if (sourceId && targetId) {
+          // Find remaining links between these elements
+          const siblings = this.graph.getLinks().filter((l: any) => {
+            const src = l.get('source').id;
+            const tgt = l.get('target').id;
+            return (src === sourceId && tgt === targetId) || (src === targetId && tgt === sourceId);
+          });
+
+          // Recalculate vertices for each remaining sibling
+          siblings.forEach((sibling: any) => this.adjustVertices(this.graph, sibling));
+        }
+      }
+    });
+
+    // Recalculate vertices when link endpoints change
+    this.graph.on('change:source change:target', (link: any) => {
+      if (link.isLink()) {
+        this.adjustVertices(this.graph, link);
       }
     });
   }
@@ -727,6 +980,310 @@ export class SchemaEditorPocPage implements OnDestroy {
   }
 
   /**
+   * Recalculates port positions using geometric angle-based ordering.
+   * Called after Dagre layout when entity positions are finalized.
+   * Assigns ports to sides based on the angle to related entities and sorts them
+   * to minimize crossovers.
+   */
+  private recalculatePortsByGeometry(): void {
+    if (!this.graph) {
+      console.warn('[SchemaEditorPocPage] Cannot recalculate ports: graph not initialized');
+      return;
+    }
+
+    console.log('[SchemaEditorPocPage] Recalculating ports using geometric ordering...');
+
+    const properties = this.properties();
+    const junctionTables = this.junctionTables();
+    const elements = this.graph.getElements();
+
+    // Process each entity element
+    elements.forEach((element: any) => {
+      const entityName = element.get('entityName');
+      const entityCenter = this.getEntityCenter(element);
+
+      // Store port data with angle information
+      interface PortData {
+        id: string;
+        group: 'top' | 'right' | 'bottom' | 'left';
+        angle: number;
+        relatedTable: string;
+      }
+
+      const portsData: PortData[] = [];
+
+      // Get all relationships for this entity (FK and M:M combined)
+      // 1. Outgoing FK relationships (this entity has FK column pointing to another)
+      const outgoingFKs = properties.filter(p =>
+        p.table_name === entityName &&
+        p.join_table &&
+        p.type !== EntityPropertyType.ManyToMany
+      );
+
+      outgoingFKs.forEach(prop => {
+        const relatedElement = this.findElementByTableName(prop.join_table!);
+        if (relatedElement) {
+          const relatedCenter = this.getEntityCenter(relatedElement);
+          const angle = Math.atan2(
+            relatedCenter.y - entityCenter.y,
+            relatedCenter.x - entityCenter.x
+          ) * (180 / Math.PI);
+          const side = this.determineSideFromAngle(angle);
+
+          portsData.push({
+            id: `${side}_out_${prop.column_name}`,
+            group: side,
+            angle,
+            relatedTable: prop.join_table!
+          });
+        }
+      });
+
+      // 2. Incoming FK relationships (other entities have FK pointing to this entity)
+      const incomingFKs = properties.filter(p =>
+        p.join_table === entityName &&
+        p.type !== EntityPropertyType.ManyToMany
+      );
+
+      incomingFKs.forEach(prop => {
+        const relatedElement = this.findElementByTableName(prop.table_name);
+        if (relatedElement) {
+          const relatedCenter = this.getEntityCenter(relatedElement);
+          const angle = Math.atan2(
+            relatedCenter.y - entityCenter.y,
+            relatedCenter.x - entityCenter.x
+          ) * (180 / Math.PI);
+          const side = this.determineSideFromAngle(angle);
+
+          portsData.push({
+            id: `${side}_in_${prop.table_name}_${prop.column_name}`,
+            group: side,
+            angle,
+            relatedTable: prop.table_name
+          });
+        }
+      });
+
+      // 3. Many-to-many relationships
+      // M:M relationships are NOT in the properties array with ManyToMany type
+      // Instead, we need to look at the links on the graph to find M:M connections
+      const links = this.graph.getLinks();
+      const m2mLinks = links.filter((link: any) => {
+        const relType = link.get('relationshipType');
+        const sourceTable = link.get('sourceTable');
+        const targetTable = link.get('targetTable');
+        return relType === 'manyToMany' && (sourceTable === entityName || targetTable === entityName);
+      });
+
+      m2mLinks.forEach((link: any) => {
+        const sourceTable = link.get('sourceTable');
+        const targetTable = link.get('targetTable');
+        const junctionTable = link.get('junctionTable');
+
+        // Determine which end of the M:M this entity is on
+        const isSource = sourceTable === entityName;
+        const relatedTable = isSource ? targetTable : sourceTable;
+
+        if (relatedTable) {
+          const relatedElement = this.findElementByTableName(relatedTable);
+          if (relatedElement) {
+            const relatedCenter = this.getEntityCenter(relatedElement);
+            const angle = Math.atan2(
+              relatedCenter.y - entityCenter.y,
+              relatedCenter.x - entityCenter.x
+            ) * (180 / Math.PI);
+            const side = this.determineSideFromAngle(angle);
+
+            const direction = isSource ? 'out' : 'in';
+            // Use junction table in the ID to make it unique
+            portsData.push({
+              id: `${side}_m2m_${direction}_${junctionTable}`,
+              group: side,
+              angle,
+              relatedTable
+            });
+          }
+        }
+      });
+
+      // Group ports by side
+      const topPorts = portsData.filter(p => p.group === 'top');
+      const rightPorts = portsData.filter(p => p.group === 'right');
+      const bottomPorts = portsData.filter(p => p.group === 'bottom');
+      const leftPorts = portsData.filter(p => p.group === 'left');
+
+      // Sort each side by angle for natural ordering
+      // Screen coordinates: Y increases downward
+
+      // TOP: Angles -135° to -45° (negative Y = upward)
+      // More negative = more left, less negative = more right
+      // Sort ascending for left-to-right distribution
+      topPorts.sort((a, b) => a.angle - b.angle);
+
+      // RIGHT: Angles -45° to 45°
+      // More negative = more upward, more positive = more downward
+      // Sort ascending for top-to-bottom distribution
+      rightPorts.sort((a, b) => a.angle - b.angle);
+
+      // BOTTOM: Angles 45° to 135° (positive Y = downward)
+      // Smaller angle = more right, larger angle = more left
+      // Sort descending for left-to-right distribution
+      bottomPorts.sort((a, b) => b.angle - a.angle);
+
+      // LEFT: Angles 135° to -135° (wrapping through ±180°)
+      // Need special handling for wraparound at ±180°
+      // More negative = more upward, more positive = more downward
+      // Sort ascending for top-to-bottom after normalization
+      leftPorts.sort((a, b) => {
+        // Normalize to 0-360 range for consistent comparison
+        const angleA = a.angle < 0 ? a.angle + 360 : a.angle;
+        const angleB = b.angle < 0 ? b.angle + 360 : b.angle;
+        // Both now in range 135° to 360° (which includes former negative angles)
+        // Sort descending: larger angle (towards 225°) = more upward, smaller (towards 135°) = more downward
+        return angleB - angleA;
+      });
+
+      // Create port items with proper positioning
+      const portItems: any[] = [];
+
+      // Helper function to distribute ports evenly along a side
+      const distributeAlong = (ports: PortData[], axis: 'x' | 'y') => {
+        ports.forEach((port, index) => {
+          const offset = (index + 1) / (ports.length + 1);
+          portItems.push({
+            id: port.id,
+            group: port.group,
+            args: axis === 'x' ? { x: `${offset * 100}%` } : { y: `${offset * 100}%` }
+          });
+        });
+      };
+
+      // Distribute ports on each side
+      distributeAlong(topPorts, 'x');     // Horizontal distribution
+      distributeAlong(rightPorts, 'y');   // Vertical distribution
+      distributeAlong(bottomPorts, 'x');  // Horizontal distribution
+      distributeAlong(leftPorts, 'y');    // Vertical distribution
+
+      // Update element with new port configuration
+      const currentPorts = element.get('ports');
+      element.set('ports', {
+        groups: currentPorts.groups,  // Keep existing group definitions
+        items: portItems               // New geometrically-sorted ports
+      });
+
+      if (portItems.length > 0) {
+        console.log(`[SchemaEditorPocPage] Updated ports for ${entityName}: ${portItems.length} ports across ${new Set(portItems.map((p: any) => p.group)).size} sides`);
+      }
+    });
+
+    console.log('[SchemaEditorPocPage] Port recalculation complete');
+
+    // Reconnect links to use the newly calculated ports
+    this.reconnectLinksToGeometricPorts();
+  }
+
+  /**
+   * Reconnects all links to use the geometrically-calculated ports.
+   * Called after port recalculation to switch from anchor-based to port-based connections.
+   */
+  private reconnectLinksToGeometricPorts(): void {
+    if (!this.graph) {
+      console.warn('[SchemaEditorPocPage] Cannot reconnect links: graph not initialized');
+      return;
+    }
+
+    console.log('[SchemaEditorPocPage] Reconnecting links to geometric ports...');
+
+    const links = this.graph.getLinks();
+    let reconnectedCount = 0;
+
+    links.forEach((link: any) => {
+      const sourceId = link.get('source').id;
+      const targetId = link.get('target').id;
+      const sourceTable = link.get('sourceTable');
+      const targetTable = link.get('targetTable');
+
+      if (!sourceId || !targetId || !sourceTable || !targetTable) {
+        return;
+      }
+
+      // Find source and target elements
+      const sourceElement = this.graph.getCell(sourceId);
+      const targetElement = this.graph.getCell(targetId);
+
+      if (!sourceElement || !targetElement) {
+        return;
+      }
+
+      // Calculate angle from source to target to find the correct port
+      const sourceCenter = this.getEntityCenter(sourceElement);
+      const targetCenter = this.getEntityCenter(targetElement);
+
+      const sourceAngle = Math.atan2(
+        targetCenter.y - sourceCenter.y,
+        targetCenter.x - sourceCenter.x
+      ) * (180 / Math.PI);
+
+      const targetAngle = Math.atan2(
+        sourceCenter.y - targetCenter.y,
+        sourceCenter.x - targetCenter.x
+      ) * (180 / Math.PI);
+
+      const sourceSide = this.determineSideFromAngle(sourceAngle);
+      const targetSide = this.determineSideFromAngle(targetAngle);
+
+      // Find matching ports on source and target elements
+      const sourcePorts = sourceElement.get('ports');
+      const targetPorts = targetElement.get('ports');
+
+      if (!sourcePorts || !targetPorts) {
+        return;
+      }
+
+      // Look for ports that match this link's relationship
+      // Port IDs have format: {side}_out_{column} or {side}_in_{sourceTable}_{column} or {side}_m2m_{direction}_{table}_{column}
+      const relationshipType = link.get('relationshipType');
+      const columnName = link.get('columnName');
+      const junctionTable = link.get('junctionTable');
+
+      let sourcePortId: string | null = null;
+      let targetPortId: string | null = null;
+
+      if (relationshipType === 'foreignKey') {
+        // Source: outgoing FK port
+        sourcePortId = sourcePorts.items.find((p: any) =>
+          p.group === sourceSide && p.id.includes(`_out_${columnName}`)
+        )?.id;
+
+        // Target: incoming FK port
+        targetPortId = targetPorts.items.find((p: any) =>
+          p.group === targetSide && p.id.includes(`_in_${sourceTable}_${columnName}`)
+        )?.id;
+      } else if (relationshipType === 'manyToMany') {
+        // M:M ports are identified by junction table name
+        // Source: M:M outgoing port
+        sourcePortId = sourcePorts.items.find((p: any) =>
+          p.group === sourceSide && p.id.includes(`_m2m_out_${junctionTable}`)
+        )?.id;
+
+        // Target: M:M incoming port
+        targetPortId = targetPorts.items.find((p: any) =>
+          p.group === targetSide && p.id.includes(`_m2m_in_${junctionTable}`)
+        )?.id;
+      }
+
+      // If we found both ports, reconnect the link
+      if (sourcePortId && targetPortId) {
+        link.source({ id: sourceId, port: sourcePortId });
+        link.target({ id: targetId, port: targetPortId });
+        reconnectedCount++;
+      }
+    });
+
+    console.log(`[SchemaEditorPocPage] Reconnected ${reconnectedCount} links to geometric ports`);
+  }
+
+  /**
    * Applies automatic layout using Dagre algorithm, then zooms to fit
    * Uses LR (left-to-right) for landscape screens, TB (top-to-bottom) for portrait
    * Public method called from template button or on initial load
@@ -751,9 +1308,9 @@ export class SchemaEditorPocPage implements OnDestroy {
       const dagreGraph = new dagre.graphlib.Graph();
       dagreGraph.setGraph({
         rankdir,           // LR (left-to-right) or TB (top-to-bottom) based on screen
-        nodesep: 80,       // Horizontal spacing between nodes
-        ranksep: 100,      // Vertical spacing between ranks
-        edgesep: 50        // Spacing between edges
+        nodesep: 120,      // Horizontal spacing between nodes (increased from 80)
+        ranksep: 150,      // Vertical spacing between ranks (increased from 100)
+        edgesep: 100       // Spacing between edges (increased from 50)
       });
       dagreGraph.setDefaultEdgeLabel(() => ({}));
 
@@ -791,6 +1348,9 @@ export class SchemaEditorPocPage implements OnDestroy {
           );
         }
       });
+
+      // Recalculate ports geometrically now that entities are positioned
+      this.recalculatePortsByGeometry();
 
       // Note: Edge routing is handled by JointJS metro router on each link
 

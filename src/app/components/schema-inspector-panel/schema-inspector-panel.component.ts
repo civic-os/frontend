@@ -19,6 +19,8 @@ import { Component, ChangeDetectionStrategy, input, output, signal, inject, comp
 import { CommonModule } from '@angular/common';
 import { SchemaEntityTable, SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { SchemaService } from '../../services/schema.service';
+import { PermissionsService, Role, RolePermission } from '../../services/permissions.service';
+import { AuthService } from '../../services/auth.service';
 
 type TabType = 'properties' | 'relations' | 'validations' | 'permissions';
 
@@ -42,6 +44,8 @@ type TabType = 'properties' | 'relations' | 'validations' | 'permissions';
 })
 export class SchemaInspectorPanelComponent {
   private schemaService = inject(SchemaService);
+  private permissionsService = inject(PermissionsService);
+  private authService = inject(AuthService);
 
   // Input: currently selected entity (null when panel is closed)
   entity = input<SchemaEntityTable | null>(null);
@@ -113,6 +117,44 @@ export class SchemaInspectorPanelComponent {
     );
   });
 
+  // Permissions data
+  roles = signal<Role[]>([]);
+  rolePermissions = signal<RolePermission[]>([]);
+  loadingPermissions = signal(false);
+  permissionsError = signal<string | undefined>(undefined);
+
+  // Computed: Permission matrix for current entity
+  permissionMatrix = computed(() => {
+    const currentEntity = this.entity();
+    if (!currentEntity) return [];
+
+    const tableName = currentEntity.table_name;
+    const allPermissions = this.rolePermissions();
+    const allRoles = this.roles();
+    const userRoles = this.authService.userRoles();
+
+    // Filter roles: always show anonymous, plus user's roles
+    const visibleRoles = allRoles.filter(role =>
+      role.display_name.toLowerCase() === 'anonymous' ||
+      userRoles.includes(role.display_name.toLowerCase())
+    );
+
+    // Filter permissions for this table
+    const tablePermissions = allPermissions.filter(p => p.table_name === tableName);
+
+    // Build matrix: one row per visible role
+    return visibleRoles.map(role => {
+      const rolePerms = tablePermissions.filter(p => p.role_id === role.id);
+      return {
+        role,
+        create: rolePerms.find(p => p.permission_type === 'create')?.has_permission || false,
+        read: rolePerms.find(p => p.permission_type === 'read')?.has_permission || false,
+        update: rolePerms.find(p => p.permission_type === 'update')?.has_permission || false,
+        delete: rolePerms.find(p => p.permission_type === 'delete')?.has_permission || false
+      };
+    });
+  });
+
   constructor() {
     // Load all properties once for inverse relationship detection
     this.schemaService.getProperties().subscribe({
@@ -121,6 +163,31 @@ export class SchemaInspectorPanelComponent {
       },
       error: (err) => {
         console.error('[SchemaInspectorPanel] Failed to load all properties:', err);
+      }
+    });
+
+    // Load roles and permissions once for Permissions tab
+    this.loadingPermissions.set(true);
+    this.permissionsService.getRoles().subscribe({
+      next: (roles) => {
+        this.roles.set(roles);
+      },
+      error: (err) => {
+        console.error('[SchemaInspectorPanel] Failed to load roles:', err);
+        this.permissionsError.set('Failed to load roles');
+        this.loadingPermissions.set(false);
+      }
+    });
+
+    this.permissionsService.getRolePermissions().subscribe({
+      next: (permissions) => {
+        this.rolePermissions.set(permissions);
+        this.loadingPermissions.set(false);
+      },
+      error: (err) => {
+        console.error('[SchemaInspectorPanel] Failed to load permissions:', err);
+        this.permissionsError.set('Failed to load permissions');
+        this.loadingPermissions.set(false);
       }
     });
 
