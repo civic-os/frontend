@@ -131,13 +131,8 @@ export class AppComponent {
     this.drawerOpen = false;
   }
 
-  public navigateToSchemaErd() {
-    this.router.navigate(['schema-erd']);
-    this.drawerOpen = false;
-  }
-
-  public navigateToSchemaEditorPoc() {
-    this.router.navigate(['schema-editor-poc']);
+  public navigateToSchemaEditor() {
+    this.router.navigate(['schema-editor']);
     this.drawerOpen = false;
   }
 

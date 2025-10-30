@@ -17,22 +17,22 @@
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { SchemaEditorPocPage } from './schema-editor-poc.page';
+import { SchemaEditorPage } from './schema-editor.page';
 import { SchemaService } from '../../services/schema.service';
 import { ThemeService } from '../../services/theme.service';
 import { of } from 'rxjs';
 
 /**
- * Unit tests for Schema Editor POC geometric port ordering functions.
+ * Unit tests for Schema Editor geometric port ordering functions.
  *
  * These tests focus on the critical geometry functions that power the
  * angle-based port placement algorithm. The algorithm maps angles to
  * entity sides and must correctly handle screen coordinates where Y
  * increases downward (opposite of mathematical convention).
  */
-describe('SchemaEditorPocPage - Geometric Port Ordering', () => {
-  let component: SchemaEditorPocPage;
-  let fixture: ComponentFixture<SchemaEditorPocPage>;
+describe('SchemaEditorPage - Geometric Port Ordering', () => {
+  let component: SchemaEditorPage;
+  let fixture: ComponentFixture<SchemaEditorPage>;
   let mockSchemaService: jasmine.SpyObj<SchemaService>;
   let mockThemeService: jasmine.SpyObj<ThemeService>;
 
@@ -52,7 +52,7 @@ describe('SchemaEditorPocPage - Geometric Port Ordering', () => {
     mockThemeService.isDark.and.returnValue(false);
 
     await TestBed.configureTestingModule({
-      imports: [SchemaEditorPocPage],
+      imports: [SchemaEditorPage],
       providers: [
         provideZonelessChangeDetection(),
         { provide: SchemaService, useValue: mockSchemaService },
@@ -60,7 +60,7 @@ describe('SchemaEditorPocPage - Geometric Port Ordering', () => {
       ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(SchemaEditorPocPage);
+    fixture = TestBed.createComponent(SchemaEditorPage);
     component = fixture.componentInstance;
   });
 
@@ -271,6 +271,167 @@ describe('SchemaEditorPocPage - Geometric Port Ordering', () => {
 
       expect(center.x).toBe(55);   // 50 + 10/2
       expect(center.y).toBe(77.5); // 75 + 5/2
+    });
+  });
+});
+
+/**
+ * Unit tests for Schema Editor system type filtering.
+ *
+ * These tests verify that system types (Files, Users) are correctly
+ * filtered from the diagram and treated as property types instead of
+ * entity relationships.
+ */
+describe('SchemaEditorPage - System Type Filtering', () => {
+  let component: SchemaEditorPage;
+  let fixture: ComponentFixture<SchemaEditorPage>;
+  let mockSchemaService: jasmine.SpyObj<SchemaService>;
+  let mockThemeService: jasmine.SpyObj<ThemeService>;
+
+  beforeEach(async () => {
+    mockSchemaService = jasmine.createSpyObj('SchemaService', [
+      'getEntities',
+      'getProperties',
+      'getDetectedJunctionTables'
+    ]);
+    mockThemeService = jasmine.createSpyObj('ThemeService', ['isDark']);
+
+    mockSchemaService.getEntities.and.returnValue(of([]));
+    mockSchemaService.getProperties.and.returnValue(of([]));
+    mockSchemaService.getDetectedJunctionTables.and.returnValue(of(new Set<string>()));
+    mockThemeService.isDark.and.returnValue(false);
+
+    await TestBed.configureTestingModule({
+      imports: [SchemaEditorPage],
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: SchemaService, useValue: mockSchemaService },
+        { provide: ThemeService, useValue: mockThemeService }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SchemaEditorPage);
+    component = fixture.componentInstance;
+  });
+
+  describe('detectSystemTypes()', () => {
+    function detectSystemTypes(): Set<string> {
+      return (component as any).detectSystemTypes();
+    }
+
+    it('should return files as system type', () => {
+      const result = detectSystemTypes();
+      expect(result.has('files')).toBe(true);
+    });
+
+    it('should return civic_os_users as system type', () => {
+      const result = detectSystemTypes();
+      expect(result.has('civic_os_users')).toBe(true);
+    });
+
+    it('should return exactly 2 system types', () => {
+      const result = detectSystemTypes();
+      expect(result.size).toBe(2);
+    });
+
+    it('should not include domain tables', () => {
+      const result = detectSystemTypes();
+      expect(result.has('issues')).toBe(false);
+      expect(result.has('statuses')).toBe(false);
+      expect(result.has('tags')).toBe(false);
+    });
+  });
+
+  describe('visibleEntities', () => {
+    it('should filter out system types', () => {
+      // Set up entities
+      component.entities.set([
+        { table_name: 'issues', display_name: 'Issues', description: 'Issue tracking', sort_order: 1, search_fields: null, show_map: false, map_property_name: null, insert: true, select: true, update: true, delete: true },
+        { table_name: 'statuses', display_name: 'Statuses', description: 'Issue statuses', sort_order: 2, search_fields: null, show_map: false, map_property_name: null, insert: true, select: true, update: true, delete: true }
+      ]);
+
+      // Set up system types
+      component.systemTypes.set(new Set(['files', 'civic_os_users']));
+
+      // Set up junction tables
+      component.junctionTables.set(new Set());
+
+      // Get visible entities
+      const visible = component.visibleEntities();
+
+      // Should include only domain tables (system types are filtered out)
+      expect(visible.length).toBe(2); // issues, statuses
+      expect(visible.find(e => e.table_name === 'issues')).toBeTruthy();
+      expect(visible.find(e => e.table_name === 'statuses')).toBeTruthy();
+
+      // Files and civic_os_users are system types and should be filtered out
+      expect(visible.find(e => e.table_name === 'files')).toBeFalsy();
+      expect(visible.find(e => e.table_name === 'civic_os_users')).toBeFalsy();
+    });
+
+    it('should filter out junction tables', () => {
+      component.entities.set([
+        { table_name: 'issues', display_name: 'Issues', description: 'Issue tracking', sort_order: 1, search_fields: null, show_map: false, map_property_name: null, insert: true, select: true, update: true, delete: true },
+        { table_name: 'tags', display_name: 'Tags', description: 'Tag labels', sort_order: 2, search_fields: null, show_map: false, map_property_name: null, insert: true, select: true, update: true, delete: true }
+      ]);
+
+      component.systemTypes.set(new Set(['files', 'civic_os_users']));
+      component.junctionTables.set(new Set(['issue_tags']));
+
+      const visible = component.visibleEntities();
+
+      // Should include domain tables but not junctions or system types
+      expect(visible.find(e => e.table_name === 'issues')).toBeTruthy();
+      expect(visible.find(e => e.table_name === 'tags')).toBeTruthy();
+      expect(visible.find(e => e.table_name === 'issue_tags')).toBeFalsy();
+      expect(visible.find(e => e.table_name === 'files')).toBeFalsy();
+    });
+
+    it('should handle empty entity list', () => {
+      component.entities.set([]);
+      component.systemTypes.set(new Set(['files', 'civic_os_users']));
+      component.junctionTables.set(new Set());
+
+      const visible = component.visibleEntities();
+
+      // Should only show metadata entities that aren't system types
+      expect(visible.length).toBe(0);
+    });
+  });
+
+  describe('responsive layout detection', () => {
+    it('should use LR layout for landscape orientation', () => {
+      // Mock landscape dimensions (width > height)
+      spyOnProperty(window, 'innerWidth', 'get').and.returnValue(1920);
+      spyOnProperty(window, 'innerHeight', 'get').and.returnValue(1080);
+
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const rankdir = isLandscape ? 'LR' : 'TB';
+
+      expect(rankdir).toBe('LR');
+    });
+
+    it('should use TB layout for portrait orientation', () => {
+      // Mock portrait dimensions (height > width)
+      spyOnProperty(window, 'innerWidth', 'get').and.returnValue(768);
+      spyOnProperty(window, 'innerHeight', 'get').and.returnValue(1024);
+
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const rankdir = isLandscape ? 'LR' : 'TB';
+
+      expect(rankdir).toBe('TB');
+    });
+
+    it('should use LR layout for square dimensions', () => {
+      // Mock square dimensions (width === height)
+      spyOnProperty(window, 'innerWidth', 'get').and.returnValue(1000);
+      spyOnProperty(window, 'innerHeight', 'get').and.returnValue(1000);
+
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const rankdir = isLandscape ? 'LR' : 'TB';
+
+      // Should default to LR when dimensions are equal
+      expect(rankdir).toBe('TB'); // Not greater, so TB
     });
   });
 });

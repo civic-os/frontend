@@ -67,7 +67,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 ### Schema
 - [x] Build automatic generation of Entity Relationship Diagrams showing how schema works
 - [x] Permit other relationship types (one-to-one, many-to-many)
-- [x] **ERD Interactive Features (POC Complete)** - Schema Editor POC validates JointJS approach
+- [x] **ERD Interactive Features (Complete)** - Schema Editor with JointJS-based visualization
   - [x] Zoom controls (zoom in, zoom out, zoom to fit)
   - [x] Pan with Shift+drag
   - [x] Click to select entities
@@ -104,7 +104,7 @@ This document outlines the development roadmap for Civic OS, organized by phases
 ## Phase 3: Graphical Editing Tools
 
 ### Schema
-- [ ] **Build GUI editor for Entity Relationship Diagrams** - Extend Phase 2 POC with editing capabilities
+- [ ] **Build GUI editor for Entity Relationship Diagrams** - Extend Phase 2 Schema Editor with editing capabilities
   - [ ] Right-click context menus for entities and relationships
   - [ ] Add new entity modal with property definitions
   - [ ] Edit entity properties (name, display_name, description)

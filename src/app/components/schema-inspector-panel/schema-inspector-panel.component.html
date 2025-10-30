@@ -137,8 +137,20 @@
                         <code class="ml-2 bg-base-300 px-2 py-0.5 rounded">{{ formatDataType(property) }}</code>
                       </div>
 
-                  <!-- Foreign Key Reference -->
-                  @if (property.join_table && !property.many_to_many_meta) {
+                  <!-- System Type Reference (Files, Users) -->
+                  @if (isSystemTypeReference(property)) {
+                    @let typeInfo = getSystemTypeInfo(property.join_table!);
+                    <div class="text-sm mb-1 flex items-center gap-2">
+                      <span class="text-base-content/60">Property Type:</span>
+                      <div class="flex items-center gap-1 {{ typeInfo.color }}">
+                        <span class="material-symbols-outlined text-sm">{{ typeInfo.icon }}</span>
+                        <span class="font-medium">{{ typeInfo.name }}</span>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Foreign Key Reference (Domain Entities) -->
+                  @else if (property.join_table && !property.many_to_many_meta) {
                     <div class="text-sm mb-1">
                       <span class="text-base-content/60">References:</span>
                       <code class="ml-2 text-secondary">{{ property.join_table }}.{{ property.join_column || 'id' }}</code>

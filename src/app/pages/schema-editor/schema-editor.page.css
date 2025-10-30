@@ -1,8 +1,8 @@
 /**
- * Copyright (C) 2023-2025 Civic OS, L3C - Schema Editor POC Styles
+ * Copyright (C) 2023-2025 Civic OS, L3C - Schema Editor Styles
  */
 
-.schema-editor-poc {
+.schema-editor {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 5.5rem); /* Account for navbar height + container padding */
@@ -15,7 +15,7 @@
 }
 
 @media (min-width: 768px) {
-  .schema-editor-poc {
+  .schema-editor {
     margin-left: 0;
     margin-right: 0;
     width: 100vw;
@@ -44,7 +44,7 @@
 /* Content Grid (Canvas + Inspector) */
 .content-grid {
   display: grid;
-  grid-template-columns: 1fr 0; /* Canvas takes remaining space, inspector initially 0 */
+  grid-template-columns: 1fr 0; /* Canvas (remaining) + Inspector (initially 0) */
   flex: 1;
   overflow: hidden;
   transition: grid-template-columns 0.3s ease;
@@ -147,6 +147,25 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Instructions Panel - Minimized State */
+.instructions-minimized {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 10;
+  animation: slideInUp 0.3s ease-out;
+}
+
+.instructions-minimized button {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.instructions-minimized button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Responsive */

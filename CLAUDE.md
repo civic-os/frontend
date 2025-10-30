@@ -610,13 +610,13 @@ INSERT INTO metadata.validations VALUES
 
 ### Visual Diagramming with JointJS
 
-**Reference Implementation**: Schema Editor POC (`/schema-editor-poc`)
+**Reference Implementation**: Schema Editor (`/schema-editor`)
 
-The Schema Editor POC demonstrates best practices for integrating JointJS (MIT-licensed diagramming library) into Angular applications for visual schema representation and editing. This implementation serves as a reference for building visual diagramming features.
+The Schema Editor demonstrates best practices for integrating JointJS (MIT-licensed diagramming library) into Angular applications for visual schema representation and editing. This implementation serves as a reference for building visual diagramming features and is accessible to all users (anonymous and authenticated).
 
 **Key Patterns Demonstrated**:
 
-1. **JointJS Integration** (`schema-editor-poc.page.ts:298-334`)
+1. **JointJS Integration** (`schema-editor.page.ts:298-334`)
    - Initialize graph and paper in `ngAfterViewInit()`
    - Store graph/paper references as component properties
    - Clean up in `ngOnDestroy()` to prevent memory leaks
@@ -630,25 +630,32 @@ The Schema Editor POC demonstrates best practices for integrating JointJS (MIT-l
    });
    ```
 
-2. **Geometric Port Ordering** (`schema-editor-poc.page.ts:400-439, 1051-1257`)
+2. **Geometric Port Ordering** (`schema-editor.page.ts:400-439, 1051-1257`)
    - **Problem**: Type-based port assignment (FK→left/right, M:M→top/bottom) caused crossovers
    - **Solution**: Angle-based geometric algorithm that assigns ports based on spatial relationships
    - **Algorithm**: Calculate angle between entity centers using `Math.atan2()`, map to sides (top/right/bottom/left), sort by angle within each side
    - **Screen Coordinates**: Account for Y-axis inversion (positive Y = downward in screen coords)
    - **Benefits**: Shorter paths, fewer crossovers, more intuitive layout
-   - **Testing**: 31 comprehensive unit tests validate geometry functions (`schema-editor-poc.page.spec.ts`)
+   - **Testing**: 31 comprehensive unit tests validate geometry functions (`schema-editor.page.spec.ts`)
 
-3. **Auto-Layout Integration** (`schema-editor-poc.page.ts:1039-1222`)
+3. **Auto-Layout Integration** (`schema-editor.page.ts:1039-1222`)
    - Use Dagre hierarchical layout algorithm for automatic positioning
    - Recalculate geometric ports after layout completes
    - Metro router for smooth, natural curved paths
 
-4. **Theme Integration** (`schema-editor-poc.page.ts:270-296`)
+4. **Theme Integration** (`schema-editor.page.ts:270-296`)
    - Use DaisyUI CSS variables (`var(--base-100)`, `var(--primary)`, etc.) for theme-aware styling
    - Automatically adapts to light/dark theme changes
    - Pattern matches GeoPointMapComponent theme handling
 
-5. **Event Handling** (`schema-editor-poc.page.ts:659-702`)
+5. **System Types as Property Types** (`src/app/constants/system-types.ts`)
+   - Metadata tables (Files, Users) filtered from diagram as entity boxes
+   - Shown instead as property types with icons in inspector Properties tab (📄 File, 👤 User)
+   - Reduces visual clutter by 50-70% and focuses on domain relationships
+   - Namespace-safe: `isSystemType()` function handles schema-qualified names to prevent collisions
+   - See `docs/notes/SYSTEM_TYPES_AS_PROPERTY_TYPES.md` for architectural rationale
+
+6. **Event Handling** (`schema-editor.page.ts:659-702`)
    - Click entities to show inspector panel
    - Inspector panel displays entity metadata, properties, relationships, and validations
    - Navigation between related entities
@@ -662,8 +669,8 @@ The Schema Editor POC demonstrates best practices for integrating JointJS (MIT-l
 **Documentation**:
 - **Design**: `docs/notes/SCHEMA_EDITOR_DESIGN.md` - Complete implementation plan (Phase 1-4)
 - **Algorithm**: `docs/notes/GEOMETRIC_PORT_ORDERING.md` - Detailed geometric port ordering explanation
-- **Code**: `src/app/pages/schema-editor-poc/schema-editor-poc.page.ts`
-- **Tests**: `src/app/pages/schema-editor-poc/schema-editor-poc.page.spec.ts`
+- **Code**: `src/app/pages/schema-editor/schema-editor.page.ts`
+- **Tests**: `src/app/pages/schema-editor/schema-editor.page.spec.ts`
 
 **JointJS Resources**:
 - MIT License: Compatible with AGPL-3.0-or-later

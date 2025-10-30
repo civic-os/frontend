@@ -23,27 +23,36 @@ import { ThemeService } from '../../services/theme.service';
 import { SchemaEntityTable, SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { forkJoin, take } from 'rxjs';
 import { SchemaInspectorPanelComponent } from '../../components/schema-inspector-panel/schema-inspector-panel.component';
+import { METADATA_SYSTEM_TABLES, isSystemType } from '../../constants/system-types';
 
 /**
- * Proof of Concept page for the interactive Schema Editor using JointJS.
+ * Interactive Schema Editor using JointJS for visual database schema management.
  *
- * This POC validates:
- * - JointJS rendering performance with database schema
+ * Features:
+ * - Interactive entity-relationship diagram with JointJS
  * - Entity boxes with draggable interaction
  * - Relationship visualization (FK and M:M)
- * - Click interaction for entity selection
+ * - Click interaction for entity selection and inspector panel
+ * - Auto-layout with Dagre hierarchical algorithm
+ * - Geometric port ordering for optimal link routing
  * - Theme integration (dark/light mode)
+ * - System type filtering (Files, Users treated as property types, not entities)
  *
- * If successful, this will be expanded into the full Schema Editor (Phase 1).
+ * System types (Files, Users) are filtered from:
+ * - Entity boxes on the diagram
+ * - Relationship links
+ * - Relations tab in inspector panel
+ *
+ * Instead, they appear in the Properties tab with icons (e.g., "📄 File", "👤 User").
  */
 @Component({
-  selector: 'app-schema-editor-poc',
+  selector: 'app-schema-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, SchemaInspectorPanelComponent],
-  templateUrl: './schema-editor-poc.page.html',
-  styleUrl: './schema-editor-poc.page.css'
+  templateUrl: './schema-editor.page.html',
+  styleUrl: './schema-editor.page.css'
 })
-export class SchemaEditorPocPage implements OnDestroy {
+export class SchemaEditorPage implements OnDestroy {
   private schemaService = inject(SchemaService);
   private themeService = inject(ThemeService);
   private platformId = inject(PLATFORM_ID);
@@ -61,14 +70,12 @@ export class SchemaEditorPocPage implements OnDestroy {
   properties = signal<SchemaEntityProperty[]>([]);
   junctionTables = signal<Set<string>>(new Set());
   selectedEntity = signal<SchemaEntityTable | null>(null);
-  showInstructions = signal(true);
+  showInstructions = signal(this.getInstructionsVisibilityFromStorage());
   editMode = signal(false); // Future: enable entity dragging when true
 
-  // Metadata system tables that may be referenced via FK
-  private readonly METADATA_SYSTEM_TABLES = [
-    'files',
-    'civic_os_users'
-  ];
+  // System type detection (heuristic-based, not naming convention)
+  // System types are filtered from relationships (treated as property types, not entity relationships)
+  systemTypes = signal<Set<string>>(new Set());
 
   // Hardcoded metadata entities for diagram display (not in metadata.entities table)
   private readonly METADATA_ENTITIES: SchemaEntityTable[] = [
@@ -108,7 +115,9 @@ export class SchemaEditorPocPage implements OnDestroy {
   visibleEntities = computed(() => {
     const all = this.allEntities();
     const junctions = this.junctionTables();
-    return all.filter(e => !junctions.has(e.table_name));
+    const systemTypes = this.systemTypes();
+    // Filter out junction tables AND system types (system types are property types, not entity relationships)
+    return all.filter(e => !junctions.has(e.table_name) && !systemTypes.has(e.table_name));
   });
 
   // JointJS instances (will be initialized in effect)
@@ -138,11 +147,11 @@ export class SchemaEditorPocPage implements OnDestroy {
       }
     });
 
-    // Effect: Pan canvas when inspector opens/closes
+    // Effect: Adjust canvas viewport (zoom + pan) when inspector opens/closes
     effect(() => {
       const selected = this.selectedEntity();
 
-      // Only pan if paper is initialized
+      // Only adjust if paper is initialized
       if (!this.paper) {
         this.previouslySelected = selected;
         return;
@@ -152,20 +161,9 @@ export class SchemaEditorPocPage implements OnDestroy {
       const wasOpen = this.previouslySelected !== null;
       const isOpen = selected !== null;
 
-      // Only pan on state transitions (not on initial load)
+      // Only adjust viewport on state transitions (not on initial load)
       if (wasOpen !== isOpen) {
-        const panAmount = 200; // Half the inspector width (400px / 2)
-        const currentTranslate = this.paper.translate();
-
-        if (isOpen) {
-          // Inspector opening - pan left
-          this.paper.translate(currentTranslate.tx - panAmount, currentTranslate.ty);
-          console.log('[SchemaEditorPocPage] Panned canvas left by 200px (inspector opened)');
-        } else {
-          // Inspector closing - pan right
-          this.paper.translate(currentTranslate.tx + panAmount, currentTranslate.ty);
-          console.log('[SchemaEditorPocPage] Panned canvas right by 200px (inspector closed)');
-        }
+        this.adjustViewportForInspector(isOpen);
       }
 
       // Update previous state
@@ -188,26 +186,24 @@ export class SchemaEditorPocPage implements OnDestroy {
    * Fetches schema entities, properties, and junction tables
    */
   private loadSchemaData(): void {
-    console.log('[SchemaEditorPocPage] Loading schema data...');
-
     forkJoin({
       entities: this.schemaService.getEntities().pipe(take(1)),
       properties: this.schemaService.getProperties().pipe(take(1)),
       junctionTables: this.schemaService.getDetectedJunctionTables().pipe(take(1))
     }).subscribe({
       next: ({ entities, properties, junctionTables }) => {
-        console.log('[SchemaEditorPocPage] Schema data loaded successfully');
-        console.log('[SchemaEditorPocPage] Entities:', entities.length);
-        console.log('[SchemaEditorPocPage] Properties:', properties.length);
-        console.log('[SchemaEditorPocPage] Junction tables:', junctionTables.size);
-
         this.entities.set(entities);
         this.properties.set(properties);
         this.junctionTables.set(junctionTables);
+
+        // Detect system types using heuristic analysis (degree centrality)
+        const systemTypes = this.detectSystemTypes();
+        this.systemTypes.set(systemTypes);
+
         this.loading.set(false);
       },
       error: (err) => {
-        console.error('[SchemaEditorPocPage] Failed to load schema data:', err);
+        console.error('[SchemaEditorPage] Failed to load schema data:', err);
         this.error.set('Failed to load schema data. Check console for details.');
         this.loading.set(false);
       }
@@ -221,10 +217,6 @@ export class SchemaEditorPocPage implements OnDestroy {
     try {
       // Dynamically import JointJS to enable lazy loading
       const { dia, shapes } = await import('@joint/core');
-
-      console.log('[SchemaEditorPocPage] Initializing JointJS canvas...');
-      console.log('[SchemaEditorPocPage] Entities:', this.visibleEntities().length);
-      console.log('[SchemaEditorPocPage] Properties:', this.properties().length);
 
       // Initialize graph and paper
       this.graph = new dia.Graph({}, { cellNamespace: shapes });
@@ -270,10 +262,8 @@ export class SchemaEditorPocPage implements OnDestroy {
 
       // Auto-arrange on initial load (includes zoom to fit)
       await this.autoArrange();
-
-      console.log('[SchemaEditorPocPage] Canvas initialized successfully');
     } catch (err) {
-      console.error('[SchemaEditorPocPage] Failed to initialize canvas:', err);
+      console.error('[SchemaEditorPage] Failed to initialize canvas:', err);
       this.error.set('Failed to initialize JointJS. Check console for details.');
     }
   }
@@ -458,7 +448,7 @@ export class SchemaEditorPocPage implements OnDestroy {
       const y = row * (cellHeight + padding) + padding;
 
       // Check if this is a metadata system table
-      const isMetadataTable = this.METADATA_SYSTEM_TABLES.includes(entity.table_name);
+      const isMetadataTable = isSystemType(entity.table_name);
 
       // Truncate description if too long
       const description = entity.description || 'No description';
@@ -549,13 +539,10 @@ export class SchemaEditorPocPage implements OnDestroy {
       if (isHub) {
         const portsConfig = this.generatePortsForEntity(entity);
         entityElement.set('ports', portsConfig);
-        console.log(`[SchemaEditorPocPage] Hub entity detected: ${entity.table_name}, ports:`, portsConfig.items.length);
       }
 
       entityElement.addTo(this.graph);
     });
-
-    console.log(`[SchemaEditorPocPage] Rendered ${entities.length} entities with name + description`);
   }
 
   /**
@@ -573,6 +560,12 @@ export class SchemaEditorPocPage implements OnDestroy {
     // Render foreign key relationships
     properties.forEach(prop => {
       if (prop.join_table && !junctionTables.has(prop.table_name)) {
+        // Skip creating visual links if target is a system type
+        // (will be rendered as text label instead - circuit diagram pattern)
+        if (this.systemTypes().has(prop.join_table)) {
+          return; // Skip this relationship
+        }
+
         const sourceElement = this.findElementByTableName(prop.table_name);
         const targetElement = this.findElementByTableName(prop.join_table);
 
@@ -586,7 +579,7 @@ export class SchemaEditorPocPage implements OnDestroy {
               line: {
                 stroke: colors.baseContent,
                 strokeWidth: 2,
-                opacity: 0.7,
+                opacity: 1.0,
                 targetMarker: {
                   type: 'path',
                   d: 'M 10 -5 0 0 10 5 z',
@@ -619,6 +612,12 @@ export class SchemaEditorPocPage implements OnDestroy {
         const targetTable = junctionFKs[1].join_table;
 
         if (sourceTable && targetTable) {
+          // Skip creating visual links if either entity is a system type
+          // (will be rendered as text label instead - circuit diagram pattern)
+          if (this.systemTypes().has(sourceTable) || this.systemTypes().has(targetTable)) {
+            return; // Skip this M:M relationship
+          }
+
           const sourceElement = this.findElementByTableName(sourceTable);
           const targetElement = this.findElementByTableName(targetTable);
 
@@ -633,7 +632,7 @@ export class SchemaEditorPocPage implements OnDestroy {
                 line: {
                   stroke: colors.baseContent,
                   strokeWidth: 2,
-                  opacity: 0.7,
+                  opacity: 1.0,
                   sourceMarker: {
                     type: 'path',
                     d: 'M 10 -5 0 0 10 5 z',
@@ -658,9 +657,6 @@ export class SchemaEditorPocPage implements OnDestroy {
         }
       }
     });
-
-    console.log(`[SchemaEditorPocPage] Rendered ${foreignKeyCount} FK relationships`);
-    console.log(`[SchemaEditorPocPage] Rendered ${manyToManyCount} M:M relationships`);
   }
 
   /**
@@ -763,7 +759,6 @@ export class SchemaEditorPocPage implements OnDestroy {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
           // Theme changed, re-render with new colors
-          console.log('[SchemaEditorPocPage] Theme changed, updating colors...');
           requestAnimationFrame(() => {
             this.updateCanvasColors();
           });
@@ -785,12 +780,11 @@ export class SchemaEditorPocPage implements OnDestroy {
     if (!this.graph) return;
 
     const colors = this.getThemeColors();
-    console.log('[SchemaEditorPocPage] Applying new colors:', colors);
 
     // Update all entity boxes
     this.graph.getElements().forEach((element: any) => {
       const entityData = element.get('entityData');
-      const isMetadataTable = entityData && this.METADATA_SYSTEM_TABLES.includes(entityData.table_name);
+      const isMetadataTable = entityData && isSystemType(entityData.table_name);
 
       // Apply different styling for metadata tables
       element.attr('body/fill', isMetadataTable ? colors.base200 : colors.base100);
@@ -819,7 +813,7 @@ export class SchemaEditorPocPage implements OnDestroy {
    * Sets up event listeners for click and drag interactions
    */
   private setupEventListeners(): void {
-    // Click to select entity (only if not panning)
+    // Click to select entity or reference label (only if not panning)
     this.paper.on('cell:pointerclick', (cellView: any) => {
       // Don't select if we just finished panning
       if (this.hasPanned) {
@@ -828,24 +822,20 @@ export class SchemaEditorPocPage implements OnDestroy {
 
       const cell = cellView.model;
       if (cell.isElement()) {
+        // Regular entity box click
         const entityData = cell.get('entityData');
         this.selectedEntity.set(entityData);
-        console.log('[SchemaEditorPocPage] Selected entity:', entityData.table_name);
 
         // Highlight selected entity
         this.highlightSelectedEntity(cell);
       }
     });
 
-    // Drag end to log new position (only used when editMode is true)
+    // Drag end to recalculate vertices (only used when editMode is true)
     this.paper.on('cell:pointerup', (cellView: any) => {
       if (this.editMode()) {
         const cell = cellView.model;
         if (cell.isElement()) {
-          const position = cell.position();
-          const entityName = cell.get('entityName');
-          console.log(`[SchemaEditorPocPage] Entity "${entityName}" moved to:`, position);
-
           // Recalculate link vertices after moving an element
           this.adjustVertices(this.graph, cell);
         }
@@ -856,7 +846,6 @@ export class SchemaEditorPocPage implements OnDestroy {
     this.paper.on('blank:pointerclick', () => {
       this.selectedEntity.set(null);
       this.clearHighlights();
-      console.log('[SchemaEditorPocPage] Deselected entity');
     });
 
     // Panning support: drag anywhere on the canvas
@@ -941,7 +930,6 @@ export class SchemaEditorPocPage implements OnDestroy {
     this.isPanning = true;
     this.hasPanned = false; // Reset at start
     this.panStart = { x: evt.clientX, y: evt.clientY };
-    console.log('[SchemaEditorPocPage] Started panning');
   }
 
   /**
@@ -971,7 +959,6 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   private stopPanning(): void {
     this.isPanning = false;
-    console.log('[SchemaEditorPocPage] Stopped panning');
 
     // Reset hasPanned after a short delay to allow click event to check it
     setTimeout(() => {
@@ -987,11 +974,9 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   private recalculatePortsByGeometry(): void {
     if (!this.graph) {
-      console.warn('[SchemaEditorPocPage] Cannot recalculate ports: graph not initialized');
+      console.warn('[SchemaEditorPage] Cannot recalculate ports: graph not initialized');
       return;
     }
-
-    console.log('[SchemaEditorPocPage] Recalculating ports using geometric ordering...');
 
     const properties = this.properties();
     const junctionTables = this.junctionTables();
@@ -1170,13 +1155,7 @@ export class SchemaEditorPocPage implements OnDestroy {
         groups: currentPorts.groups,  // Keep existing group definitions
         items: portItems               // New geometrically-sorted ports
       });
-
-      if (portItems.length > 0) {
-        console.log(`[SchemaEditorPocPage] Updated ports for ${entityName}: ${portItems.length} ports across ${new Set(portItems.map((p: any) => p.group)).size} sides`);
-      }
     });
-
-    console.log('[SchemaEditorPocPage] Port recalculation complete');
 
     // Reconnect links to use the newly calculated ports
     this.reconnectLinksToGeometricPorts();
@@ -1188,14 +1167,11 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   private reconnectLinksToGeometricPorts(): void {
     if (!this.graph) {
-      console.warn('[SchemaEditorPocPage] Cannot reconnect links: graph not initialized');
+      console.warn('[SchemaEditorPage] Cannot reconnect links: graph not initialized');
       return;
     }
 
-    console.log('[SchemaEditorPocPage] Reconnecting links to geometric ports...');
-
     const links = this.graph.getLinks();
-    let reconnectedCount = 0;
 
     links.forEach((link: any) => {
       const sourceId = link.get('source').id;
@@ -1276,11 +1252,22 @@ export class SchemaEditorPocPage implements OnDestroy {
       if (sourcePortId && targetPortId) {
         link.source({ id: sourceId, port: sourcePortId });
         link.target({ id: targetId, port: targetPortId });
-        reconnectedCount++;
       }
     });
+  }
 
-    console.log(`[SchemaEditorPocPage] Reconnected ${reconnectedCount} links to geometric ports`);
+  /**
+   * Returns the set of system type tables.
+   * System types are metadata tables (Files, Users) that are treated as property types
+   * rather than entity relationships in the schema diagram.
+   *
+   * These tables are filtered from the diagram and relationships, appearing instead
+   * in the Properties tab with icons (e.g., "📄 File", "👤 User").
+   *
+   * @returns Set of table names to treat as system types
+   */
+  private detectSystemTypes(): Set<string> {
+    return new Set(METADATA_SYSTEM_TABLES);
   }
 
   /**
@@ -1290,7 +1277,7 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   public async autoArrange(): Promise<void> {
     if (!this.graph) {
-      console.warn('[SchemaEditorPocPage] Cannot auto-arrange: graph not initialized');
+      console.warn('[SchemaEditorPage] Cannot auto-arrange: graph not initialized');
       return;
     }
 
@@ -1298,25 +1285,34 @@ export class SchemaEditorPocPage implements OnDestroy {
       // Import dagre library
       const dagre = await import('dagre');
 
-      // Detect screen orientation: LR for landscape (wider), TB for portrait (taller)
-      const isLandscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
+      // Detect screen orientation for responsive layout
+      const isLandscape = window.innerWidth > window.innerHeight;
       const rankdir = isLandscape ? 'LR' : 'TB';
-
-      console.log(`[SchemaEditorPocPage] Applying auto-layout with direction: ${rankdir}`);
 
       // Create a new directed graph for dagre
       const dagreGraph = new dagre.graphlib.Graph();
       dagreGraph.setGraph({
-        rankdir,           // LR (left-to-right) or TB (top-to-bottom) based on screen
-        nodesep: 120,      // Horizontal spacing between nodes (increased from 80)
-        ranksep: 150,      // Vertical spacing between ranks (increased from 100)
-        edgesep: 100       // Spacing between edges (increased from 50)
+        rankdir: rankdir,     // Responsive: LR for landscape, TB for portrait
+        ranker: 'tight-tree', // Use compact ranking algorithm (vs default 'network-simplex')
+        align: 'UL',          // Align nodes to upper-left for grid-like structure
+        nodesep: 80,          // Horizontal spacing between nodes (conservative reduction from 120)
+        ranksep: 110,         // Vertical spacing between ranks (conservative reduction from 150)
+        edgesep: 60           // Spacing between edges (conservative reduction from 100)
       });
       dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-      // Add nodes to dagre graph
+      // Add nodes to dagre graph (exclude system types - they're in the panel, not the diagram)
       const elements = this.graph.getElements();
+      const systemTypes = this.systemTypes();
+
       elements.forEach((element: any) => {
+        const entityName = element.get('entityName');
+
+        // Skip system type entities (they don't appear in the main diagram)
+        if (systemTypes.has(entityName)) {
+          return;
+        }
+
         const size = element.size();
         dagreGraph.setNode(element.id, {
           width: size.width,
@@ -1352,15 +1348,87 @@ export class SchemaEditorPocPage implements OnDestroy {
       // Recalculate ports geometrically now that entities are positioned
       this.recalculatePortsByGeometry();
 
-      // Note: Edge routing is handled by JointJS metro router on each link
+      // Recalculate link vertices for parallel link spacing
+      // This ensures proper visual separation between multiple links connecting the same entities
+      elements.forEach((element: any) => {
+        this.adjustVertices(this.graph, element);
+      });
 
-      console.log('[SchemaEditorPocPage] Auto-layout applied successfully');
+      // Note: Edge routing is handled by JointJS metro router on each link
 
       // Zoom to fit after arranging
       this.zoomToFit();
     } catch (err) {
-      console.error('[SchemaEditorPocPage] Failed to apply auto-layout:', err);
+      console.error('[SchemaEditorPage] Failed to apply auto-layout:', err);
     }
+  }
+
+  /**
+   * Calculate the current visible bounds in world coordinates
+   * Takes into account current zoom (scale) and pan (translation)
+   * @returns Bounding box of visible area in world coordinates
+   */
+  private getVisibleWorldBounds(): { x: number, y: number, width: number, height: number } {
+    if (!this.paper) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
+    const scale = this.paper.scale().sx;
+    const translate = this.paper.translate();
+    const paperWidth = this.paper.el.clientWidth;
+    const paperHeight = this.paper.el.clientHeight;
+
+    // Convert viewport coordinates to world coordinates
+    // Visible world area = viewport size / scale, offset by -translation / scale
+    return {
+      x: -translate.tx / scale,
+      y: -translate.ty / scale,
+      width: paperWidth / scale,
+      height: paperHeight / scale
+    };
+  }
+
+  /**
+   * Adjust viewport (zoom + pan) when inspector panel opens or closes
+   * Ensures all previously visible content remains visible after the inspector takes 400px
+   * @param opening - true when inspector is opening, false when closing
+   */
+  private adjustViewportForInspector(opening: boolean): void {
+    if (!this.paper) {
+      return;
+    }
+
+    const INSPECTOR_WIDTH = 400;
+
+    // Get current state
+    const currentScale = this.paper.scale().sx;
+    const currentTranslate = this.paper.translate();
+    const currentPaperWidth = this.paper.el.clientWidth;
+    const paperHeight = this.paper.el.clientHeight;
+
+    // Calculate visible world bounds before change
+    const visibleBounds = this.getVisibleWorldBounds();
+
+    // Calculate new paper width after inspector opens/closes
+    const newPaperWidth = opening
+      ? currentPaperWidth - INSPECTOR_WIDTH
+      : currentPaperWidth + INSPECTOR_WIDTH;
+
+    // Calculate new scale to fit the same content in new width
+    const widthRatio = newPaperWidth / currentPaperWidth;
+    const newScale = currentScale * widthRatio;
+
+    // Calculate new translation to keep content centered
+    // The center of visible content should remain at the center of the new viewport
+    const visibleCenterX = visibleBounds.x + visibleBounds.width / 2;
+    const visibleCenterY = visibleBounds.y + visibleBounds.height / 2;
+
+    const newTx = newPaperWidth / 2 - visibleCenterX * newScale;
+    const newTy = paperHeight / 2 - visibleCenterY * newScale;
+
+    // Apply new scale and translation
+    this.paper.scale(newScale, newScale);
+    this.paper.translate(newTx, newTy);
   }
 
   /**
@@ -1369,7 +1437,7 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   public zoomToFit(): void {
     if (!this.paper || !this.graph) {
-      console.warn('[SchemaEditorPocPage] Cannot zoom to fit: paper or graph not initialized');
+      console.warn('[SchemaEditorPage] Cannot zoom to fit: paper or graph not initialized');
       return;
     }
 
@@ -1378,7 +1446,7 @@ export class SchemaEditorPocPage implements OnDestroy {
       const contentBBox = this.graph.getBBox();
 
       if (!contentBBox || contentBBox.width === 0 || contentBBox.height === 0) {
-        console.warn('[SchemaEditorPocPage] Cannot zoom to fit: empty content');
+        console.warn('[SchemaEditorPage] Cannot zoom to fit: empty content');
         return;
       }
 
@@ -1405,10 +1473,8 @@ export class SchemaEditorPocPage implements OnDestroy {
       // Apply scale and translation
       this.paper.scale(scale, scale);
       this.paper.translate(tx, ty);
-
-      console.log(`[SchemaEditorPocPage] Zoomed to fit: scale=${scale.toFixed(2)}, translate=(${tx.toFixed(0)}, ${ty.toFixed(0)})`);
     } catch (err) {
-      console.error('[SchemaEditorPocPage] Failed to zoom to fit:', err);
+      console.error('[SchemaEditorPage] Failed to zoom to fit:', err);
     }
   }
 
@@ -1418,7 +1484,7 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   public zoomIn(): void {
     if (!this.paper) {
-      console.warn('[SchemaEditorPocPage] Cannot zoom in: paper not initialized');
+      console.warn('[SchemaEditorPage] Cannot zoom in: paper not initialized');
       return;
     }
 
@@ -1442,8 +1508,6 @@ export class SchemaEditorPocPage implements OnDestroy {
     // Apply new scale and translation
     this.paper.scale(newScale, newScale);
     this.paper.translate(newTx, newTy);
-
-    console.log(`[SchemaEditorPocPage] Zoomed in: scale=${newScale.toFixed(2)}`);
   }
 
   /**
@@ -1452,7 +1516,7 @@ export class SchemaEditorPocPage implements OnDestroy {
    */
   public zoomOut(): void {
     if (!this.paper) {
-      console.warn('[SchemaEditorPocPage] Cannot zoom out: paper not initialized');
+      console.warn('[SchemaEditorPage] Cannot zoom out: paper not initialized');
       return;
     }
 
@@ -1476,8 +1540,6 @@ export class SchemaEditorPocPage implements OnDestroy {
     // Apply new scale and translation
     this.paper.scale(newScale, newScale);
     this.paper.translate(newTx, newTy);
-
-    console.log(`[SchemaEditorPocPage] Zoomed out: scale=${newScale.toFixed(2)}`);
   }
 
   /**
@@ -1507,8 +1569,6 @@ export class SchemaEditorPocPage implements OnDestroy {
         link.attr('line/sourceMarker/fill', colors.primary);
       }
     });
-
-    console.log(`[SchemaEditorPocPage] Highlighted ${connectedLinks.length} connected relationships`);
   }
 
   /**
@@ -1554,7 +1614,7 @@ export class SchemaEditorPocPage implements OnDestroy {
     const targetEntity = this.allEntities().find(e => e.table_name === tableName);
 
     if (!targetEntity) {
-      console.warn(`[SchemaEditorPocPage] Entity "${tableName}" not found`);
+      console.warn(`[SchemaEditorPage] Entity "${tableName}" not found`);
       return;
     }
 
@@ -1564,7 +1624,7 @@ export class SchemaEditorPocPage implements OnDestroy {
     );
 
     if (!targetElement) {
-      console.warn(`[SchemaEditorPocPage] Element for "${tableName}" not found on graph`);
+      console.warn(`[SchemaEditorPage] Element for "${tableName}" not found on graph`);
       return;
     }
 
@@ -1589,7 +1649,29 @@ export class SchemaEditorPocPage implements OnDestroy {
 
     // Smoothly pan to the target
     this.paper.translate(targetTx, targetTy);
+  }
 
-    console.log(`[SchemaEditorPocPage] Navigated to entity: ${tableName}`);
+  /**
+   * Get instructions panel visibility from localStorage
+   */
+  private getInstructionsVisibilityFromStorage(): boolean {
+    if (typeof window === 'undefined') {
+      return true; // Default to visible during SSR
+    }
+
+    const stored = localStorage.getItem('schemaEditorInstructionsVisible');
+    return stored === null ? true : stored === 'true';
+  }
+
+  /**
+   * Toggle instructions panel and persist to localStorage
+   */
+  toggleInstructions(): void {
+    const newValue = !this.showInstructions();
+    this.showInstructions.set(newValue);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('schemaEditorInstructionsVisible', String(newValue));
+    }
   }
 }

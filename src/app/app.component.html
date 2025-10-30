@@ -94,10 +94,10 @@
           <li class="mt-4">
             <span class="block px-4 py-2 text-base font-bold uppercase tracking-wide pointer-events-none">About</span>
           </li>
-          <li (click)="navigateToSchemaErd()">
-            <a [class.menu-active]="isRouteActive('/schema-erd')"
-               [class.font-bold]="isRouteActive('/schema-erd')"
-               [class.opacity-85]="!isRouteActive('/schema-erd')">
+          <li (click)="navigateToSchemaEditor()">
+            <a [class.menu-active]="isRouteActive('/schema-editor')"
+               [class.font-bold]="isRouteActive('/schema-editor')"
+               [class.opacity-85]="!isRouteActive('/schema-editor')">
               <span class="material-symbols-outlined">account_tree</span>
               Database Schema
             </a>
@@ -131,14 +131,6 @@
                  [class.opacity-85]="!isRouteActive('/permissions')">
                 <span class="material-symbols-outlined">lock</span>
                 Permissions
-              </a>
-            </li>
-            <li (click)="navigateToSchemaEditorPoc()">
-              <a [class.menu-active]="isRouteActive('/schema-editor-poc')"
-                 [class.font-bold]="isRouteActive('/schema-editor-poc')"
-                 [class.opacity-85]="!isRouteActive('/schema-editor-poc')">
-                <span class="material-symbols-outlined">edit_square</span>
-                Schema Editor POC
               </a>
             </li>
           }

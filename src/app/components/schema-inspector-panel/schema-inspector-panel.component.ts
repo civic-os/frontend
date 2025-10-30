@@ -21,6 +21,7 @@ import { SchemaEntityTable, SchemaEntityProperty, EntityPropertyType } from '../
 import { SchemaService } from '../../services/schema.service';
 import { PermissionsService, Role, RolePermission } from '../../services/permissions.service';
 import { AuthService } from '../../services/auth.service';
+import { isSystemType } from '../../constants/system-types';
 
 type TabType = 'properties' | 'relations' | 'validations' | 'permissions';
 
@@ -50,6 +51,12 @@ export class SchemaInspectorPanelComponent {
   // Input: currently selected entity (null when panel is closed)
   entity = input<SchemaEntityTable | null>(null);
 
+  // Input: system types set (for filtering relationships)
+  systemTypes = input<Set<string>>(new Set());
+
+  // Input: junction tables set (for filtering relationships)
+  junctionTables = input<Set<string>>(new Set());
+
   // Output: close button clicked
   close = output<void>();
 
@@ -70,25 +77,25 @@ export class SchemaInspectorPanelComponent {
   // All properties (for detecting inverse relationships)
   allProperties = signal<SchemaEntityProperty[]>([]);
 
-  // Metadata system tables
-  private readonly METADATA_SYSTEM_TABLES = [
-    'files',
-    'civic_os_users'
-  ];
-
   // Computed: Is panel open?
   isOpen = computed(() => this.entity() !== null);
 
   // Computed: Is current entity a metadata system table?
   isMetadataTable = computed(() => {
     const currentEntity = this.entity();
-    return currentEntity ? this.METADATA_SYSTEM_TABLES.includes(currentEntity.table_name) : false;
+    return currentEntity ? isSystemType(currentEntity.table_name) : false;
   });
 
   // Computed: Relationship categories
+  // System types and junction tables are filtered out
   belongsToRelationships = computed(() => {
+    const systemTypes = this.systemTypes();
+    const junctions = this.junctionTables();
     return this.properties().filter(p =>
-      p.join_table && p.type !== EntityPropertyType.ManyToMany
+      p.join_table &&
+      p.type !== EntityPropertyType.ManyToMany &&
+      !systemTypes.has(p.join_table) && // Filter out system types
+      !junctions.has(p.join_table) // Filter out junction tables
     );
   });
 
@@ -96,16 +103,24 @@ export class SchemaInspectorPanelComponent {
     const currentEntity = this.entity();
     if (!currentEntity) return [];
 
-    // Find all properties that reference this entity
+    const systemTypes = this.systemTypes();
+    const junctions = this.junctionTables();
+    // Find all properties that reference this entity (excluding system types and junction tables)
     return this.allProperties().filter(p =>
       p.join_table === currentEntity.table_name &&
-      p.type !== EntityPropertyType.ManyToMany
+      p.type !== EntityPropertyType.ManyToMany &&
+      !systemTypes.has(p.table_name) && // Filter out if referencing table is a system type
+      !junctions.has(p.table_name) // Filter out if referencing table is a junction
     );
   });
 
   manyToManyRelationships = computed(() => {
+    // M:M relationships don't need junction filtering since they use many_to_many_meta.targetTable
+    const systemTypes = this.systemTypes();
     return this.properties().filter(p =>
-      p.type === EntityPropertyType.ManyToMany
+      p.type === EntityPropertyType.ManyToMany &&
+      p.many_to_many_meta &&
+      !systemTypes.has(p.many_to_many_meta.targetTable) // Filter out if related table is a system type
     );
   });
 
@@ -195,7 +210,7 @@ export class SchemaInspectorPanelComponent {
     effect(() => {
       const currentEntity = this.entity();
       if (currentEntity) {
-        const isMetadata = this.METADATA_SYSTEM_TABLES.includes(currentEntity.table_name);
+        const isMetadata = isSystemType(currentEntity.table_name);
 
         if (isMetadata) {
           // For metadata tables, skip property loading and switch to Relations tab
@@ -270,8 +285,10 @@ export class SchemaInspectorPanelComponent {
     if (property.type === EntityPropertyType.ManyToMany) {
       badges.push('m2m');
     } else if (property.join_table) {
-      // Regular foreign key
-      badges.push('fk');
+      // Only show FK badge for domain entity relationships (not system types)
+      if (!this.systemTypes().has(property.join_table)) {
+        badges.push('fk');
+      }
     }
 
     if (property.is_nullable === false) {
@@ -310,6 +327,41 @@ export class SchemaInspectorPanelComponent {
     }
 
     return type;
+  }
+
+  /**
+   * Check if a property references a system type.
+   *
+   * System types (Files, Users) are metadata tables that should be treated as property types
+   * rather than entity relationships. This helper identifies FKs to system types so they can
+   * be displayed with icons in the Properties tab instead of as relationships.
+   *
+   * @param property The property to check
+   * @returns True if the property is a FK to a system type (excluding M:M relationships)
+   */
+  isSystemTypeReference(property: SchemaEntityProperty): boolean {
+    return !!(property.join_table && this.systemTypes().has(property.join_table) && !property.many_to_many_meta);
+  }
+
+  /**
+   * Get system type display information (icon and friendly name).
+   *
+   * Maps system type table names to their UI representation with Material Icons
+   * and DaisyUI color classes. Used to display system type references with
+   * visual distinction in the Properties tab (e.g., "📄 File", "👤 User").
+   *
+   * @param tableName The system type table name (e.g., 'files', 'civic_os_users')
+   * @returns Object with icon (Material Icons name), friendly name, and Tailwind color class
+   */
+  getSystemTypeInfo(tableName: string): { icon: string; name: string; color: string } {
+    switch (tableName) {
+      case 'files':
+        return { icon: 'description', name: 'File', color: 'text-info' };
+      case 'civic_os_users':
+        return { icon: 'person', name: 'User', color: 'text-primary' };
+      default:
+        return { icon: 'label', name: 'Reference', color: 'text-secondary' };
+    }
   }
 
   /**

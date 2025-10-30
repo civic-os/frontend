@@ -1,9 +1,8 @@
-<div class="schema-editor-poc no-prose">
+<div class="schema-editor no-prose">
   <!-- Toolbar (spans full width) -->
   <div class="toolbar">
-    <h1 class="text-2xl font-bold">Schema Editor POC</h1>
-    <span class="badge badge-primary badge-lg ml-4">Proof of Concept</span>
-    @if (!loading() && !error()) {
+    <h1 class="text-2xl font-bold">Schema Editor</h1>
+    @if (!loading() && !error() && editMode()) {
       <button class="btn btn-primary ml-4" (click)="autoArrange()">
         <span class="material-symbols-outlined">auto_awesome</span>
         Auto-Arrange
@@ -53,8 +52,9 @@
           </div>
         </div>
 
-        <!-- Instructions -->
+        <!-- Instructions Panel (Expanded or Minimized) -->
         @if (showInstructions()) {
+          <!-- Expanded: Full Instructions Panel -->
           <div class="instructions">
             <div class="alert alert-info">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
@@ -66,13 +66,23 @@
                   <li>Click an entity box to see details in the inspector panel</li>
                   <li><strong>Click and drag</strong> anywhere to pan the diagram</li>
                   <li>Use zoom controls or mouse wheel to zoom in/out</li>
-                  <li>Lines show foreign key and many-to-many relationships</li>
+                  <li>Lines show relationships between domain entities</li>
+                  <li>System types (Files, Users) appear as property types, not relationships</li>
                 </ul>
               </div>
-              <button class="btn btn-sm btn-circle btn-ghost" (click)="showInstructions.set(false)">
-                ✕
+              <button class="btn btn-sm btn-circle btn-ghost" (click)="toggleInstructions()" title="Minimize">
+                <span class="material-symbols-outlined">remove</span>
               </button>
             </div>
+          </div>
+        } @else {
+          <!-- Minimized: Info Icon Button -->
+          <div class="instructions-minimized">
+            <button class="btn btn-circle btn-info btn-sm" (click)="toggleInstructions()" title="Show Instructions">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </button>
           </div>
         }
       </div>
@@ -81,6 +91,8 @@
       <div class="inspector-column">
         <app-schema-inspector-panel
           [entity]="selectedEntity()"
+          [systemTypes]="systemTypes()"
+          [junctionTables]="junctionTables()"
           (close)="onInspectorClose()"
           (navigateToEntity)="onNavigateToEntity($event)"
         />

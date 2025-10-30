@@ -22,6 +22,7 @@ import { Observable, combineLatest, filter, map, of, tap, shareReplay, finalize 
 import { EntityPropertyType, SchemaEntityProperty, SchemaEntityTable, InverseRelationshipMeta, ManyToManyMeta } from '../interfaces/entity';
 import { ValidatorFn, Validators } from '@angular/forms';
 import { getPostgrestUrl } from '../config/runtime';
+import { isSystemType } from '../constants/system-types';
 
 @Injectable({
   providedIn: 'root'
@@ -185,22 +186,27 @@ export class SchemaService {
       );
   }
   private getPropertyType(val: SchemaEntityProperty): EntityPropertyType {
-    // File type detection: UUID foreign key to files table
-    if (val.udt_name === 'uuid' && val.join_table === 'files') {
-      // Check fileType validation to determine specific file type
-      const fileTypeValidation = val.validation_rules?.find(v => v.type === 'fileType');
-      if (fileTypeValidation?.value) {
-        if (fileTypeValidation.value.startsWith('image/')) {
-          return EntityPropertyType.FileImage;
-        } else if (fileTypeValidation.value === 'application/pdf') {
-          return EntityPropertyType.FilePDF;
+    // System type detection: UUID foreign keys to metadata tables (File or User types)
+    // Uses centralized isSystemType() for consistency with Schema Editor/Inspector filtering
+    if (val.udt_name === 'uuid' && val.join_table && isSystemType(val.join_table)) {
+      // Discriminate between file and user system types
+      if (val.join_table === 'files') {
+        // File type detection: Check fileType validation to determine specific subtype
+        const fileTypeValidation = val.validation_rules?.find(v => v.type === 'fileType');
+        if (fileTypeValidation?.value) {
+          if (fileTypeValidation.value.startsWith('image/')) {
+            return EntityPropertyType.FileImage;
+          } else if (fileTypeValidation.value === 'application/pdf') {
+            return EntityPropertyType.FilePDF;
+          }
         }
+        return EntityPropertyType.File;
+      } else if (val.join_table === 'civic_os_users') {
+        return EntityPropertyType.User;
       }
-      return EntityPropertyType.File;
     }
 
     return (['int4', 'int8'].includes(val.udt_name) && val.join_column != null) ? EntityPropertyType.ForeignKeyName :
-      (['uuid'].includes(val.udt_name) && val.join_table == 'civic_os_users') ? EntityPropertyType.User :
       (['geography'].includes(val.udt_name) && val.geography_type == 'Point') ? EntityPropertyType.GeoPoint :
       ['timestamp'].includes(val.udt_name) ? EntityPropertyType.DateTime :
       ['timestamptz'].includes(val.udt_name) ? EntityPropertyType.DateTimeLocal :
@@ -227,11 +233,12 @@ export class SchemaService {
       return `${prop.column_name}:${meta.junctionTable}!${meta.sourceColumn}(${meta.relatedTable}!${meta.targetColumn}(${fields}))`;
     }
 
-    // File types: Embed file metadata from files table
+    // File types: Embed file metadata from files table (system type - see METADATA_SYSTEM_TABLES)
     if ([EntityPropertyType.File, EntityPropertyType.FileImage, EntityPropertyType.FilePDF].includes(prop.type)) {
       return `${prop.column_name}:files!${prop.column_name}(id,file_name,file_type,file_size,s3_key_prefix,s3_original_key,s3_thumbnail_small_key,s3_thumbnail_medium_key,s3_thumbnail_large_key,thumbnail_status,thumbnail_error,created_at)`;
     }
 
+    // User type: Embed user data from civic_os_users table (system type - see METADATA_SYSTEM_TABLES)
     return (prop.type == EntityPropertyType.User) ? prop.column_name + ':civic_os_users!' + prop.column_name + '(id,display_name,full_name,phone,email)' :
       (prop.join_schema == 'public' && prop.join_column) ? prop.column_name + ':' + prop.join_table + '(' + prop.join_column + ',display_name)' :
       (prop.type == EntityPropertyType.GeoPoint) ? prop.column_name + ':' + prop.column_name + '_text' :

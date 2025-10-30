@@ -23,7 +23,6 @@ import { EditPage } from './pages/edit/edit.page';
 import { PermissionsPage } from './pages/permissions/permissions.page';
 import { EntityManagementPage } from './pages/entity-management/entity-management.page';
 import { PropertyManagementPage } from './pages/property-management/property-management.page';
-import { SchemaErdPage } from './pages/schema-erd/schema-erd.page';
 import { DashboardPage } from './pages/dashboard/dashboard.page';
 import { schemaVersionGuard } from './guards/schema-version.guard';
 import { authGuard } from './guards/auth.guard';
@@ -40,15 +39,10 @@ export const routes: Routes = [
         canActivate: [schemaVersionGuard]
     },
     {
-        path: 'schema-erd',
-        component: SchemaErdPage,
+        path: 'schema-editor',
+        loadComponent: () => import('./pages/schema-editor/schema-editor.page')
+            .then(m => m.SchemaEditorPage),
         canActivate: [schemaVersionGuard]
-    },
-    {
-        path: 'schema-editor-poc',
-        loadComponent: () => import('./pages/schema-editor-poc/schema-editor-poc.page')
-            .then(m => m.SchemaEditorPocPage),
-        canActivate: [schemaVersionGuard, authGuard]
     },
     {
         path: 'permissions',
