@@ -86,6 +86,9 @@ export class SchemaInspectorPanelComponent {
     return currentEntity ? isSystemType(currentEntity.table_name) : false;
   });
 
+  // Computed: Is current user an admin?
+  isAdmin = computed(() => this.authService.isAdmin());
+
   // Computed: Relationship categories
   // System types and junction tables are filtered out
   belongsToRelationships = computed(() => {
@@ -181,30 +184,32 @@ export class SchemaInspectorPanelComponent {
       }
     });
 
-    // Load roles and permissions once for Permissions tab
-    this.loadingPermissions.set(true);
-    this.permissionsService.getRoles().subscribe({
-      next: (roles) => {
-        this.roles.set(roles);
-      },
-      error: (err) => {
-        console.error('[SchemaInspectorPanel] Failed to load roles:', err);
-        this.permissionsError.set('Failed to load roles');
-        this.loadingPermissions.set(false);
-      }
-    });
+    // Load roles and permissions once for Permissions tab (admin only)
+    if (this.authService.isAdmin()) {
+      this.loadingPermissions.set(true);
+      this.permissionsService.getRoles().subscribe({
+        next: (roles) => {
+          this.roles.set(roles);
+        },
+        error: (err) => {
+          console.error('[SchemaInspectorPanel] Failed to load roles:', err);
+          this.permissionsError.set('Failed to load roles');
+          this.loadingPermissions.set(false);
+        }
+      });
 
-    this.permissionsService.getRolePermissions().subscribe({
-      next: (permissions) => {
-        this.rolePermissions.set(permissions);
-        this.loadingPermissions.set(false);
-      },
-      error: (err) => {
-        console.error('[SchemaInspectorPanel] Failed to load permissions:', err);
-        this.permissionsError.set('Failed to load permissions');
-        this.loadingPermissions.set(false);
-      }
-    });
+      this.permissionsService.getRolePermissions().subscribe({
+        next: (permissions) => {
+          this.rolePermissions.set(permissions);
+          this.loadingPermissions.set(false);
+        },
+        error: (err) => {
+          console.error('[SchemaInspectorPanel] Failed to load permissions:', err);
+          this.permissionsError.set('Failed to load permissions');
+          this.loadingPermissions.set(false);
+        }
+      });
+    }
 
     // Effect: Load properties when entity changes
     effect(() => {

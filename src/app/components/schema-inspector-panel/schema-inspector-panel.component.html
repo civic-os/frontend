@@ -50,13 +50,15 @@
           Validations
         </button>
       }
-      <button
-        role="tab"
-        class="tab"
-        [class.tab-active]="activeTab() === 'permissions'"
-        (click)="setActiveTab('permissions')">
-        Permissions
-      </button>
+      @if (isAdmin()) {
+        <button
+          role="tab"
+          class="tab"
+          [class.tab-active]="activeTab() === 'permissions'"
+          (click)="setActiveTab('permissions')">
+          Permissions
+        </button>
+      }
     </div>
 
     <!-- Tab Content -->

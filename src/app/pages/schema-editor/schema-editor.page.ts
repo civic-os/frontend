@@ -1282,8 +1282,9 @@ export class SchemaEditorPage implements OnDestroy {
     }
 
     try {
-      // Import dagre library
-      const dagre = await import('dagre');
+      // Import dagre library (handle both dev and prod module structures)
+      const dagreModule = await import('dagre');
+      const dagre = (dagreModule as any).default || dagreModule;
 
       // Detect screen orientation for responsive layout
       const isLandscape = window.innerWidth > window.innerHeight;

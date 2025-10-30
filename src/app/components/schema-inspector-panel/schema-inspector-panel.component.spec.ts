@@ -148,9 +148,12 @@ describe('SchemaInspectorPanelComponent', () => {
     // Create mock services
     mockSchemaService = jasmine.createSpyObj('SchemaService', ['getProperties', 'getPropertiesForEntity']);
     mockPermissionsService = jasmine.createSpyObj('PermissionsService', ['getRoles', 'getRolePermissions']);
-    mockAuthService = jasmine.createSpyObj('AuthService', [], {
+    mockAuthService = jasmine.createSpyObj('AuthService', ['isAdmin'], {
       userRoles: signal<string[]>(['user'])
     });
+
+    // Default: user is not admin (most tests don't need admin functionality)
+    mockAuthService.isAdmin.and.returnValue(false);
 
     // Setup default return values
     mockSchemaService.getProperties.and.returnValue(of([]));
