@@ -129,6 +129,15 @@ export class SchemaEditorPage implements OnDestroy {
   private panStart = { x: 0, y: 0 };
   private hasPanned = false; // Track if actual panning occurred
 
+  // Zoom state
+  private currentScale = 1.0;  // Track current zoom level (1.0 = 100%)
+  private readonly MIN_SCALE = 0.1;  // 10% minimum zoom
+  private readonly MAX_SCALE = 3.0;  // 300% maximum zoom
+
+  // Touch/pinch zoom state
+  private initialPinchDistance: number | null = null;
+  private initialPinchScale = 1.0;
+
   // Track previous selection state for panning
   private previouslySelected: SchemaEntityTable | null = null;
 
@@ -321,60 +330,78 @@ export class SchemaEditorPage implements OnDestroy {
    * @returns Port configuration object for JointJS with 4 side-based groups
    */
   private generatePortsForEntity(entity: SchemaEntityTable): any {
-    // Return empty port configuration with 4 side-based groups
+    // Return port configuration with 4 side-based groups
+    // Ports are small (20px along edge) for clean visual appearance and spatial distribution
+    // Ports use body selector for anchor calculation to get proper edge detection
     // Actual ports will be calculated geometrically after Dagre layout
     return {
       groups: {
         'top': {
           position: { name: 'top' },
           attrs: {
-            circle: {
-              r: 0,  // Hide port visuals
-              fill: 'transparent'
+            portBody: {
+              width: 20,      // Horizontal extent for spatial distribution
+              height: 2,      // Thin vertical extent keeps it at top edge
+              x: -10,         // Center horizontally
+              y: -1,          // Position at top edge
+              fill: 'transparent',  // Invisible ports (connection targets only)
+              magnet: true    // Enable as connection point
             }
           },
           markup: [{
-            tagName: 'circle',
-            selector: 'circle'
+            tagName: 'rect',
+            selector: 'portBody'
           }]
         },
         'right': {
           position: { name: 'right' },
           attrs: {
-            circle: {
-              r: 0,
-              fill: 'transparent'
+            portBody: {
+              width: 2,       // Thin horizontal extent keeps it at right edge
+              height: 20,     // Vertical extent for spatial distribution
+              x: -1,          // Position at right edge
+              y: -10,         // Center vertically
+              fill: 'transparent',  // Invisible ports (connection targets only)
+              magnet: true
             }
           },
           markup: [{
-            tagName: 'circle',
-            selector: 'circle'
+            tagName: 'rect',
+            selector: 'portBody'
           }]
         },
         'bottom': {
           position: { name: 'bottom' },
           attrs: {
-            circle: {
-              r: 0,
-              fill: 'transparent'
+            portBody: {
+              width: 20,
+              height: 2,
+              x: -10,
+              y: -1,
+              fill: 'transparent',  // Invisible ports (connection targets only)
+              magnet: true
             }
           },
           markup: [{
-            tagName: 'circle',
-            selector: 'circle'
+            tagName: 'rect',
+            selector: 'portBody'
           }]
         },
         'left': {
           position: { name: 'left' },
           attrs: {
-            circle: {
-              r: 0,
-              fill: 'transparent'
+            portBody: {
+              width: 2,
+              height: 20,
+              x: -1,
+              y: -10,
+              fill: 'transparent',  // Invisible ports (connection targets only)
+              magnet: true
             }
           },
           markup: [{
-            tagName: 'circle',
-            selector: 'circle'
+            tagName: 'rect',
+            selector: 'portBody'
           }]
         }
       },
@@ -401,30 +428,41 @@ export class SchemaEditorPage implements OnDestroy {
    * Determines which side of an entity a port should be placed on based on the angle
    * to the related entity. Uses geometric principles to create physically intuitive connections.
    *
-   * IMPORTANT: Screen coordinates have Y increasing downward, opposite of mathematical convention.
+   * IMPORTANT: Calculates angle thresholds based on entity dimensions (not fixed 45°).
+   * For rectangular entities, the thresholds are determined by the diagonal angle to corners.
+   *
+   * Screen coordinates: Y increases downward, opposite of mathematical convention.
    *
    * @param angle Angle in degrees from Math.atan2() (-180 to 180)
+   * @param width Width of the entity in pixels
+   * @param height Height of the entity in pixels
    * @returns The side ('top' | 'right' | 'bottom' | 'left') where the port should be placed
    */
-  private determineSideFromAngle(angle: number): 'top' | 'right' | 'bottom' | 'left' {
+  private determineSideFromAngle(angle: number, width: number, height: number): 'top' | 'right' | 'bottom' | 'left' {
     // Normalize angle to -180 to 180 range (though atan2 already returns this)
     const normalized = ((angle + 180) % 360) - 180;
 
-    // Divide the circle into 4 quadrants with 90° spans
-    // Screen coordinates: Y increases downward, so positive angles = downward direction
-    // -45° to 45° = right (facing east)
-    // 45° to 135° = bottom (facing south - positive Y)
-    // 135° to 180° or -180° to -135° = left (facing west)
-    // -135° to -45° = top (facing north - negative Y)
+    // Calculate the diagonal angle from center to corner based on entity dimensions
+    // This determines the threshold angles between adjacent sides
+    // For a 250×100 rectangle: atan2(50, 125) ≈ 21.8°
+    // For a square (250×250): atan2(125, 125) = 45° (classic quadrant division)
+    const cornerAngle = Math.atan2(height / 2, width / 2) * (180 / Math.PI);
 
-    if (normalized >= -45 && normalized < 45) {
+    // Divide the circle into 4 sections based on actual entity geometry
+    // Screen coordinates: Y increases downward, so positive angles = downward direction
+    // Right: -cornerAngle to +cornerAngle
+    // Bottom: +cornerAngle to (180 - cornerAngle)
+    // Left: (180 - cornerAngle) to 180, and -180 to -(180 - cornerAngle)
+    // Top: -(180 - cornerAngle) to -cornerAngle
+
+    if (normalized >= -cornerAngle && normalized < cornerAngle) {
       return 'right';
-    } else if (normalized >= 45 && normalized < 135) {
-      return 'bottom';  // Swapped: positive angle = downward in screen coords
-    } else if (normalized >= 135 || normalized < -135) {
+    } else if (normalized >= cornerAngle && normalized < (180 - cornerAngle)) {
+      return 'bottom';  // Positive angle = downward in screen coords
+    } else if (normalized >= (180 - cornerAngle) || normalized < -(180 - cornerAngle)) {
       return 'left';
     } else {
-      return 'top';  // Swapped: negative angle = upward in screen coords
+      return 'top';  // Negative angle = upward in screen coords
     }
   }
 
@@ -467,6 +505,7 @@ export class SchemaEditorPage implements OnDestroy {
             strokeWidth: 2,
             rx: 8,
             ry: 8,
+            magnet: true,  // Make body the primary magnet for anchor calculation (fixes perpendicular anchor bbox)
             // Add title attribute for tooltip with full description
             title: entity.description || 'No description'
           },
@@ -506,7 +545,8 @@ export class SchemaEditorPage implements OnDestroy {
           strokeDasharray: isMetadataTable ? '5, 5' : 'none',
           opacity: isMetadataTable ? 0.8 : 1,
           rx: 8,
-          ry: 8
+          ry: 8,
+          magnet: true  // Ensure magnet stays set after styling
         },
         nameLabel: {
           text: entity.display_name,
@@ -571,9 +611,25 @@ export class SchemaEditorPage implements OnDestroy {
 
         if (sourceElement && targetElement) {
           const link = new shapes.standard.Link({
-            source: { id: sourceElement.id, anchor: { name: 'perpendicular' } },
-            target: { id: targetElement.id, anchor: { name: 'perpendicular' } },
-            router: { name: 'metro' },
+            source: {
+              id: sourceElement.id,
+              selector: 'body',  // Use element body (not ports) for anchor calculation
+              anchor: { name: 'perpendicular' },
+              connectionPoint: { name: 'boundary', args: { stroke: true } }
+            },
+            target: {
+              id: targetElement.id,
+              selector: 'body',  // Use element body (not ports) for anchor calculation
+              anchor: { name: 'perpendicular' },
+              connectionPoint: { name: 'boundary', args: { stroke: true } }
+            },
+            router: {
+              name: 'metro',  // Metro router allows diagonal paths, may handle ports better than Manhattan
+              args: {
+                padding: 20,         // Minimum distance from element before link can turn
+                perpendicular: false // CRITICAL: Disable auto-perpendicular to use explicit startDirections/endDirections
+              }
+            },
             connector: { name: 'rounded', args: { radius: 10 } },
             attrs: {
               line: {
@@ -591,6 +647,7 @@ export class SchemaEditorPage implements OnDestroy {
 
           link.set('relationshipType', 'foreignKey');
           link.set('columnName', prop.column_name);
+          link.set('joinColumn', prop.join_column);  // Store join_column for port matching
           link.set('sourceTable', prop.table_name);
           link.set('targetTable', prop.join_table);
           link.addTo(this.graph);
@@ -624,9 +681,25 @@ export class SchemaEditorPage implements OnDestroy {
           if (sourceElement && targetElement) {
             // Create M:M link with double-ended arrows
             const link = new shapes.standard.Link({
-              source: { id: sourceElement.id, anchor: { name: 'perpendicular' } },
-              target: { id: targetElement.id, anchor: { name: 'perpendicular' } },
-              router: { name: 'metro' },
+              source: {
+                id: sourceElement.id,
+                selector: 'body',  // Use element body (not ports) for anchor calculation
+                anchor: { name: 'perpendicular' },
+                connectionPoint: { name: 'boundary', args: { stroke: true } }
+              },
+              target: {
+                id: targetElement.id,
+                selector: 'body',  // Use element body (not ports) for anchor calculation
+                anchor: { name: 'perpendicular' },
+                connectionPoint: { name: 'boundary', args: { stroke: true } }
+              },
+              router: {
+                name: 'metro',  // Metro router allows diagonal paths, may handle ports better than Manhattan
+                args: {
+                  padding: 20,         // Minimum distance from element before link can turn
+                  perpendicular: false // CRITICAL: Disable auto-perpendicular to use explicit startDirections/endDirections
+                }
+              },
               connector: { name: 'rounded', args: { radius: 10 } },
               attrs: {
                 line: {
@@ -921,6 +994,32 @@ export class SchemaEditorPage implements OnDestroy {
         this.adjustVertices(this.graph, link);
       }
     });
+
+    // Mousewheel zoom: scroll up to zoom in, scroll down to zoom out
+    // Zoom is centered on the mouse cursor position for intuitive navigation
+    const container = this.canvasContainer()?.nativeElement;
+    if (container) {
+      container.addEventListener('wheel', (event: WheelEvent) => {
+        this.handleMousewheelZoom(event);
+      }, { passive: false });  // Non-passive to allow preventDefault()
+
+      // Touch zoom: pinch to zoom (two-finger gesture)
+      container.addEventListener('touchstart', (event: TouchEvent) => {
+        if (event.touches.length === 2) {
+          this.handlePinchStart(event);
+        }
+      }, { passive: false });
+
+      container.addEventListener('touchmove', (event: TouchEvent) => {
+        if (event.touches.length === 2 && this.initialPinchDistance !== null) {
+          this.handlePinchMove(event);
+        }
+      }, { passive: false });
+
+      container.addEventListener('touchend', () => {
+        this.initialPinchDistance = null;
+      });
+    }
   }
 
   /**
@@ -967,6 +1066,124 @@ export class SchemaEditorPage implements OnDestroy {
   }
 
   /**
+   * Handles mousewheel zoom: scroll up to zoom in, scroll down to zoom out.
+   * Zoom is centered on the mouse cursor position for intuitive navigation.
+   *
+   * @param event The wheel event from the mouse
+   */
+  private handleMousewheelZoom(event: WheelEvent): void {
+    event.preventDefault();  // Prevent page scroll
+
+    // Calculate zoom delta based on device type
+    // Touchpads emit much smaller deltaY values (~4-10) vs mouse wheels (~100)
+    // Normalize using Math.abs to handle both device types smoothly
+    const deltaY = Math.abs(event.deltaY);
+    const isTouchpad = deltaY < 50;  // Heuristic: small deltaY = touchpad
+
+    // Use proportional zoom for smooth experience on both input types
+    // Touchpad: ~0.5% per pixel, Mouse: ~10% per notch
+    const zoomIntensity = isTouchpad ? (deltaY * 0.005) : 0.1;
+    const delta = -Math.sign(event.deltaY) * zoomIntensity;
+    const newScale = Math.max(this.MIN_SCALE, Math.min(this.MAX_SCALE, this.currentScale + delta));
+
+    // Only zoom if we're not at the limits
+    if (newScale === this.currentScale) {
+      return;
+    }
+
+    this.applyZoom(newScale, event.clientX, event.clientY);
+  }
+
+  /**
+   * Handles pinch-to-zoom start: records initial pinch distance
+   */
+  private handlePinchStart(event: TouchEvent): void {
+    event.preventDefault();
+
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+
+    // Calculate initial distance between fingers
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    this.initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+    this.initialPinchScale = this.currentScale;
+  }
+
+  /**
+   * Handles pinch-to-zoom move: calculates new zoom based on finger distance
+   */
+  private handlePinchMove(event: TouchEvent): void {
+    event.preventDefault();
+
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+
+    // Calculate current distance between fingers
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    const currentDistance = Math.sqrt(dx * dx + dy * dy);
+
+    if (this.initialPinchDistance === null) {
+      return;
+    }
+
+    // Calculate new scale based on ratio of distances
+    const scaleChange = currentDistance / this.initialPinchDistance;
+    const newScale = Math.max(this.MIN_SCALE, Math.min(this.MAX_SCALE, this.initialPinchScale * scaleChange));
+
+    // Calculate midpoint between fingers for zoom center
+    const centerX = (touch1.clientX + touch2.clientX) / 2;
+    const centerY = (touch1.clientY + touch2.clientY) / 2;
+
+    this.applyZoom(newScale, centerX, centerY);
+  }
+
+  /**
+   * Applies zoom transformation centered on a specific point.
+   * Uses JointJS scale() and translate() to zoom toward the specified coordinates.
+   *
+   * @param newScale The new scale factor (1.0 = 100%)
+   * @param clientX The X coordinate to zoom toward (in viewport coordinates)
+   * @param clientY The Y coordinate to zoom toward (in viewport coordinates)
+   */
+  private applyZoom(newScale: number, clientX: number, clientY: number): void {
+    if (!this.paper) {
+      return;
+    }
+
+    const oldScale = this.currentScale;
+    const container = this.canvasContainer()?.nativeElement;
+    if (!container) {
+      return;
+    }
+    const canvasRect = container.getBoundingClientRect();
+
+    // Get current paper translation
+    const currentTranslate = this.paper.translate();
+
+    // Calculate mouse position relative to canvas
+    const mouseX = clientX - canvasRect.left;
+    const mouseY = clientY - canvasRect.top;
+
+    // Calculate the point in paper coordinates (before zoom)
+    const paperPointX = (mouseX - currentTranslate.tx) / oldScale;
+    const paperPointY = (mouseY - currentTranslate.ty) / oldScale;
+
+    // Apply new scale
+    this.paper.scale(newScale, newScale);
+
+    // Calculate new translation to keep the paper point under the mouse cursor
+    const newTranslateX = mouseX - paperPointX * newScale;
+    const newTranslateY = mouseY - paperPointY * newScale;
+
+    this.paper.translate(newTranslateX, newTranslateY);
+
+    // Update tracked scale
+    this.currentScale = newScale;
+  }
+
+  /**
    * Recalculates port positions using geometric angle-based ordering.
    * Called after Dagre layout when entity positions are finalized.
    * Assigns ports to sides based on the angle to related entities and sorts them
@@ -986,6 +1203,7 @@ export class SchemaEditorPage implements OnDestroy {
     elements.forEach((element: any) => {
       const entityName = element.get('entityName');
       const entityCenter = this.getEntityCenter(element);
+      const entitySize = element.size();  // Get entity dimensions once
 
       // Store port data with angle information
       interface PortData {
@@ -1013,10 +1231,13 @@ export class SchemaEditorPage implements OnDestroy {
             relatedCenter.y - entityCenter.y,
             relatedCenter.x - entityCenter.x
           ) * (180 / Math.PI);
-          const side = this.determineSideFromAngle(angle);
+          const side = this.determineSideFromAngle(angle, entitySize.width, entitySize.height);
+
+          // Include join_column in port ID to handle cases where multiple FKs reference the same table
+          const portId = `${side}_out_${prop.join_table}_${prop.join_column}_${prop.column_name}`;
 
           portsData.push({
-            id: `${side}_out_${prop.column_name}`,
+            id: portId,
             group: side,
             angle,
             relatedTable: prop.join_table!
@@ -1038,10 +1259,13 @@ export class SchemaEditorPage implements OnDestroy {
             relatedCenter.y - entityCenter.y,
             relatedCenter.x - entityCenter.x
           ) * (180 / Math.PI);
-          const side = this.determineSideFromAngle(angle);
+          const side = this.determineSideFromAngle(angle, entitySize.width, entitySize.height);
+
+          // Include join_column to handle multiple FKs from same source table to different columns
+          const portId = `${side}_in_${prop.join_column}_${prop.table_name}_${prop.column_name}`;
 
           portsData.push({
-            id: `${side}_in_${prop.table_name}_${prop.column_name}`,
+            id: portId,
             group: side,
             angle,
             relatedTable: prop.table_name
@@ -1077,7 +1301,7 @@ export class SchemaEditorPage implements OnDestroy {
               relatedCenter.y - entityCenter.y,
               relatedCenter.x - entityCenter.x
             ) * (180 / Math.PI);
-            const side = this.determineSideFromAngle(angle);
+            const side = this.determineSideFromAngle(angle, entitySize.width, entitySize.height);
 
             const direction = isSource ? 'out' : 'in';
             // Use junction table in the ID to make it unique
@@ -1173,6 +1397,10 @@ export class SchemaEditorPage implements OnDestroy {
 
     const links = this.graph.getLinks();
 
+    // Batch all link reconnections to prevent multiple router recalculations.
+    // Critical for preventing glitches when this runs during/after zoom changes.
+    this.graph.startBatch('reconnect');
+
     links.forEach((link: any) => {
       const sourceId = link.get('source').id;
       const targetId = link.get('target').id;
@@ -1194,6 +1422,8 @@ export class SchemaEditorPage implements OnDestroy {
       // Calculate angle from source to target to find the correct port
       const sourceCenter = this.getEntityCenter(sourceElement);
       const targetCenter = this.getEntityCenter(targetElement);
+      const sourceSize = sourceElement.size();
+      const targetSize = targetElement.size();
 
       const sourceAngle = Math.atan2(
         targetCenter.y - sourceCenter.y,
@@ -1205,8 +1435,8 @@ export class SchemaEditorPage implements OnDestroy {
         sourceCenter.x - targetCenter.x
       ) * (180 / Math.PI);
 
-      const sourceSide = this.determineSideFromAngle(sourceAngle);
-      const targetSide = this.determineSideFromAngle(targetAngle);
+      const sourceSide = this.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
+      const targetSide = this.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
 
       // Find matching ports on source and target elements
       const sourcePorts = sourceElement.get('ports');
@@ -1217,23 +1447,29 @@ export class SchemaEditorPage implements OnDestroy {
       }
 
       // Look for ports that match this link's relationship
-      // Port IDs have format: {side}_out_{column} or {side}_in_{sourceTable}_{column} or {side}_m2m_{direction}_{table}_{column}
+      // Port IDs have format:
+      //   Outgoing FK: {side}_out_{join_table}_{join_column}_{column}
+      //   Incoming FK: {side}_in_{join_column}_{source_table}_{column}
+      //   M:M: {side}_m2m_{direction}_{junction}
       const relationshipType = link.get('relationshipType');
       const columnName = link.get('columnName');
+      const joinColumn = link.get('joinColumn');
       const junctionTable = link.get('junctionTable');
 
       let sourcePortId: string | null = null;
       let targetPortId: string | null = null;
 
       if (relationshipType === 'foreignKey') {
-        // Source: outgoing FK port
+        // Source: outgoing FK port (includes join_column for uniqueness)
         sourcePortId = sourcePorts.items.find((p: any) =>
-          p.group === sourceSide && p.id.includes(`_out_${columnName}`)
+          p.group === sourceSide &&
+          p.id.includes(`_out_${targetTable}_${joinColumn}_${columnName}`)
         )?.id;
 
-        // Target: incoming FK port
+        // Target: incoming FK port (includes join_column for uniqueness)
         targetPortId = targetPorts.items.find((p: any) =>
-          p.group === targetSide && p.id.includes(`_in_${sourceTable}_${columnName}`)
+          p.group === targetSide &&
+          p.id.includes(`_in_${joinColumn}_${sourceTable}_${columnName}`)
         )?.id;
       } else if (relationshipType === 'manyToMany') {
         // M:M ports are identified by junction table name
@@ -1249,11 +1485,43 @@ export class SchemaEditorPage implements OnDestroy {
       }
 
       // If we found both ports, reconnect the link
+      // Use 'center' anchor for port-based connections - ports are already positioned on specific sides,
+      // so we don't need perpendicular edge detection (which fails when entities are far apart).
+      // connectionPoint: boundary ensures connection at the port's edge.
       if (sourcePortId && targetPortId) {
-        link.source({ id: sourceId, port: sourcePortId });
-        link.target({ id: targetId, port: targetPortId });
+        link.source({
+          id: sourceId,
+          port: sourcePortId,
+          anchor: { name: 'center' },  // Connect at port center (port position defines the side)
+          connectionPoint: { name: 'boundary', args: { stroke: true } }
+        });
+        link.target({
+          id: targetId,
+          port: targetPortId,
+          anchor: { name: 'center' },  // Connect at port center (port position defines the side)
+          connectionPoint: { name: 'boundary', args: { stroke: true } }
+        });
+
+        // CRITICAL: Use GEOMETRY-BASED sides for router directions
+        // sourceSide and targetSide were calculated from angles at lines 1400-1401
+        // These represent the actual spatial relationship between entities
+        // Manhattan router requires startDirections/endDirections based on geometry
+        // See: https://github.com/clientIO/joint/discussions/2738
+
+        // Apply router settings based on geometric relationship
+        const router = link.get('router');
+        if (router && sourceSide && targetSide) {
+          router.args = router.args || {};
+          router.args.perpendicular = false; // CRITICAL: Disable auto-perpendicular to use explicit directions
+          router.args.startDirections = [sourceSide];
+          router.args.endDirections = [targetSide];
+          link.router(router);
+        }
       }
     });
+
+    // End batch - all router recalculations happen once, atomically
+    this.graph.stopBatch('reconnect');
   }
 
   /**
@@ -1296,9 +1564,9 @@ export class SchemaEditorPage implements OnDestroy {
         rankdir: rankdir,     // Responsive: LR for landscape, TB for portrait
         ranker: 'tight-tree', // Use compact ranking algorithm (vs default 'network-simplex')
         align: 'UL',          // Align nodes to upper-left for grid-like structure
-        nodesep: 80,          // Horizontal spacing between nodes (conservative reduction from 120)
-        ranksep: 110,         // Vertical spacing between ranks (conservative reduction from 150)
-        edgesep: 60           // Spacing between edges (conservative reduction from 100)
+        nodesep: 120,         // Moderate horizontal spacing between nodes
+        ranksep: 120,         // Moderate vertical spacing between ranks
+        edgesep: 40           // Space between edge routes
       });
       dagreGraph.setDefaultEdgeLabel(() => ({}));
 
@@ -1355,7 +1623,7 @@ export class SchemaEditorPage implements OnDestroy {
         this.adjustVertices(this.graph, element);
       });
 
-      // Note: Edge routing is handled by JointJS metro router on each link
+      // Note: Edge routing is handled by JointJS manhattan router on each link
 
       // Zoom to fit after arranging
       this.zoomToFit();
@@ -1547,21 +1815,92 @@ export class SchemaEditorPage implements OnDestroy {
    * Highlights the selected entity and its connected relationships
    */
   private highlightSelectedEntity(selectedCell: any): void {
-    // Remove highlights from all elements
-    this.clearHighlights();
-
     const colors = this.getThemeColors();
 
-    // Highlight selected element
+    // CRITICAL: Batch BOTH clear and highlight operations together to prevent
+    // router recalculations in the gap between unhighlight and highlight.
+    // This is the root cause of glitches during any interaction (not just zoom).
+    this.graph.startBatch('highlight');
+
+    // First, clear all existing highlights
+    this.graph.getElements().forEach((el: any) => {
+      el.attr('body/stroke', colors.baseContent);
+      el.attr('body/strokeWidth', 2);
+    });
+
+    this.graph.getLinks().forEach((link: any) => {
+      // Ensure perpendicular anchors during clear
+      const source = link.get('source');
+      const target = link.get('target');
+      if (source && !source.anchor) {
+        link.source({ ...source, anchor: { name: 'perpendicular' } });
+      }
+      if (target && !target.anchor) {
+        link.target({ ...target, anchor: { name: 'perpendicular' } });
+      }
+
+      link.attr('line/strokeWidth', 2);
+      link.attr('line/stroke', colors.baseContent);
+      const attrs = link.attr('line');
+      if (attrs.targetMarker) {
+        link.attr('line/targetMarker/fill', colors.baseContent);
+      }
+      if (attrs.sourceMarker) {
+        link.attr('line/sourceMarker/fill', colors.baseContent);
+      }
+    });
+
+    // Then, highlight selected element and its connected links
     selectedCell.attr('body/stroke', colors.primary);
     selectedCell.attr('body/strokeWidth', 3);
 
-    // Highlight connected relationships (links)
     const connectedLinks = this.graph.getConnectedLinks(selectedCell);
+
     connectedLinks.forEach((link: any) => {
+      // CRITICAL: Update router config INSIDE the batch using GEOMETRY-BASED directions
+      const source = link.get('source');
+      const target = link.get('target');
+
+      if (source?.id && target?.id) {
+        // Get source and target elements to calculate geometric relationship
+        const sourceElement = this.graph.getCell(source.id);
+        const targetElement = this.graph.getCell(target.id);
+
+        if (sourceElement && targetElement) {
+          // Calculate angles based on entity centers (same as port ordering)
+          const sourceCenter = this.getEntityCenter(sourceElement);
+          const targetCenter = this.getEntityCenter(targetElement);
+          const sourceSize = sourceElement.size();
+          const targetSize = targetElement.size();
+
+          const sourceAngle = Math.atan2(
+            targetCenter.y - sourceCenter.y,
+            targetCenter.x - sourceCenter.x
+          ) * (180 / Math.PI);
+
+          const targetAngle = Math.atan2(
+            sourceCenter.y - targetCenter.y,
+            sourceCenter.x - targetCenter.x
+          ) * (180 / Math.PI);
+
+          const sourceSide = this.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
+          const targetSide = this.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
+
+          // Update router directions based on geometry
+          const router = link.get('router');
+          if (router && sourceSide && targetSide) {
+            router.args = router.args || {};
+            router.args.perpendicular = false; // CRITICAL: Disable auto-perpendicular
+            router.args.startDirections = [sourceSide];
+            router.args.endDirections = [targetSide];
+            link.router(router);  // Apply router config inside batch
+          }
+        }
+      }
+
+      // Apply visual changes (these don't trigger router recalculation)
       link.attr('line/strokeWidth', 3);
       link.attr('line/stroke', colors.primary);
-      // Also update marker colors to match
       const attrs = link.attr('line');
       if (attrs.targetMarker) {
         link.attr('line/targetMarker/fill', colors.primary);
@@ -1570,6 +1909,9 @@ export class SchemaEditorPage implements OnDestroy {
         link.attr('line/sourceMarker/fill', colors.primary);
       }
     });
+
+    // End batch - router recalculates once with correct config
+    this.graph.stopBatch('highlight');
   }
 
   /**
@@ -1578,6 +1920,9 @@ export class SchemaEditorPage implements OnDestroy {
   private clearHighlights(): void {
     const colors = this.getThemeColors();
 
+    // Batch all updates to prevent multiple router recalculations
+    this.graph.startBatch('unhighlight');
+
     // Reset all entity highlights
     this.graph.getElements().forEach((el: any) => {
       el.attr('body/stroke', colors.baseContent);
@@ -1585,7 +1930,51 @@ export class SchemaEditorPage implements OnDestroy {
     });
 
     // Reset all link highlights
-    this.graph.getLinks().forEach((link: any) => {
+    const allLinks = this.graph.getLinks();
+
+    allLinks.forEach((link: any) => {
+      // CRITICAL: Update router config INSIDE the batch using GEOMETRY-BASED directions
+      const source = link.get('source');
+      const target = link.get('target');
+
+      if (source?.id && target?.id) {
+        // Get source and target elements to calculate geometric relationship
+        const sourceElement = this.graph.getCell(source.id);
+        const targetElement = this.graph.getCell(target.id);
+
+        if (sourceElement && targetElement) {
+          // Calculate angles based on entity centers (same as port ordering)
+          const sourceCenter = this.getEntityCenter(sourceElement);
+          const targetCenter = this.getEntityCenter(targetElement);
+          const sourceSize = sourceElement.size();
+          const targetSize = targetElement.size();
+
+          const sourceAngle = Math.atan2(
+            targetCenter.y - sourceCenter.y,
+            targetCenter.x - sourceCenter.x
+          ) * (180 / Math.PI);
+
+          const targetAngle = Math.atan2(
+            sourceCenter.y - targetCenter.y,
+            sourceCenter.x - targetCenter.x
+          ) * (180 / Math.PI);
+
+          const sourceSide = this.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
+          const targetSide = this.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
+
+          // Update router directions based on geometry
+          const router = link.get('router');
+          if (router && sourceSide && targetSide) {
+            router.args = router.args || {};
+            router.args.perpendicular = false; // CRITICAL: Disable auto-perpendicular
+            router.args.startDirections = [sourceSide];
+            router.args.endDirections = [targetSide];
+            link.router(router);  // Apply router config inside batch
+          }
+        }
+      }
+
+      // Apply visual changes (these don't trigger router recalculation)
       link.attr('line/strokeWidth', 2);
       link.attr('line/stroke', colors.baseContent);
       // Reset marker colors
@@ -1597,6 +1986,10 @@ export class SchemaEditorPage implements OnDestroy {
         link.attr('line/sourceMarker/fill', colors.baseContent);
       }
     });
+
+    // End batch - router recalculates once with correct config
+    console.log('[SchemaEditor] Ending unhighlight batch - router will recalculate now');
+    this.graph.stopBatch('unhighlight');
   }
 
   /**

@@ -568,10 +568,14 @@ export class SchemaService {
       }
 
       // Check for non-metadata columns
+      // Ignore ALL FK columns (including non-public FKs) to handle edge case where
+      // phantom metadata schema FKs exist (e.g., from pre-v0.8.2 bug)
       const metadataColumns = ['id', 'created_at', 'updated_at'];
       const hasExtraColumns = tableProps.some(p =>
         !metadataColumns.includes(p.column_name) &&
-        !fkProps.includes(p)
+        !fkProps.includes(p) &&
+        p.type !== EntityPropertyType.ForeignKeyName &&
+        p.type !== EntityPropertyType.User
       );
 
       if (hasExtraColumns) {

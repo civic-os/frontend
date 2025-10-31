@@ -1012,6 +1012,60 @@ describe('SchemaService', () => {
       expect(result.size).toBe(0);
     });
 
+    it('should detect junction table with 2 public FKs despite having metadata schema FK (cross-schema bug fix)', () => {
+      // Regression test for v0.8.2 fix: schema_relations_func() was incorrectly matching FKs
+      // across schemas when table names collided (e.g., public.projects vs metadata.projects).
+      // This caused junction tables to have 3+ FKs (2 public + 1 phantom metadata), breaking detection.
+      const tables = [createMockEntity({ table_name: 'project_broader_impact_categories' })];
+      const props = [
+        // Valid public schema FK #1
+        createMockProperty({
+          table_name: 'project_broader_impact_categories',
+          column_name: 'project_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'projects',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        // Valid public schema FK #2
+        createMockProperty({
+          table_name: 'project_broader_impact_categories',
+          column_name: 'broader_impact_category_id',
+          udt_name: 'int4',
+          join_schema: 'public',
+          join_table: 'broader_impact_categories',
+          join_column: 'id',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        // Phantom metadata schema FK (should be filtered out by detectJunctionTables)
+        // This simulates the bug where schema_relations_func() incorrectly matched metadata.projects.project
+        createMockProperty({
+          table_name: 'project_broader_impact_categories',
+          column_name: 'project_id',
+          udt_name: 'int4',
+          join_schema: 'metadata',  // Wrong schema!
+          join_table: 'projects',
+          join_column: 'project',
+          type: EntityPropertyType.ForeignKeyName
+        }),
+        // Metadata column (required for junction detection)
+        createMockProperty({
+          table_name: 'project_broader_impact_categories',
+          column_name: 'created_at',
+          udt_name: 'timestamptz',
+          is_generated: true,
+          is_updatable: false,
+          type: EntityPropertyType.DateTimeLocal
+        })
+      ];
+
+      const result = (service as any).detectJunctionTables(tables, props);
+      // Should detect as junction table (only counts 2 public schema FKs, ignores metadata FK)
+      expect(result.size).toBeGreaterThan(0);
+      expect(result.has('projects') || result.has('broader_impact_categories')).toBe(true);
+    });
+
     it('should not detect junction table with extra business columns', () => {
       const tables = [createMockEntity({ table_name: 'user_roles' })];
       const props = [

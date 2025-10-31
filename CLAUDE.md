@@ -638,27 +638,69 @@ The Schema Editor demonstrates best practices for integrating JointJS (MIT-licen
    - **Benefits**: Shorter paths, fewer crossovers, more intuitive layout
    - **Testing**: 31 comprehensive unit tests validate geometry functions (`schema-editor.page.spec.ts`)
 
-3. **Auto-Layout Integration** (`schema-editor.page.ts:1039-1222`)
+3. **Port-Based Routing with Body Magnet** (`schema-editor.page.ts:508`)
+   - **Challenge**: Perpendicular anchors with small ports (2×20px) can cause incorrect edge detection
+   - **Solution**: Set `magnet: true` on the **body** element, not just the ports
+   - **Why it works**: JointJS intelligently uses the body element's bbox (250×100px) for anchor edge detection when both body and ports have magnet enabled
+   - **Implementation**: `attrs: { body: { magnet: true } }` in element configuration
+   - **Benefit**: No library patching required, clean configuration-based solution
+
+4. **Link Routing Stability - Batching Pattern** (`schema-editor.page.ts:1758-1916`)
+   - **Critical**: Always batch related graph operations to prevent router recalculation race conditions
+   - **Pattern**: `this.graph.startBatch('name'); /* operations */ this.graph.stopBatch('name');`
+   - **Explicit Recalculation**: Metro router doesn't auto-recalculate on visual changes - call `link.router(router)` explicitly
+   - **Use Cases**: Highlight/unhighlight operations, port reconnection, bulk updates
+   - **Example**:
+     ```typescript
+     this.graph.startBatch('highlight');
+     // Clear all existing highlights
+     this.graph.getElements().forEach(el => el.attr('body/stroke', normalColor));
+     // Apply new highlights
+     selectedCell.attr('body/stroke', highlightColor);
+     this.graph.stopBatch('highlight');
+     // Force router recalculation after batch
+     connectedLinks.forEach(link => link.router(link.get('router')));
+     ```
+
+5. **Metro Router Configuration** (`schema-editor.page.ts:585-655`)
+   - **Configuration**:
+     ```typescript
+     router: {
+       name: 'metro',  // Allows diagonal segments for natural routing
+       args: {
+         maximumLoops: 2000,
+         maxAllowedDirectionChange: 90,  // Only right-angle turns
+         startDirections: ['left', 'right', 'top', 'bottom'],
+         endDirections: ['left', 'right', 'top', 'bottom']
+       }
+     }
+     ```
+   - **Port-Based Routing**: Links use `port` for connection + `anchor: { name: 'perpendicular' }` for edge attachment
+   - **Why Metro over Manhattan**: Metro handles small port bboxes better with diagonal segments
+
+6. **Auto-Layout Integration** (`schema-editor.page.ts:1039-1222`)
    - Use Dagre hierarchical layout algorithm for automatic positioning
    - Recalculate geometric ports after layout completes
-   - Metro router for smooth, natural curved paths
+   - Pattern: `layout → recalculatePortsByGeometry() → reconnectLinksToGeometricPorts()`
 
-4. **Theme Integration** (`schema-editor.page.ts:270-296`)
+7. **Theme Integration** (`schema-editor.page.ts:270-296`)
    - Use DaisyUI CSS variables (`var(--base-100)`, `var(--primary)`, etc.) for theme-aware styling
    - Automatically adapts to light/dark theme changes
    - Pattern matches GeoPointMapComponent theme handling
 
-5. **System Types as Property Types** (`src/app/constants/system-types.ts`)
+8. **System Types as Property Types** (`src/app/constants/system-types.ts`)
    - Metadata tables (Files, Users) filtered from diagram as entity boxes
    - Shown instead as property types with icons in inspector Properties tab (📄 File, 👤 User)
    - Reduces visual clutter by 50-70% and focuses on domain relationships
    - Namespace-safe: `isSystemType()` function handles schema-qualified names to prevent collisions
    - See `docs/notes/SYSTEM_TYPES_AS_PROPERTY_TYPES.md` for architectural rationale
 
-6. **Event Handling** (`schema-editor.page.ts:659-702`)
-   - Click entities to show inspector panel
-   - Inspector panel displays entity metadata, properties, relationships, and validations
-   - Navigation between related entities
+9. **Inspector Panel Integration** (`components/schema-inspector-panel/`)
+   - **Tabs**: Properties, Relations, Validations (read-only UI for now)
+   - **Properties Tab**: Shows all columns with type badges, visibility flags, system type special rendering
+   - **Relations Tab**: Shows belongs_to, has_many, and many_to_many relationships (filtered by system types)
+   - **Validations Tab**: Displays validation rules with human-readable descriptions and icons
+   - **Navigation**: Click relationship chip to navigate to related entity
 
 **When to Use This Pattern**:
 - Building visual editors (workflow designers, state machines, data flows)
@@ -669,8 +711,10 @@ The Schema Editor demonstrates best practices for integrating JointJS (MIT-licen
 **Documentation**:
 - **Design**: `docs/notes/SCHEMA_EDITOR_DESIGN.md` - Complete implementation plan (Phase 1-4)
 - **Algorithm**: `docs/notes/GEOMETRIC_PORT_ORDERING.md` - Detailed geometric port ordering explanation
+- **Routing**: `docs/notes/SCHEMA_EDITOR_ROUTING_STABILITY.md` - Link routing fixes and batching patterns
+- **Troubleshooting**: `docs/notes/JOINTJS_TROUBLESHOOTING_LESSONS.md` - **Read this first** when debugging JointJS issues
 - **Code**: `src/app/pages/schema-editor/schema-editor.page.ts`
-- **Tests**: `src/app/pages/schema-editor/schema-editor.page.spec.ts`
+- **Tests**: `src/app/pages/schema-editor/schema-editor.page.spec.ts` (51 passing tests)
 
 **JointJS Resources**:
 - MIT License: Compatible with AGPL-3.0-or-later
