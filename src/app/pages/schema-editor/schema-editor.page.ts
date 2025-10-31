@@ -20,10 +20,14 @@ import { Component, inject, signal, computed, effect, viewChild, ElementRef, OnD
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { SchemaService } from '../../services/schema.service';
 import { ThemeService } from '../../services/theme.service';
+import { GeometricPortCalculatorService } from '../../services/schema-diagram/geometric-port-calculator.service';
 import { SchemaEntityTable, SchemaEntityProperty, EntityPropertyType } from '../../interfaces/entity';
 import { forkJoin, take } from 'rxjs';
 import { SchemaInspectorPanelComponent } from '../../components/schema-inspector-panel/schema-inspector-panel.component';
 import { METADATA_SYSTEM_TABLES, isSystemType } from '../../constants/system-types';
+
+// JointJS type imports (type-only to avoid runtime overhead)
+import type { dia, shapes } from '@joint/core';
 
 /**
  * Interactive Schema Editor using JointJS for visual database schema management.
@@ -55,6 +59,7 @@ import { METADATA_SYSTEM_TABLES, isSystemType } from '../../constants/system-typ
 export class SchemaEditorPage implements OnDestroy {
   private schemaService = inject(SchemaService);
   private themeService = inject(ThemeService);
+  private geometricPortCalculator = inject(GeometricPortCalculatorService);
   private platformId = inject(PLATFORM_ID);
 
   // ViewChild reference to canvas container
@@ -121,8 +126,8 @@ export class SchemaEditorPage implements OnDestroy {
   });
 
   // JointJS instances (will be initialized in effect)
-  private graph: any;
-  private paper: any;
+  private graph!: dia.Graph;
+  private paper!: dia.Paper;
 
   // Panning state
   private isPanning = false;
@@ -246,7 +251,7 @@ export class SchemaEditorPage implements OnDestroy {
           color: 'var(--base-200)'
         },
         // Disable element dragging when not in edit mode
-        interactive: (cellView: any) => {
+        interactive: (cellView: dia.CellView) => {
           // Only allow interaction with elements if editMode is true
           if (cellView.model.isElement()) {
             return this.editMode();
@@ -329,7 +334,7 @@ export class SchemaEditorPage implements OnDestroy {
    * @param entity The entity to generate ports for
    * @returns Port configuration object for JointJS with 4 side-based groups
    */
-  private generatePortsForEntity(entity: SchemaEntityTable): any {
+  private generatePortsForEntity(entity: SchemaEntityTable): dia.Element.GenericAttributes<dia.Element.PortGroup> {
     // Return port configuration with 4 side-based groups
     // Ports are small (20px along edge) for clean visual appearance and spatial distribution
     // Ports use body selector for anchor calculation to get proper edge detection
@@ -410,66 +415,19 @@ export class SchemaEditorPage implements OnDestroy {
   }
 
   /**
-   * Calculates the center point of a JointJS element.
-   *
-   * @param element The JointJS element
-   * @returns Center coordinates { x, y }
+   * Helper method to get the center point of a JointJS element.
+   * Delegates to GeometricPortCalculatorService.
    */
-  private getEntityCenter(element: any): { x: number; y: number } {
+  private getEntityCenter(element: dia.Element): { x: number; y: number } {
     const position = element.position();
     const size = element.size();
-    return {
-      x: position.x + size.width / 2,
-      y: position.y + size.height / 2
-    };
-  }
-
-  /**
-   * Determines which side of an entity a port should be placed on based on the angle
-   * to the related entity. Uses geometric principles to create physically intuitive connections.
-   *
-   * IMPORTANT: Calculates angle thresholds based on entity dimensions (not fixed 45°).
-   * For rectangular entities, the thresholds are determined by the diagonal angle to corners.
-   *
-   * Screen coordinates: Y increases downward, opposite of mathematical convention.
-   *
-   * @param angle Angle in degrees from Math.atan2() (-180 to 180)
-   * @param width Width of the entity in pixels
-   * @param height Height of the entity in pixels
-   * @returns The side ('top' | 'right' | 'bottom' | 'left') where the port should be placed
-   */
-  private determineSideFromAngle(angle: number, width: number, height: number): 'top' | 'right' | 'bottom' | 'left' {
-    // Normalize angle to -180 to 180 range (though atan2 already returns this)
-    const normalized = ((angle + 180) % 360) - 180;
-
-    // Calculate the diagonal angle from center to corner based on entity dimensions
-    // This determines the threshold angles between adjacent sides
-    // For a 250×100 rectangle: atan2(50, 125) ≈ 21.8°
-    // For a square (250×250): atan2(125, 125) = 45° (classic quadrant division)
-    const cornerAngle = Math.atan2(height / 2, width / 2) * (180 / Math.PI);
-
-    // Divide the circle into 4 sections based on actual entity geometry
-    // Screen coordinates: Y increases downward, so positive angles = downward direction
-    // Right: -cornerAngle to +cornerAngle
-    // Bottom: +cornerAngle to (180 - cornerAngle)
-    // Left: (180 - cornerAngle) to 180, and -180 to -(180 - cornerAngle)
-    // Top: -(180 - cornerAngle) to -cornerAngle
-
-    if (normalized >= -cornerAngle && normalized < cornerAngle) {
-      return 'right';
-    } else if (normalized >= cornerAngle && normalized < (180 - cornerAngle)) {
-      return 'bottom';  // Positive angle = downward in screen coords
-    } else if (normalized >= (180 - cornerAngle) || normalized < -(180 - cornerAngle)) {
-      return 'left';
-    } else {
-      return 'top';  // Negative angle = upward in screen coords
-    }
+    return this.geometricPortCalculator.getCenter(position, size);
   }
 
   /**
    * Renders entity boxes on the canvas
    */
-  private renderEntities(shapes: any): void {
+  private renderEntities(shapes: typeof import('@joint/core').shapes): void {
     const entities = this.visibleEntities();
     const gridColumns = Math.ceil(Math.sqrt(entities.length));
     const cellWidth = 250;
@@ -590,7 +548,7 @@ export class SchemaEditorPage implements OnDestroy {
    * Links are created with perpendicular anchors initially, then reconnected
    * to geometric ports after layout.
    */
-  private renderRelationships(shapes: any): void {
+  private renderRelationships(shapes: typeof import('@joint/core').shapes): void {
     const properties = this.properties();
     const junctionTables = this.junctionTables();
     const colors = this.getThemeColors();
@@ -735,8 +693,8 @@ export class SchemaEditorPage implements OnDestroy {
   /**
    * Finds a JointJS element by table name
    */
-  private findElementByTableName(tableName: string): any {
-    return this.graph.getElements().find((el: any) => el.get('entityName') === tableName);
+  private findElementByTableName(tableName: string): dia.Element | undefined {
+    return this.graph.getElements().find((el: dia.Element) => el.get('entityName') === tableName);
   }
 
   /**
@@ -746,7 +704,7 @@ export class SchemaEditorPage implements OnDestroy {
    *
    * Based on JointJS tutorial: https://resources.jointjs.com/tutorials/joint/tutorials/multiple-links-between-elements.html
    */
-  private async adjustVertices(graph: any, cell: any): Promise<void> {
+  private async adjustVertices(graph: dia.Graph, cell: dia.Cell): Promise<void> {
     const { g } = await import('@joint/core');
     const GAP = 35; // Increased from 20 for better separation
 
@@ -764,7 +722,7 @@ export class SchemaEditorPage implements OnDestroy {
 
     if (!sourceId || !targetId) return;
 
-    const siblings = graph.getLinks().filter((l: any) => {
+    const siblings = graph.getLinks().filter((l: dia.Link) => {
       const src = l.get('source').id;
       const tgt = l.get('target').id;
       return (src === sourceId && tgt === targetId) || (src === targetId && tgt === sourceId);
@@ -787,7 +745,7 @@ export class SchemaEditorPage implements OnDestroy {
     const midPoint = new g.Line(sourceCenter, targetCenter).midpoint();
     const theta = sourceCenter.theta(targetCenter);
 
-    siblings.forEach((siblingLink: any, index: number) => {
+    siblings.forEach((siblingLink: dia.Link, index: number) => {
       if (index === 0) {
         siblingLink.set('vertices', []);
         return;
@@ -806,10 +764,10 @@ export class SchemaEditorPage implements OnDestroy {
       const shiftAngle = g.toRad(theta - 90);
       const shiftVector = g.Point.fromPolar(shift, shiftAngle);
 
-      siblings.forEach((siblingLink: any) => {
+      siblings.forEach((siblingLink: dia.Link) => {
         const vertices = siblingLink.get('vertices') || [];
         if (vertices.length > 0) {
-          const newVertices = vertices.map((v: any) => ({
+          const newVertices = vertices.map((v: { x: number; y: number }) => ({
             x: v.x + shiftVector.x,
             y: v.y + shiftVector.y
           }));
@@ -855,7 +813,7 @@ export class SchemaEditorPage implements OnDestroy {
     const colors = this.getThemeColors();
 
     // Update all entity boxes
-    this.graph.getElements().forEach((element: any) => {
+    this.graph.getElements().forEach((element: dia.Element) => {
       const entityData = element.get('entityData');
       const isMetadataTable = entityData && isSystemType(entityData.table_name);
 
@@ -871,7 +829,7 @@ export class SchemaEditorPage implements OnDestroy {
     });
 
     // Update all relationship links
-    this.graph.getLinks().forEach((link: any) => {
+    this.graph.getLinks().forEach((link: dia.Link) => {
       link.attr('line/stroke', colors.baseContent);
       link.attr('line/targetMarker/fill', colors.baseContent);
     });
@@ -887,7 +845,7 @@ export class SchemaEditorPage implements OnDestroy {
    */
   private setupEventListeners(): void {
     // Click to select entity or reference label (only if not panning)
-    this.paper.on('cell:pointerclick', (cellView: any) => {
+    this.paper.on('cell:pointerclick', (cellView: dia.CellView) => {
       // Don't select if we just finished panning
       if (this.hasPanned) {
         return;
@@ -900,12 +858,12 @@ export class SchemaEditorPage implements OnDestroy {
         this.selectedEntity.set(entityData);
 
         // Highlight selected entity
-        this.highlightSelectedEntity(cell);
+        this.highlightSelectedEntity(cell as dia.Element);
       }
     });
 
     // Drag end to recalculate vertices (only used when editMode is true)
-    this.paper.on('cell:pointerup', (cellView: any) => {
+    this.paper.on('cell:pointerup', (cellView: dia.CellView) => {
       if (this.editMode()) {
         const cell = cellView.model;
         if (cell.isElement()) {
@@ -923,11 +881,11 @@ export class SchemaEditorPage implements OnDestroy {
 
     // Panning support: drag anywhere on the canvas
     // Blank area panning
-    this.paper.on('blank:pointerdown', (evt: MouseEvent) => {
+    this.paper.on('blank:pointerdown', (evt) => {
       this.startPanning(evt);
     });
 
-    this.paper.on('blank:pointermove', (evt: MouseEvent) => {
+    this.paper.on('blank:pointermove', (evt) => {
       if (this.isPanning) {
         this.updatePanning(evt);
       }
@@ -940,13 +898,13 @@ export class SchemaEditorPage implements OnDestroy {
     });
 
     // Entity area panning (when edit mode is off)
-    this.paper.on('cell:pointerdown', (cellView: any, evt: MouseEvent) => {
+    this.paper.on('cell:pointerdown', (cellView: dia.CellView, evt) => {
       if (!this.editMode()) {
         this.startPanning(evt);
       }
     });
 
-    this.paper.on('cell:pointermove', (cellView: any, evt: MouseEvent) => {
+    this.paper.on('cell:pointermove', (cellView: dia.CellView, evt) => {
       if (this.isPanning) {
         this.updatePanning(evt);
         // Prevent default to stop entity selection during panning
@@ -962,13 +920,13 @@ export class SchemaEditorPage implements OnDestroy {
 
     // Graph events for link vertex adjustment
     // Recalculate vertices when links are added or removed
-    this.graph.on('add', (cell: any) => {
+    this.graph.on('add', (cell: dia.Cell) => {
       if (cell.isLink()) {
         this.adjustVertices(this.graph, cell);
       }
     });
 
-    this.graph.on('remove', (cell: any) => {
+    this.graph.on('remove', (cell: dia.Cell) => {
       if (cell.isLink()) {
         // When a link is removed, recalculate vertices for remaining sibling links
         const sourceId = cell.get('source').id;
@@ -976,20 +934,20 @@ export class SchemaEditorPage implements OnDestroy {
 
         if (sourceId && targetId) {
           // Find remaining links between these elements
-          const siblings = this.graph.getLinks().filter((l: any) => {
+          const siblings = this.graph.getLinks().filter((l: dia.Link) => {
             const src = l.get('source').id;
             const tgt = l.get('target').id;
             return (src === sourceId && tgt === targetId) || (src === targetId && tgt === sourceId);
           });
 
           // Recalculate vertices for each remaining sibling
-          siblings.forEach((sibling: any) => this.adjustVertices(this.graph, sibling));
+          siblings.forEach((sibling: dia.Link) => this.adjustVertices(this.graph, sibling));
         }
       }
     });
 
     // Recalculate vertices when link endpoints change
-    this.graph.on('change:source change:target', (link: any) => {
+    this.graph.on('change:source change:target', (link: dia.Cell) => {
       if (link.isLink()) {
         this.adjustVertices(this.graph, link);
       }
@@ -1025,7 +983,7 @@ export class SchemaEditorPage implements OnDestroy {
   /**
    * Starts panning mode on drag anywhere
    */
-  private startPanning(evt: MouseEvent): void {
+  private startPanning(evt: any): void {
     this.isPanning = true;
     this.hasPanned = false; // Reset at start
     this.panStart = { x: evt.clientX, y: evt.clientY };
@@ -1034,7 +992,7 @@ export class SchemaEditorPage implements OnDestroy {
   /**
    * Updates paper position during panning
    */
-  private updatePanning(evt: MouseEvent): void {
+  private updatePanning(evt: any): void {
     const dx = evt.clientX - this.panStart.x;
     const dy = evt.clientY - this.panStart.y;
 
@@ -1200,7 +1158,7 @@ export class SchemaEditorPage implements OnDestroy {
     const elements = this.graph.getElements();
 
     // Process each entity element
-    elements.forEach((element: any) => {
+    elements.forEach((element: dia.Element) => {
       const entityName = element.get('entityName');
       const entityCenter = this.getEntityCenter(element);
       const entitySize = element.size();  // Get entity dimensions once
@@ -1231,7 +1189,7 @@ export class SchemaEditorPage implements OnDestroy {
             relatedCenter.y - entityCenter.y,
             relatedCenter.x - entityCenter.x
           ) * (180 / Math.PI);
-          const side = this.determineSideFromAngle(angle, entitySize.width, entitySize.height);
+          const side = this.geometricPortCalculator.determineSideFromAngle(angle, entitySize.width, entitySize.height);
 
           // Include join_column in port ID to handle cases where multiple FKs reference the same table
           const portId = `${side}_out_${prop.join_table}_${prop.join_column}_${prop.column_name}`;
@@ -1259,7 +1217,7 @@ export class SchemaEditorPage implements OnDestroy {
             relatedCenter.y - entityCenter.y,
             relatedCenter.x - entityCenter.x
           ) * (180 / Math.PI);
-          const side = this.determineSideFromAngle(angle, entitySize.width, entitySize.height);
+          const side = this.geometricPortCalculator.determineSideFromAngle(angle, entitySize.width, entitySize.height);
 
           // Include join_column to handle multiple FKs from same source table to different columns
           const portId = `${side}_in_${prop.join_column}_${prop.table_name}_${prop.column_name}`;
@@ -1301,7 +1259,7 @@ export class SchemaEditorPage implements OnDestroy {
               relatedCenter.y - entityCenter.y,
               relatedCenter.x - entityCenter.x
             ) * (180 / Math.PI);
-            const side = this.determineSideFromAngle(angle, entitySize.width, entitySize.height);
+            const side = this.geometricPortCalculator.determineSideFromAngle(angle, entitySize.width, entitySize.height);
 
             const direction = isSource ? 'out' : 'in';
             // Use junction table in the ID to make it unique
@@ -1375,10 +1333,12 @@ export class SchemaEditorPage implements OnDestroy {
 
       // Update element with new port configuration
       const currentPorts = element.get('ports');
-      element.set('ports', {
-        groups: currentPorts.groups,  // Keep existing group definitions
-        items: portItems               // New geometrically-sorted ports
-      });
+      if (currentPorts) {
+        element.set('ports', {
+          groups: currentPorts.groups,  // Keep existing group definitions
+          items: portItems               // New geometrically-sorted ports
+        });
+      }
     });
 
     // Reconnect links to use the newly calculated ports
@@ -1386,8 +1346,32 @@ export class SchemaEditorPage implements OnDestroy {
   }
 
   /**
-   * Reconnects all links to use the geometrically-calculated ports.
-   * Called after port recalculation to switch from anchor-based to port-based connections.
+   * Reconnects all links to use geometrically-calculated ports instead of perpendicular anchors.
+   *
+   * This method is called after `recalculatePortsByGeometry()` to switch links from anchor-based
+   * connections to port-based connections. Port-based connections provide better routing because
+   * they distribute connection points spatially around entity boxes.
+   *
+   * **Algorithm:**
+   * 1. For each link, calculate angle from source→target and target→source
+   * 2. Determine which side of each entity the port should be on (top/right/bottom/left)
+   * 3. Find the correct port on that side based on relationship metadata (FK column name or junction table)
+   * 4. Reconnect link to use those specific ports with perpendicular anchors
+   *
+   * **Batching:**
+   * All reconnections happen inside a `startBatch('reconnect')` / `stopBatch('reconnect')` block
+   * to prevent multiple router recalculations. Without batching, each reconnection would trigger
+   * a router update, causing visual glitches.
+   *
+   * **Port ID Patterns:**
+   * - Foreign Key outgoing: `{side}_out_{targetTable}_{joinColumn}_{columnName}`
+   * - Foreign Key incoming: `{side}_in_{joinColumn}_{sourceTable}_{columnName}`
+   * - Many-to-Many outgoing: `{side}_m2m_out_{junctionTable}`
+   * - Many-to-Many incoming: `{side}_m2m_in_{junctionTable}`
+   *
+   * @see recalculatePortsByGeometry - Calculates port positions before this method runs
+   * @see updateLinkRouterFromGeometry - Updates router directions based on geometry
+   * @private
    */
   private reconnectLinksToGeometricPorts(): void {
     if (!this.graph) {
@@ -1401,7 +1385,7 @@ export class SchemaEditorPage implements OnDestroy {
     // Critical for preventing glitches when this runs during/after zoom changes.
     this.graph.startBatch('reconnect');
 
-    links.forEach((link: any) => {
+    links.forEach((link: dia.Link) => {
       const sourceId = link.get('source').id;
       const targetId = link.get('target').id;
       const sourceTable = link.get('sourceTable');
@@ -1412,12 +1396,15 @@ export class SchemaEditorPage implements OnDestroy {
       }
 
       // Find source and target elements
-      const sourceElement = this.graph.getCell(sourceId);
-      const targetElement = this.graph.getCell(targetId);
+      const sourceCell = this.graph.getCell(sourceId);
+      const targetCell = this.graph.getCell(targetId);
 
-      if (!sourceElement || !targetElement) {
+      if (!sourceCell || !targetCell || !sourceCell.isElement() || !targetCell.isElement()) {
         return;
       }
+
+      const sourceElement = sourceCell as dia.Element;
+      const targetElement = targetCell as dia.Element;
 
       // Calculate angle from source to target to find the correct port
       const sourceCenter = this.getEntityCenter(sourceElement);
@@ -1435,8 +1422,8 @@ export class SchemaEditorPage implements OnDestroy {
         sourceCenter.x - targetCenter.x
       ) * (180 / Math.PI);
 
-      const sourceSide = this.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
-      const targetSide = this.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
+      const sourceSide = this.geometricPortCalculator.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
+      const targetSide = this.geometricPortCalculator.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
 
       // Find matching ports on source and target elements
       const sourcePorts = sourceElement.get('ports');
@@ -1456,10 +1443,10 @@ export class SchemaEditorPage implements OnDestroy {
       const joinColumn = link.get('joinColumn');
       const junctionTable = link.get('junctionTable');
 
-      let sourcePortId: string | null = null;
-      let targetPortId: string | null = null;
+      let sourcePortId: string | undefined = undefined;
+      let targetPortId: string | undefined = undefined;
 
-      if (relationshipType === 'foreignKey') {
+      if (relationshipType === 'foreignKey' && sourcePorts.items && targetPorts.items) {
         // Source: outgoing FK port (includes join_column for uniqueness)
         sourcePortId = sourcePorts.items.find((p: any) =>
           p.group === sourceSide &&
@@ -1471,7 +1458,7 @@ export class SchemaEditorPage implements OnDestroy {
           p.group === targetSide &&
           p.id.includes(`_in_${joinColumn}_${sourceTable}_${columnName}`)
         )?.id;
-      } else if (relationshipType === 'manyToMany') {
+      } else if (relationshipType === 'manyToMany' && sourcePorts.items && targetPorts.items) {
         // M:M ports are identified by junction table name
         // Source: M:M outgoing port
         sourcePortId = sourcePorts.items.find((p: any) =>
@@ -1574,7 +1561,7 @@ export class SchemaEditorPage implements OnDestroy {
       const elements = this.graph.getElements();
       const systemTypes = this.systemTypes();
 
-      elements.forEach((element: any) => {
+      elements.forEach((element: dia.Element) => {
         const entityName = element.get('entityName');
 
         // Skip system type entities (they don't appear in the main diagram)
@@ -1591,7 +1578,7 @@ export class SchemaEditorPage implements OnDestroy {
 
       // Add edges to dagre graph
       const links = this.graph.getLinks();
-      links.forEach((link: any) => {
+      links.forEach((link: dia.Link) => {
         const source = link.get('source').id;
         const target = link.get('target').id;
         if (source && target) {
@@ -1722,10 +1709,15 @@ export class SchemaEditorPage implements OnDestroy {
       // Get paper dimensions
       const paperWidth = this.paper.options.width === '100%'
         ? this.paper.el.clientWidth
-        : this.paper.options.width;
+        : (this.paper.options.width as number);
       const paperHeight = this.paper.options.height === '100%'
         ? this.paper.el.clientHeight
-        : this.paper.options.height;
+        : (this.paper.options.height as number);
+
+      if (!paperWidth || !paperHeight) {
+        console.warn('[SchemaEditorPage] Cannot zoom to fit: invalid paper dimensions');
+        return;
+      }
 
       // Calculate scale to fit with padding (20px on each side = 40px total)
       const padding = 40;
@@ -1812,9 +1804,101 @@ export class SchemaEditorPage implements OnDestroy {
   }
 
   /**
-   * Highlights the selected entity and its connected relationships
+   * Updates a link's router configuration based on geometric relationship between connected elements.
+   * This ensures the Metro router uses correct start/end directions based on spatial positioning.
+   *
+   * @param link The link to update
+   * @private
    */
-  private highlightSelectedEntity(selectedCell: any): void {
+  private updateLinkRouterFromGeometry(link: dia.Link): void {
+    const source = link.get('source');
+    const target = link.get('target');
+
+    if (source?.id && target?.id) {
+      const sourceCell = this.graph.getCell(source.id);
+      const targetCell = this.graph.getCell(target.id);
+
+      if (sourceCell && targetCell && sourceCell.isElement() && targetCell.isElement()) {
+        const sourceElement = sourceCell as dia.Element;
+        const targetElement = targetCell as dia.Element;
+
+        // Calculate angles based on entity centers (same as port ordering)
+        const sourceCenter = this.getEntityCenter(sourceElement);
+        const targetCenter = this.getEntityCenter(targetElement);
+        const sourceSize = sourceElement.size();
+        const targetSize = targetElement.size();
+
+        const sourceAngle = Math.atan2(
+          targetCenter.y - sourceCenter.y,
+          targetCenter.x - sourceCenter.x
+        ) * (180 / Math.PI);
+
+        const targetAngle = Math.atan2(
+          sourceCenter.y - targetCenter.y,
+          sourceCenter.x - targetCenter.x
+        ) * (180 / Math.PI);
+
+        const sourceSide = this.geometricPortCalculator.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
+        const targetSide = this.geometricPortCalculator.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
+
+        // Update router directions based on geometry
+        const router = link.get('router');
+        if (router && sourceSide && targetSide) {
+          router.args = router.args || {};
+          router.args.perpendicular = false; // CRITICAL: Disable auto-perpendicular
+          router.args.startDirections = [sourceSide];
+          router.args.endDirections = [targetSide];
+          link.router(router);  // Apply router config inside batch
+        }
+      }
+    }
+  }
+
+  /**
+   * Applies visual styling attributes to a link (stroke width, stroke color, markers).
+   *
+   * @param link The link to style
+   * @param strokeWidth Width of the link line
+   * @param strokeColor Color of the link line and markers
+   * @private
+   */
+  private applyLinkVisualStyle(link: dia.Link, strokeWidth: number, strokeColor: string): void {
+    link.attr('line/strokeWidth', strokeWidth);
+    link.attr('line/stroke', strokeColor);
+    const attrs = link.attr('line');
+    if (attrs.targetMarker) {
+      link.attr('line/targetMarker/fill', strokeColor);
+    }
+    if (attrs.sourceMarker) {
+      link.attr('line/sourceMarker/fill', strokeColor);
+    }
+  }
+
+  /**
+   * Highlights the selected entity and its connected relationships.
+   *
+   * **Visual Changes:**
+   * - Selected entity: stroke color → primary, stroke width → 3px
+   * - Connected links: stroke color → primary, stroke width → 3px, marker fill → primary
+   * - All other entities/links: reset to default colors
+   *
+   * **Batching Pattern (CRITICAL for performance):**
+   * All highlight updates (clear + apply) happen inside a single `startBatch('highlight')` / `stopBatch('highlight')`
+   * block. This prevents router recalculations in the gap between unhighlight and highlight operations.
+   * Without batching, the router would recalculate twice per highlight action, causing visual glitches.
+   *
+   * **Router Direction Updates:**
+   * For each connected link, calls `updateLinkRouterFromGeometry()` to ensure Metro router uses
+   * correct start/end directions based on current spatial relationships. This is necessary because
+   * entity positions can change (via drag or auto-layout) and router needs updated directions.
+   *
+   * @param selectedCell The entity element to highlight
+   * @see updateLinkRouterFromGeometry - Updates router configuration based on geometry
+   * @see applyLinkVisualStyle - Applies stroke width and color attributes
+   * @see clearHighlights - Removes all highlights
+   * @private
+   */
+  private highlightSelectedEntity(selectedCell: dia.Element): void {
     const colors = this.getThemeColors();
 
     // CRITICAL: Batch BOTH clear and highlight operations together to prevent
@@ -1823,12 +1907,12 @@ export class SchemaEditorPage implements OnDestroy {
     this.graph.startBatch('highlight');
 
     // First, clear all existing highlights
-    this.graph.getElements().forEach((el: any) => {
+    this.graph.getElements().forEach((el: dia.Element) => {
       el.attr('body/stroke', colors.baseContent);
       el.attr('body/strokeWidth', 2);
     });
 
-    this.graph.getLinks().forEach((link: any) => {
+    this.graph.getLinks().forEach((link: dia.Link) => {
       // Ensure perpendicular anchors during clear
       const source = link.get('source');
       const target = link.get('target');
@@ -1856,58 +1940,11 @@ export class SchemaEditorPage implements OnDestroy {
 
     const connectedLinks = this.graph.getConnectedLinks(selectedCell);
 
-    connectedLinks.forEach((link: any) => {
-      // CRITICAL: Update router config INSIDE the batch using GEOMETRY-BASED directions
-      const source = link.get('source');
-      const target = link.get('target');
-
-      if (source?.id && target?.id) {
-        // Get source and target elements to calculate geometric relationship
-        const sourceElement = this.graph.getCell(source.id);
-        const targetElement = this.graph.getCell(target.id);
-
-        if (sourceElement && targetElement) {
-          // Calculate angles based on entity centers (same as port ordering)
-          const sourceCenter = this.getEntityCenter(sourceElement);
-          const targetCenter = this.getEntityCenter(targetElement);
-          const sourceSize = sourceElement.size();
-          const targetSize = targetElement.size();
-
-          const sourceAngle = Math.atan2(
-            targetCenter.y - sourceCenter.y,
-            targetCenter.x - sourceCenter.x
-          ) * (180 / Math.PI);
-
-          const targetAngle = Math.atan2(
-            sourceCenter.y - targetCenter.y,
-            sourceCenter.x - targetCenter.x
-          ) * (180 / Math.PI);
-
-          const sourceSide = this.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
-          const targetSide = this.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
-
-          // Update router directions based on geometry
-          const router = link.get('router');
-          if (router && sourceSide && targetSide) {
-            router.args = router.args || {};
-            router.args.perpendicular = false; // CRITICAL: Disable auto-perpendicular
-            router.args.startDirections = [sourceSide];
-            router.args.endDirections = [targetSide];
-            link.router(router);  // Apply router config inside batch
-          }
-        }
-      }
-
-      // Apply visual changes (these don't trigger router recalculation)
-      link.attr('line/strokeWidth', 3);
-      link.attr('line/stroke', colors.primary);
-      const attrs = link.attr('line');
-      if (attrs.targetMarker) {
-        link.attr('line/targetMarker/fill', colors.primary);
-      }
-      if (attrs.sourceMarker) {
-        link.attr('line/sourceMarker/fill', colors.primary);
-      }
+    connectedLinks.forEach((link: dia.Link) => {
+      // Update router config INSIDE the batch using GEOMETRY-BASED directions
+      this.updateLinkRouterFromGeometry(link);
+      // Apply visual highlighting (these don't trigger router recalculation)
+      this.applyLinkVisualStyle(link, 3, colors.primary);
     });
 
     // End batch - router recalculates once with correct config
@@ -1924,7 +1961,7 @@ export class SchemaEditorPage implements OnDestroy {
     this.graph.startBatch('unhighlight');
 
     // Reset all entity highlights
-    this.graph.getElements().forEach((el: any) => {
+    this.graph.getElements().forEach((el: dia.Element) => {
       el.attr('body/stroke', colors.baseContent);
       el.attr('body/strokeWidth', 2);
     });
@@ -1932,59 +1969,11 @@ export class SchemaEditorPage implements OnDestroy {
     // Reset all link highlights
     const allLinks = this.graph.getLinks();
 
-    allLinks.forEach((link: any) => {
-      // CRITICAL: Update router config INSIDE the batch using GEOMETRY-BASED directions
-      const source = link.get('source');
-      const target = link.get('target');
-
-      if (source?.id && target?.id) {
-        // Get source and target elements to calculate geometric relationship
-        const sourceElement = this.graph.getCell(source.id);
-        const targetElement = this.graph.getCell(target.id);
-
-        if (sourceElement && targetElement) {
-          // Calculate angles based on entity centers (same as port ordering)
-          const sourceCenter = this.getEntityCenter(sourceElement);
-          const targetCenter = this.getEntityCenter(targetElement);
-          const sourceSize = sourceElement.size();
-          const targetSize = targetElement.size();
-
-          const sourceAngle = Math.atan2(
-            targetCenter.y - sourceCenter.y,
-            targetCenter.x - sourceCenter.x
-          ) * (180 / Math.PI);
-
-          const targetAngle = Math.atan2(
-            sourceCenter.y - targetCenter.y,
-            sourceCenter.x - targetCenter.x
-          ) * (180 / Math.PI);
-
-          const sourceSide = this.determineSideFromAngle(sourceAngle, sourceSize.width, sourceSize.height);
-          const targetSide = this.determineSideFromAngle(targetAngle, targetSize.width, targetSize.height);
-
-          // Update router directions based on geometry
-          const router = link.get('router');
-          if (router && sourceSide && targetSide) {
-            router.args = router.args || {};
-            router.args.perpendicular = false; // CRITICAL: Disable auto-perpendicular
-            router.args.startDirections = [sourceSide];
-            router.args.endDirections = [targetSide];
-            link.router(router);  // Apply router config inside batch
-          }
-        }
-      }
-
-      // Apply visual changes (these don't trigger router recalculation)
-      link.attr('line/strokeWidth', 2);
-      link.attr('line/stroke', colors.baseContent);
-      // Reset marker colors
-      const attrs = link.attr('line');
-      if (attrs.targetMarker) {
-        link.attr('line/targetMarker/fill', colors.baseContent);
-      }
-      if (attrs.sourceMarker) {
-        link.attr('line/sourceMarker/fill', colors.baseContent);
-      }
+    allLinks.forEach((link: dia.Link) => {
+      // Update router config INSIDE the batch using GEOMETRY-BASED directions
+      this.updateLinkRouterFromGeometry(link);
+      // Apply visual reset (these don't trigger router recalculation)
+      this.applyLinkVisualStyle(link, 2, colors.baseContent);
     });
 
     // End batch - router recalculates once with correct config
@@ -2013,7 +2002,7 @@ export class SchemaEditorPage implements OnDestroy {
     }
 
     // Find the corresponding element on the graph
-    const targetElement = this.graph.getElements().find((el: any) =>
+    const targetElement = this.graph.getElements().find((el: dia.Element) =>
       el.get('entityName') === tableName
     );
 

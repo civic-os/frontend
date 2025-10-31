@@ -20,276 +20,14 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { SchemaEditorPage } from './schema-editor.page';
 import { SchemaService } from '../../services/schema.service';
 import { ThemeService } from '../../services/theme.service';
+import { GeometricPortCalculatorService } from '../../services/schema-diagram/geometric-port-calculator.service';
 import { of } from 'rxjs';
 
 /**
- * Unit tests for Schema Editor geometric port ordering functions.
- *
- * These tests focus on the critical geometry functions that power the
- * angle-based port placement algorithm. The algorithm maps angles to
- * entity sides and must correctly handle screen coordinates where Y
- * increases downward (opposite of mathematical convention).
+ * NOTE: Geometric port calculation tests have been moved to
+ * geometric-port-calculator.service.spec.ts since the logic was
+ * extracted to a service.
  */
-describe('SchemaEditorPage - Geometric Port Ordering', () => {
-  let component: SchemaEditorPage;
-  let fixture: ComponentFixture<SchemaEditorPage>;
-  let mockSchemaService: jasmine.SpyObj<SchemaService>;
-  let mockThemeService: jasmine.SpyObj<ThemeService>;
-
-  beforeEach(async () => {
-    // Create mock services
-    mockSchemaService = jasmine.createSpyObj('SchemaService', [
-      'getEntities',
-      'getProperties',
-      'getDetectedJunctionTables'
-    ]);
-    mockThemeService = jasmine.createSpyObj('ThemeService', ['isDark']);
-
-    // Set default mock return values
-    mockSchemaService.getEntities.and.returnValue(of([]));
-    mockSchemaService.getProperties.and.returnValue(of([]));
-    mockSchemaService.getDetectedJunctionTables.and.returnValue(of(new Set<string>()));
-    mockThemeService.isDark.and.returnValue(false);
-
-    await TestBed.configureTestingModule({
-      imports: [SchemaEditorPage],
-      providers: [
-        provideZonelessChangeDetection(),
-        { provide: SchemaService, useValue: mockSchemaService },
-        { provide: ThemeService, useValue: mockThemeService }
-      ]
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(SchemaEditorPage);
-    component = fixture.componentInstance;
-  });
-
-  /**
-   * Tests for determineSideFromAngle()
-   *
-   * This function maps angles (-180° to 180°) to entity sides (top, right, bottom, left).
-   * Now dimension-aware: thresholds are calculated based on entity aspect ratio.
-   * For 250×100 entities: corner angle = atan2(50, 125) ≈ 21.8°
-   * Critical to get right because screen coordinates have Y increasing downward.
-   */
-  describe('determineSideFromAngle()', () => {
-    const ENTITY_WIDTH = 250;
-    const ENTITY_HEIGHT = 100;
-    const CORNER_ANGLE = Math.atan2(ENTITY_HEIGHT / 2, ENTITY_WIDTH / 2) * (180 / Math.PI); // ≈ 21.8°
-
-    // Helper to access private method
-    function determineSideFromAngle(angle: number): 'top' | 'right' | 'bottom' | 'left' {
-      return (component as any).determineSideFromAngle(angle, ENTITY_WIDTH, ENTITY_HEIGHT);
-    }
-
-    describe(`RIGHT side (angles -${CORNER_ANGLE.toFixed(1)}° to ${CORNER_ANGLE.toFixed(1)}°)`, () => {
-      it('should return "right" for -21° (within right zone)', () => {
-        expect(determineSideFromAngle(-21)).toBe('right');
-      });
-
-      it('should return "right" for -10° (upper right)', () => {
-        expect(determineSideFromAngle(-10)).toBe('right');
-      });
-
-      it('should return "right" for 0° (directly right)', () => {
-        expect(determineSideFromAngle(0)).toBe('right');
-      });
-
-      it('should return "right" for 10° (lower right)', () => {
-        expect(determineSideFromAngle(10)).toBe('right');
-      });
-
-      it('should return "right" for 21° (near boundary)', () => {
-        expect(determineSideFromAngle(21)).toBe('right');
-      });
-    });
-
-    describe(`BOTTOM side (angles ${CORNER_ANGLE.toFixed(1)}° to ${(180 - CORNER_ANGLE).toFixed(1)}°) - positive Y in screen coords`, () => {
-      it('should return "bottom" for 22° (just past boundary)', () => {
-        expect(determineSideFromAngle(22)).toBe('bottom');
-      });
-
-      it('should return "bottom" for 45° (lower-right diagonal)', () => {
-        expect(determineSideFromAngle(45)).toBe('bottom');
-      });
-
-      it('should return "bottom" for 90° (directly down)', () => {
-        expect(determineSideFromAngle(90)).toBe('bottom');
-      });
-
-      it('should return "bottom" for 135° (lower-left diagonal)', () => {
-        expect(determineSideFromAngle(135)).toBe('bottom');
-      });
-
-      it('should return "bottom" for 157° (near boundary)', () => {
-        expect(determineSideFromAngle(157)).toBe('bottom');
-      });
-    });
-
-    describe(`LEFT side (angles ${(180 - CORNER_ANGLE).toFixed(1)}° to -${(180 - CORNER_ANGLE).toFixed(1)}°, wrapping through ±180°)`, () => {
-      it('should return "left" for 159° (just past boundary from bottom)', () => {
-        expect(determineSideFromAngle(159)).toBe('left');
-      });
-
-      it('should return "left" for 170° (upper-left diagonal)', () => {
-        expect(determineSideFromAngle(170)).toBe('left');
-      });
-
-      it('should return "left" for 180° (directly left)', () => {
-        expect(determineSideFromAngle(180)).toBe('left');
-      });
-
-      it('should return "left" for -180° (directly left, negative notation)', () => {
-        expect(determineSideFromAngle(-180)).toBe('left');
-      });
-
-      it('should return "left" for -170° (lower-left diagonal)', () => {
-        expect(determineSideFromAngle(-170)).toBe('left');
-      });
-
-      it('should return "left" for -159° (near boundary)', () => {
-        expect(determineSideFromAngle(-159)).toBe('left');
-      });
-    });
-
-    describe(`TOP side (angles -${(180 - CORNER_ANGLE).toFixed(1)}° to -${CORNER_ANGLE.toFixed(1)}°) - negative Y in screen coords`, () => {
-      it('should return "top" for -157° (just past boundary from left)', () => {
-        expect(determineSideFromAngle(-157)).toBe('top');
-      });
-
-      it('should return "top" for -135° (upper-left diagonal)', () => {
-        expect(determineSideFromAngle(-135)).toBe('top');
-      });
-
-      it('should return "top" for -90° (directly up)', () => {
-        expect(determineSideFromAngle(-90)).toBe('top');
-      });
-
-      it('should return "top" for -45° (upper-right diagonal)', () => {
-        expect(determineSideFromAngle(-45)).toBe('top');
-      });
-
-      it('should return "top" for -22° (near boundary)', () => {
-        expect(determineSideFromAngle(-22)).toBe('top');
-      });
-    });
-
-    describe('Edge cases and precision', () => {
-      it('should handle very small positive angle', () => {
-        expect(determineSideFromAngle(0.1)).toBe('right');
-      });
-
-      it('should handle very small negative angle', () => {
-        expect(determineSideFromAngle(-0.1)).toBe('right');
-      });
-
-      it('should handle exact boundary at corner angle', () => {
-        // At exactly cornerAngle, should be bottom (normalized >= cornerAngle condition)
-        expect(determineSideFromAngle(CORNER_ANGLE)).toBe('bottom');
-      });
-
-      it('should handle exact boundary at negative corner angle', () => {
-        // At exactly -cornerAngle, boundary behavior depends on implementation
-        // Testing actual behavior: angles <= -cornerAngle go to top side
-        expect(determineSideFromAngle(-CORNER_ANGLE)).toBe('top');
-      });
-
-      it('should work with square entities (45° thresholds)', () => {
-        // Test with square dimensions to verify backward compatibility
-        const squareCornerAngle = Math.atan2(250 / 2, 250 / 2) * (180 / Math.PI); // = 45°
-        expect((component as any).determineSideFromAngle(0, 250, 250)).toBe('right');
-        expect((component as any).determineSideFromAngle(45, 250, 250)).toBe('bottom');
-        expect((component as any).determineSideFromAngle(135, 250, 250)).toBe('left');
-        expect((component as any).determineSideFromAngle(-135, 250, 250)).toBe('top');
-      });
-    });
-  });
-
-  /**
-   * Tests for getEntityCenter()
-   *
-   * This function calculates the center point of a JointJS element.
-   * Must correctly handle position (top-left corner) + size to find center.
-   */
-  describe('getEntityCenter()', () => {
-    // Helper to access private method
-    function getEntityCenter(element: any): { x: number; y: number } {
-      return (component as any).getEntityCenter(element);
-    }
-
-    it('should calculate center from position and size', () => {
-      const mockElement = {
-        position: () => ({ x: 100, y: 200 }),
-        size: () => ({ width: 250, height: 100 })
-      };
-
-      const center = getEntityCenter(mockElement);
-
-      expect(center.x).toBe(225); // 100 + 250/2
-      expect(center.y).toBe(250); // 200 + 100/2
-    });
-
-    it('should handle zero position', () => {
-      const mockElement = {
-        position: () => ({ x: 0, y: 0 }),
-        size: () => ({ width: 100, height: 50 })
-      };
-
-      const center = getEntityCenter(mockElement);
-
-      expect(center.x).toBe(50);  // 0 + 100/2
-      expect(center.y).toBe(25);  // 0 + 50/2
-    });
-
-    it('should handle large coordinates', () => {
-      const mockElement = {
-        position: () => ({ x: 5000, y: 3000 }),
-        size: () => ({ width: 400, height: 200 })
-      };
-
-      const center = getEntityCenter(mockElement);
-
-      expect(center.x).toBe(5200); // 5000 + 400/2
-      expect(center.y).toBe(3100); // 3000 + 200/2
-    });
-
-    it('should handle decimal positions and sizes', () => {
-      const mockElement = {
-        position: () => ({ x: 100.5, y: 200.7 }),
-        size: () => ({ width: 250.3, height: 100.9 })
-      };
-
-      const center = getEntityCenter(mockElement);
-
-      expect(center.x).toBeCloseTo(225.65, 2); // 100.5 + 250.3/2
-      expect(center.y).toBeCloseTo(251.15, 2); // 200.7 + 100.9/2
-    });
-
-    it('should handle square elements', () => {
-      const mockElement = {
-        position: () => ({ x: 300, y: 400 }),
-        size: () => ({ width: 100, height: 100 })
-      };
-
-      const center = getEntityCenter(mockElement);
-
-      expect(center.x).toBe(350); // 300 + 100/2
-      expect(center.y).toBe(450); // 400 + 100/2
-    });
-
-    it('should handle very small elements', () => {
-      const mockElement = {
-        position: () => ({ x: 50, y: 75 }),
-        size: () => ({ width: 10, height: 5 })
-      };
-
-      const center = getEntityCenter(mockElement);
-
-      expect(center.x).toBe(55);   // 50 + 10/2
-      expect(center.y).toBe(77.5); // 75 + 5/2
-    });
-  });
-});
 
 /**
  * Unit tests for Schema Editor system type filtering.
@@ -464,6 +202,7 @@ describe('SchemaEditorPage - Port Reconnection Logic', () => {
   let fixture: ComponentFixture<SchemaEditorPage>;
   let mockSchemaService: jasmine.SpyObj<SchemaService>;
   let mockThemeService: jasmine.SpyObj<ThemeService>;
+  let geometricPortCalculator: GeometricPortCalculatorService;
 
   beforeEach(async () => {
     mockSchemaService = jasmine.createSpyObj('SchemaService', [
@@ -489,6 +228,7 @@ describe('SchemaEditorPage - Port Reconnection Logic', () => {
 
     fixture = TestBed.createComponent(SchemaEditorPage);
     component = fixture.componentInstance;
+    geometricPortCalculator = TestBed.inject(GeometricPortCalculatorService);
   });
 
   describe('port ID naming conventions', () => {
@@ -571,7 +311,7 @@ describe('SchemaEditorPage - Port Reconnection Logic', () => {
       ) * (180 / Math.PI);
 
       // Should be ~0° (directly right)
-      const sourceSide = (component as any).determineSideFromAngle(sourceAngle, 250, 100);
+      const sourceSide = geometricPortCalculator.determineSideFromAngle(sourceAngle, 250, 100);
       expect(sourceSide).toBe('right');
 
       // Angle from target to source (opposite direction)
@@ -581,7 +321,7 @@ describe('SchemaEditorPage - Port Reconnection Logic', () => {
       ) * (180 / Math.PI);
 
       // Should be ~180° (directly left)
-      const targetSide = (component as any).determineSideFromAngle(targetAngle, 250, 100);
+      const targetSide = geometricPortCalculator.determineSideFromAngle(targetAngle, 250, 100);
       expect(targetSide).toBe('left');
     });
 

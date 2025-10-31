@@ -630,13 +630,15 @@ The Schema Editor demonstrates best practices for integrating JointJS (MIT-licen
    });
    ```
 
-2. **Geometric Port Ordering** (`schema-editor.page.ts:400-439, 1051-1257`)
+2. **Geometric Port Ordering** (`GeometricPortCalculatorService`)
    - **Problem**: Type-based port assignment (FK→left/right, M:M→top/bottom) caused crossovers
    - **Solution**: Angle-based geometric algorithm that assigns ports based on spatial relationships
+   - **Service Architecture**: Pure geometric calculations extracted to `GeometricPortCalculatorService` for testability and reusability
    - **Algorithm**: Calculate angle between entity centers using `Math.atan2()`, map to sides (top/right/bottom/left), sort by angle within each side
    - **Screen Coordinates**: Account for Y-axis inversion (positive Y = downward in screen coords)
    - **Benefits**: Shorter paths, fewer crossovers, more intuitive layout
-   - **Testing**: 31 comprehensive unit tests validate geometry functions (`schema-editor.page.spec.ts`)
+   - **Testing**: 46 comprehensive unit tests in `geometric-port-calculator.service.spec.ts` validate all geometry functions
+   - **TypeScript Interfaces**: Dedicated types in `schema-diagram.interface.ts` (`Point`, `Size`, `Side`, `PortData`, `PortConfiguration`)
 
 3. **Port-Based Routing with Body Magnet** (`schema-editor.page.ts:508`)
    - **Challenge**: Perpendicular anchors with small ports (2×20px) can cause incorrect edge detection
@@ -645,21 +647,23 @@ The Schema Editor demonstrates best practices for integrating JointJS (MIT-licen
    - **Implementation**: `attrs: { body: { magnet: true } }` in element configuration
    - **Benefit**: No library patching required, clean configuration-based solution
 
-4. **Link Routing Stability - Batching Pattern** (`schema-editor.page.ts:1758-1916`)
+4. **Link Routing Stability - Batching Pattern** (`schema-editor.page.ts`)
    - **Critical**: Always batch related graph operations to prevent router recalculation race conditions
    - **Pattern**: `this.graph.startBatch('name'); /* operations */ this.graph.stopBatch('name');`
    - **Explicit Recalculation**: Metro router doesn't auto-recalculate on visual changes - call `link.router(router)` explicitly
    - **Use Cases**: Highlight/unhighlight operations, port reconnection, bulk updates
+   - **Helper Methods**: Duplicated logic extracted to `updateLinkRouterFromGeometry()` and `applyLinkVisualStyle()` for DRY principle
    - **Example**:
      ```typescript
      this.graph.startBatch('highlight');
      // Clear all existing highlights
      this.graph.getElements().forEach(el => el.attr('body/stroke', normalColor));
-     // Apply new highlights
-     selectedCell.attr('body/stroke', highlightColor);
-     this.graph.stopBatch('highlight');
-     // Force router recalculation after batch
-     connectedLinks.forEach(link => link.router(link.get('router')));
+     // Apply new highlights and update router directions
+     connectedLinks.forEach(link => {
+       this.updateLinkRouterFromGeometry(link);  // Updates router based on spatial relationships
+       this.applyLinkVisualStyle(link, 3, colors.primary);  // Applies visual styling
+     });
+     this.graph.stopBatch('highlight');  // Router recalculates once after batch
      ```
 
 5. **Metro Router Configuration** (`schema-editor.page.ts:585-655`)
